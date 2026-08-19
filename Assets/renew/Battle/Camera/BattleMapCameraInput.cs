@@ -25,6 +25,10 @@ public class BattleMapCameraInput : MonoBehaviour
     [InspectorName("마우스 휠 확대/축소 속도")]
     [SerializeField] private float zoomSpeed = 2f;
 
+    [Header("카메라 틸트 (사이드뷰 0~45도, 탑뷰 90도 미사용)")]
+    [InspectorName("틸트 입력 속도(도/초)")]
+    [SerializeField] private float tiltInputSpeed = 40f;
+
     private BattleCameraRig cameraRig;
     private Vector3 previousMousePosition;
     private bool inputEnabled;
@@ -48,6 +52,7 @@ public class BattleMapCameraInput : MonoBehaviour
         }
 
         HandleZoom();
+        HandleTilt();
 
         if (Input.GetKey(KeyCode.Space))
         {
@@ -62,6 +67,7 @@ public class BattleMapCameraInput : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Home))
         {
             cameraRig.ResetManualView();
+            cameraRig.ResetTilt();
         }
     }
 
@@ -102,6 +108,20 @@ public class BattleMapCameraInput : MonoBehaviour
         if (!Mathf.Approximately(scroll, 0f))
         {
             cameraRig.AddZoom(-scroll * zoomSpeed);
+        }
+    }
+
+    /// <summary>Q/E 키 입력으로 0도(완전 수평 사이드뷰)~45도(기본 사이드뷰) 사이의 카메라 틸트 각도를 조절한다.
+    /// 탑뷰 90도는 사용하지 않는다. Q는 각도를 낮추는(더 눕는) 방향, E는 각도를 높이는 방향으로 기울인다.</summary>
+    private void HandleTilt()
+    {
+        float tiltInput = 0f;
+        if (Input.GetKey(KeyCode.Q)) tiltInput -= 1f;
+        if (Input.GetKey(KeyCode.E)) tiltInput += 1f;
+
+        if (!Mathf.Approximately(tiltInput, 0f))
+        {
+            cameraRig.AddTilt(tiltInput * tiltInputSpeed * Time.unscaledDeltaTime);
         }
     }
 

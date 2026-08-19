@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// MapGenerator가 만든 Enemy 타일 위에 DB 기반 Enemy를 생성하고 필수 런타임 컴포넌트를 조립한다.
 /// 적 데이터가 없으면 기본 프리팹으로 적을 생성한다.
+/// 스폰 위치의 Y축은 타일 자체의 Y값과 무관하게 defaultSpawnHeight(기본 0.5)로 고정한다.
 /// </summary>
 public class EnemySpawner : MonoBehaviour
 {
@@ -27,6 +28,8 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField, Min(0)] private int enemyCount = 5;
     [InspectorName("플레이어 시작 지점 성역 크기")]
     [SerializeField] private Vector2Int sanctuarySize = new Vector2Int(5, 5);
+    [InspectorName("기본 스폰 높이(Y)")]
+    [SerializeField] private float defaultSpawnHeight = 0.5f;
 
     private readonly List<GameObject> spawnedEnemies = new List<GameObject>();
 
@@ -95,9 +98,12 @@ public class EnemySpawner : MonoBehaviour
             return null;
         }
 
+        Vector3 spawnPosition = enemyTile.position;
+        spawnPosition.y = defaultSpawnHeight;
+
         GameObject enemy = Instantiate(
             selectedPrefab,
-            enemyTile.position,
+            spawnPosition,
             Quaternion.identity,
             enemyTile);
 
