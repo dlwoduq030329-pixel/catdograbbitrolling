@@ -17,6 +17,8 @@ public class SpawnPlayer : MonoBehaviour
     LoadingUI loading;
     [SerializeField]
     Canvas hudCanvas;
+    [SerializeField]
+    float defaultSpawnHeight = 0.5f;
 
     private GameObject player;
 
@@ -44,6 +46,9 @@ public class SpawnPlayer : MonoBehaviour
         loading.FadeOut(0.15f);
         mapGenerator.StartGenerator();
         player = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
+        Vector3 spawnLocalPosition = player.transform.localPosition;
+        spawnLocalPosition.y = defaultSpawnHeight;
+        player.transform.localPosition = spawnLocalPosition;
         playerBody.GetComponent<CharactorStatus>().TribeSet(charactorIndex);
         PlayerDeck deck = playerBody.GetComponent<PlayerDeck>();
         deck.UICardInit();

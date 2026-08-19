@@ -5,10 +5,15 @@ using UnityEngine.UI;
 /// <summary>
 /// 주사위 버튼과 턴 종료 버튼의 클릭 이벤트 및 사용 가능 상태를 관리한다.
 /// 실제 주사위 계산과 턴 전환은 BattleGameManager에 위임한다.
+/// 주사위는 마우스 클릭으로만 굴릴 수 있고, 턴 종료는 버튼 클릭 또는 단축키(기본 E)로 가능하다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleTurnButtonController : MonoBehaviour
 {
+    [Header("입력")]
+    [InspectorName("턴 종료 단축키")]
+    [SerializeField] private KeyCode endTurnKey = KeyCode.E;
+
     private Button actionButton;
     private Image actionImage;
     private Sprite diceSprite;
@@ -20,6 +25,27 @@ public sealed class BattleTurnButtonController : MonoBehaviour
     private void OnEnable()
     {
         RegisterRuntimeListener();
+    }
+
+    /// <summary>E(기본) 단축키로 턴 종료만 실행한다. 주사위는 이 경로로 굴릴 수 없다(마우스 전용).</summary>
+    private void Update()
+    {
+        if (actionButton == null ||
+            !actionButton.gameObject.activeInHierarchy ||
+            !actionButton.interactable)
+        {
+            return;
+        }
+
+        if (BattleGameManager.Instance != null && BattleGameManager.Instance.IsModalInteractionOpen)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(endTurnKey))
+        {
+            endTurnAction?.Invoke();
+        }
     }
 
     /// <summary>공용 행동 버튼에 주사위·턴 종료 이미지와 실행 콜백을 연결한다.</summary>

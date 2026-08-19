@@ -33,7 +33,6 @@ public class BattleCardPanelToggle : MonoBehaviour
     private Vector2 hiddenPosition;
     private Coroutine slideRoutine;
     private BattleCardInfoPresenter cardInfoPresenter;
-    private BattleCardActionController cardActionController;
 
     public bool IsShown { get; private set; }
     public KeyCode ToggleKey => toggleKey;
@@ -113,12 +112,12 @@ public class BattleCardPanelToggle : MonoBehaviour
         return true;
     }
 
-    /// <summary>문자 입력 중이 아닐 때 설정된 단축키로 카드 패널 상태를 전환한다.</summary>
+    /// <summary>문자 입력 중이 아닐 때 설정된 단축키로 카드 패널 상태를 전환한다.
+    /// 카드 사거리 표시·대상 선택 중에도 Tab으로 패널을 여닫을 수 있다(더 이상 차단하지 않음).</summary>
     private void Update()
     {
         if (Input.GetKeyDown(toggleKey) &&
-            !ShouldIgnoreShortcut() &&
-            !IsCardActionLocked())
+            !ShouldIgnoreShortcut())
         {
             if (cardInfoPresenter != null)
             {
@@ -127,17 +126,6 @@ public class BattleCardPanelToggle : MonoBehaviour
 
             Toggle();
         }
-    }
-
-    /// <summary>카드 대상 선택이나 사용 확인이 끝나기 전에는 Tab 패널 전환을 차단한다.</summary>
-    private bool IsCardActionLocked()
-    {
-        if (cardActionController == null)
-        {
-            cardActionController = FindFirstObjectByType<BattleCardActionController>(FindObjectsInactive.Include);
-        }
-
-        return cardActionController != null && cardActionController.IsActionActive;
     }
 
     /// <summary>현재 상태의 반대로 카드 패널을 슬라이드한다.</summary>

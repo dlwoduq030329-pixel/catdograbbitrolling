@@ -3,18 +3,26 @@ using UnityEngine;
 /// <summary>
 /// 전투 중 플레이어 추적, 수동 이동, 확대·축소와 맵 경계 제한을 담당한다.
 /// 원본 CameraChase를 수정하지 않고 전투 진입 후 카메라 제어를 인계받는다.
+/// 카메라 각도는 사이드뷰(0도)에서 탑뷰(90도)까지 런타임에 틸트 조절이 가능하다.
+/// 대상 스폰 Y가 0.5라는 전제 하에 0도일 때 카메라 Y는 기본적으로 2.5가 된다.
+/// 후방 거리(Z) 제한 기능은 코드에 남겨두되 기본은 비활성화(일단 해제) 상태다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleCameraRig : MonoBehaviour
 {
-    [Header("전투 카메라 고정 설정")]
-    [InspectorName("전투 카메라 회전")]
-    [SerializeField] private Vector3 battleCameraEulerAngles = new Vector3(90f, 0f, 0f);
+    [Header("전투 카메라 틸트 (사이드뷰 0도 ↔ 탑뷰 90도)")]
+    [InspectorName("기본 시작 각도")]
+    [SerializeField, Range(0f, 90f)] private float defaultTiltAngle = 45f;
+    [InspectorName("최소 틸트 각도(사이드뷰)")]
+    [SerializeField, Range(0f, 90f)] private float minTiltAngle = 0f;
+    [InspectorName("최대 틸트 각도(탑뷰)")]
+    [SerializeField, Range(0f, 90f)] private float maxTiltAngle = 90f;
     [InspectorName("원근 투영 사용")]
     [SerializeField] private bool usePerspectiveProjection = true;
 
     [Header("플레이어 추적")]
-    [SerializeField] private Vector3 followOffset = new Vector3(0f, 15f, 0f);
+    [InspectorName("카메라-대상 거리(줌으로 조절)")]
+    [SerializeField, Min(1f)] private float camDistance = 15f;
     [SerializeField, Min(0.01f)] private float followSpeed = 4f;
     [InspectorName("플레이어 이동 상태 모듈")]
     [SerializeField] private BattleMovementController movementController;
@@ -22,6 +30,14 @@ public sealed class BattleCameraRig : MonoBehaviour
     [Header("확대·축소 제한")]
     [SerializeField, Min(1f)] private float minZoomHeight = 5f;
     [SerializeField, Min(1f)] private float maxZoomHeight = 40f;
+
+    [Header("카메라 높이/거리 기준")]
+    [InspectorName("사이드뷰 기본 높이(0도 기준 추가 높이)")]
+    [SerializeField, Min(0f)] private float baseCameraHeight = 2f;
+    [InspectorName("카메라 후방 거리(Z) 제한 사용")]
+    [SerializeField] private bool limitBackDistance = false;
+    [InspectorName("카메라 최대 후방 거리(Z, 맵 이탈 방지)")]
+    [SerializeField, Min(0f)] private float maxBackDistance = 6f;
 
     private Transform playerTarget;
     private Transform temporaryFocusTarget;
@@ -32,7 +48,18 @@ public sealed class BattleCameraRig : MonoBehaviour
     private float minMapZ;
     private float maxMapZ;
 
-    public float CurrentZoomHeight => followOffset.y;
+    /// <summary>minTiltAngle(사이드뷰)에서 maxTiltAngle(탑뷰) 사이의 현재 카메라 피치 각도.</summary>
+    private float currentTiltAngle;
+
+    public float CurrentZoomHeight => camDistance;
+
+    /// <summary>현재 카메라 틸트 각도(도). minTiltAngle(0도, 사이드뷰)~maxTiltAngle(90도, 탑뷰) 사이를 오간다.</summary>
+    public float CurrentTiltAngle => currentTiltAngle;
+
+    private void Awake()
+    {
+        currentTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
+    }
 
     private void OnEnable()
     {
@@ -72,7 +99,7 @@ public sealed class BattleCameraRig : MonoBehaviour
         }
 
         ClampPanToMap();
-        Vector3 targetPosition = activeTarget.position + followOffset + manualPanOffset;
+        Vector3 targetPosition = activeTarget.position + ComputeFollowOffset() + manualPanOffset;
         transform.position = holdPlayerDuringMovement
             ? targetPosition
             : Vector3.Lerp(
@@ -80,8 +107,8 @@ public sealed class BattleCameraRig : MonoBehaviour
                 targetPosition,
                 followSpeed * Time.deltaTime);
 
-        // 다른 카메라 코드가 회전을 변경해도 전투 Rig가 마지막에 고정값을 적용한다.
-        transform.rotation = Quaternion.Euler(battleCameraEulerAngles);
+        // 다른 카메라 코드가 회전을 변경해도 전투 Rig가 마지막에 현재 틸트 각도를 적용한다.
+        transform.rotation = Quaternion.Euler(currentTiltAngle, 0f, 0f);
     }
 
     /// <summary>카메라가 따라갈 현재 Player를 교체하고 추적 기준 위치를 즉시 갱신한다.</summary>
@@ -122,8 +149,8 @@ public sealed class BattleCameraRig : MonoBehaviour
         manualPanOffset = Vector3.zero;
         if (playerTarget == null) return;
 
-        transform.position = playerTarget.position + followOffset;
-        transform.rotation = Quaternion.Euler(battleCameraEulerAngles);
+        transform.position = playerTarget.position + ComputeFollowOffset();
+        transform.rotation = Quaternion.Euler(currentTiltAngle, 0f, 0f);
     }
 
     /// <summary>마우스 맵 이동으로 생긴 월드 오프셋을 추적 기준에 누적한다.</summary>
@@ -141,16 +168,45 @@ public sealed class BattleCameraRig : MonoBehaviour
     /// <summary>휠 입력 높이 변화를 허용된 확대·축소 범위 안에서 적용한다.</summary>
     public void AddZoom(float heightDelta)
     {
-        followOffset.y = Mathf.Clamp(
-            followOffset.y + heightDelta,
+        camDistance = Mathf.Clamp(
+            camDistance + heightDelta,
             minZoomHeight,
             maxZoomHeight);
+    }
+
+    /// <summary>minTiltAngle(0도, 사이드뷰)~maxTiltAngle(90도, 탑뷰) 범위 안에서 카메라 틸트 각도를 변경한다.
+    /// degreesDelta가 양수이면 탑뷰 방향으로, 음수이면 사이드뷰(수평) 방향으로 기운다.</summary>
+    public void AddTilt(float degreesDelta)
+    {
+        currentTiltAngle = Mathf.Clamp(currentTiltAngle + degreesDelta, minTiltAngle, maxTiltAngle);
+    }
+
+    /// <summary>카메라 틸트 각도를 기본 시작 각도(defaultTiltAngle)로 즉시 되돌린다.</summary>
+    public void ResetTilt()
+    {
+        currentTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
     }
 
     /// <summary>수동 이동·확대 오프셋을 초기화하여 카메라를 Player 중심 추적으로 복귀시킨다.</summary>
     public void ResetManualView()
     {
         manualPanOffset = Vector3.zero;
+    }
+
+    /// <summary>현재 틸트 각도와 줌 거리로부터 대상 기준 카메라 오프셋을 계산한다.
+    /// 각도가 90도(탑뷰)에 가까울수록 대상 바로 위, 줄어들수록(사이드뷰) 대상 뒤쪽(-Z)으로 물러나며 낮아진다.
+    /// 0도에서도 baseCameraHeight만큼은 항상 높이를 유지한다(대상 스폰 Y 0.5 기준 카메라 기본 높이 2.5).
+    /// 후방 거리(Z) 제한은 limitBackDistance가 켜져 있을 때만 maxBackDistance로 clamp한다(현재는 기본 해제 상태).</summary>
+    private Vector3 ComputeFollowOffset()
+    {
+        float pitchRad = currentTiltAngle * Mathf.Deg2Rad;
+        float height = baseCameraHeight + camDistance * Mathf.Sin(pitchRad);
+        float back = camDistance * Mathf.Cos(pitchRad);
+        if (limitBackDistance)
+        {
+            back = Mathf.Min(back, maxBackDistance);
+        }
+        return new Vector3(0f, height, -back);
     }
 
     /// <summary>일반 이동 실행 상태를 제공하는 모듈을 연결하며 비어 있으면 Scene에서 한 번 확보한다.</summary>
@@ -222,7 +278,8 @@ public sealed class BattleCameraRig : MonoBehaviour
     }
 
     /// <summary>
-    /// 기존 CameraChase가 변경한 투영 방식과 회전을 전투 카메라 규칙으로 다시 덮어쓴다.
+    /// 기존 CameraChase가 변경한 투영 방식을 전투 카메라 규칙으로 다시 덮어쓰고
+    /// 현재 틸트 각도를 회전에 적용한다.
     /// 확대/축소가 높이 이동 방식이므로 기본값은 원근 투영을 사용한다.
     /// </summary>
     private void ApplyBattleCameraConfiguration()
@@ -233,6 +290,6 @@ public sealed class BattleCameraRig : MonoBehaviour
             controlledCamera.orthographic = !usePerspectiveProjection;
         }
 
-        transform.rotation = Quaternion.Euler(battleCameraEulerAngles);
+        transform.rotation = Quaternion.Euler(currentTiltAngle, 0f, 0f);
     }
 }

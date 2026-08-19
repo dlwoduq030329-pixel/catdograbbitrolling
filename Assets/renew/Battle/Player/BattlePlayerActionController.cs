@@ -361,7 +361,8 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (TryRaycastPlayer(pointerPosition, out GameObject clickedPlayer))
         {
-            if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
+            // 카드 사거리 표시·대상 선택 중에도 이동 범위를 열 수 있도록 IsCardActionActive는 더 이상 막지 않는다.
+            if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive)
             {
                 return;
             }
@@ -435,7 +436,8 @@ public class BattlePlayerActionController : MonoBehaviour
             return;
         }
 
-        if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
+        // 카드 사거리 표시·대상 선택 중에도 R 토글을 쓸 수 있도록 IsCardActionActive는 더 이상 막지 않는다.
+        if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive)
         {
             return;
         }

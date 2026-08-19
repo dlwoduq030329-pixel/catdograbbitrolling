@@ -4,11 +4,15 @@ using UnityEngine.UI;
 
 /// <summary>
 /// 직접 배치한 카드 버튼 5개에 현재 손패의 카드 이미지를 표시한다.
+/// 현재 MP로 사용할 수 없는 카드는 어둡게 처리(블러 대체 표현)하고 클릭을 막는다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleCardHandView : MonoBehaviour
 {
     private const int SlotCount = 5;
+
+    /// <summary>MP가 부족해 사용할 수 없는 카드에 적용하는 어둡고 반투명한 톤(블러 대체 표현).</summary>
+    private static readonly Color InsufficientMPTint = new Color(0.4f, 0.4f, 0.4f, 0.55f);
 
     [Header("카드 슬롯")]
     [Tooltip("CardPanel에 직접 배치한 카드 버튼 5개를 순서대로 연결합니다.")]
@@ -109,8 +113,9 @@ public sealed class BattleCardHandView : MonoBehaviour
                 ? drawSystem.Database.FindByLegacyCardIndex(hand[i]) : null;
             bool hasValidTarget = playerActionController == null ||
                                   playerActionController.HasValidTargetForCard(battleCard);
+            bool hasEnoughMP = HasEnoughMPForCard(hand[i]);
             button.interactable = BattleGameManager.Instance != null &&
-                                  BattleGameManager.Instance.CanUsePlayerCards && hasValidTarget;
+                                  BattleGameManager.Instance.CanUsePlayerCards && hasValidTarget && hasEnoughMP;
 
             Image cardImage = button.targetGraphic as Image;
             if (cardImage == null)
@@ -125,7 +130,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                     cardImage.sprite = visual.Artwork;
                     cardImage.enabled = true;
                     cardImage.preserveAspect = true;
-                    cardImage.color = Color.white;
+                    cardImage.color = hasEnoughMP ? Color.white : InsufficientMPTint;
                 }
                 else
                 {
@@ -136,6 +141,42 @@ public sealed class BattleCardHandView : MonoBehaviour
             SetGeneratedHighlight(button, drawSystem != null && drawSystem.IsGeneratedCardSlot(i));
 
         }
+    }
+
+    /// <summary>현재 Player의 MP가 이 카드를 사용하기에 충분한지 확인한다.
+    /// 정보를 확인할 수 없을 때는(참조 미연결 등) 기존처럼 막지 않고 true를 반환한다.</summary>
+    private bool HasEnoughMPForCard(int legacyCardIndex)
+    {
+        ConnectPlayerActionController();
+        GameObject playerObject = playerActionController != null ? playerActionController.player : null;
+        if (playerObject == null)
+        {
+            return true;
+        }
+
+        CharacterMP playerMP = playerObject.GetComponent<CharacterMP>();
+        if (playerMP == null)
+        {
+            return true;
+        }
+
+        if (!BattleCardConnector.TryCreateActionRequest(
+                legacyCardIndex,
+                drawSystem != null ? drawSystem.Database : null,
+                out BattleActionRequest request,
+                out BattleCardData resolvedCard))
+        {
+            return true;
+        }
+
+        int cardCost = request.MPCost;
+        BattleStatusEffects status = playerObject.GetComponent<BattleStatusEffects>();
+        if (status != null && resolvedCard != null && resolvedCard.category == BattleCardCategory.Attack)
+        {
+            cardCost = status.ModifyAttackCost(cardCost);
+        }
+
+        return playerMP.CanSpend(cardCost);
     }
 
     /// <summary>선택한 손패 카드의 행동 요청을 생성한다.</summary>
