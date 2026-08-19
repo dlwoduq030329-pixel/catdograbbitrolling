@@ -16174,7 +16174,7 @@ GameObject:
   - component: {fileID: 1563235555}
   - component: {fileID: 1563235554}
   m_Layer: 0
-  m_Name: kingcamera
+  m_Name: qewqweqeqwe
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -16294,7 +16294,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 41
+  field of view: 157
   orthographic: 0
   orthographic size: 2.32
   m_Depth: -1
