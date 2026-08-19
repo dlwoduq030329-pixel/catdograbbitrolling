@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 154f369a0bf60d047a607835a1768c6c
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 253145
+  packageName: VFX Ui Progress Bar
+  packageVersion: 1.0
+  assetPath: Assets/VFX_Ui_ProgressBar/Environment/Premultiplied.shader
+  uploadId: 579248

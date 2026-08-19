@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f17a0459d8226324a90fb363f8aebdc6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 253145
+  packageName: VFX Ui Progress Bar
+  packageVersion: 1.0
+  assetPath: Assets/VFX_Ui_ProgressBar/Material/M_icon_5 4.mat
+  uploadId: 579248

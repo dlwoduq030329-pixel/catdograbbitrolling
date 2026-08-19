@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 8fe24249433f0954597da0dbdc0dc8c5
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 253145
+  packageName: VFX Ui Progress Bar
+  packageVersion: 1.0
+  assetPath: Assets/VFX_Ui_ProgressBar/Environment/SHDR_Dissovle.shader
+  uploadId: 579248

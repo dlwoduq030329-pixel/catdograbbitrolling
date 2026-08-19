@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7d335e0d0b302784eb7af7135ca054fa
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 253145
+  packageName: VFX Ui Progress Bar
+  packageVersion: 1.0
+  assetPath: Assets/VFX_Ui_ProgressBar/Material/M_ProgressBar_BorderNoise 4.mat
+  uploadId: 579248
