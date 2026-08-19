@@ -4105,6 +4105,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: WaterBlock_50m
       objectReference: {fileID: 0}
+    - target: {fileID: 1507636620937791836, guid: 7097ba7ba649e1f41bba232312bdcbd8,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -16169,7 +16174,9 @@ GameObject:
   - component: {fileID: 1563235555}
   - component: {fileID: 1563235554}
   m_Layer: 0
-  m_Name: Main Camera
+
+  m_Name: kingCamera
+
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -19771,7 +19778,7 @@ Transform:
   m_GameObject: {fileID: 1899088178}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -583.705, y: -718.6486, z: 648.82837}
+  m_LocalPosition: {x: -583.705, y: -714.5, z: 648.82837}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
