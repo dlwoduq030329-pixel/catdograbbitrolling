@@ -1,0 +1,645 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1eddf71a885e41141a4c3f0ea1f5c56c, type: 3}
+  m_Name: PlayerCardMain
+  m_EditorClassIdentifier: 
+  cards:
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 0
+    effectSummary: "선택한 적에게 물리 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "추가 효과 없이 선택한 적에게 물리 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 1
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 1
+    effectSummary: "대상에게 돌진한 뒤 피해를 주고 한 칸 밀어냅니다."
+    effects:
+    - effectType: 7
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 2
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "대상 앞의 빈 타일까지 돌진합니다."
+      cancelCardOnFailure: 1
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 적에게 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 5
+      effectTarget: 3
+      amount: 0
+      distanceTiles: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "피해를 받은 적을 한 칸 밀어냅니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 2
+    areaType: 0
+    areaSizeTiles: 2
+    shield: 0
+  - category: 2
+    cardType: 0
+    legacyCardIndex: 2
+    effectSummary: "직선 2칸 범위의 적에게 물리 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택 방향 직선 2칸의 적에게 물리 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 2
+    areaType: 3
+    areaSizeTiles: 2
+    shield: 0
+  - category: 1
+    cardType: 2
+    legacyCardIndex: 3
+    effectSummary: "다음 플레이어 턴 시작 전까지 자신에게 보호막 5를 부여합니다."
+    effects:
+    - effectType: 2
+      effectTarget: 1
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: ""
+      description: "자신에게 보호막 5를 부여합니다. 남은 보호막은 다음 플레이어 턴 시작 시 사라집니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 5
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 4
+    effectSummary: "자신의 체력을 5 회복합니다."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "자신의 체력을 5 회복합니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 5
+    effectSummary: "같은 손패 자리에 무작위 카드를 생성하고 이번 턴 MP 비용을 1 감소시킵니다."
+    effects:
+    - effectType: 4
+      effectTarget: 1
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: WEIRD_MUSHROOM
+      description: "버섯을 무작위 카드로 교체하고 생성 카드 비용을 이번 턴 1 감소시킵니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 6
+    effectSummary: "자신의 체력을 10 회복합니다."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 10
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "자신의 체력을 10 회복합니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 7
+    effectSummary: "선택한 적에게 피해 2를 주고 독을 부여합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 적에게 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "독"
+      description: "다음 Player 턴 시작에 현재 HP의 10% 피해를 주는 독을 부여합니다. 최대 2중첩됩니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 3
+    areaType: 2
+    areaSizeTiles: 3
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 8
+    effectSummary: "인접한 빈 타일에 HP 10 허수아비를 소환하고 반대 방향으로 한 칸 후퇴합니다."
+    effects:
+    - effectType: 9
+      effectTarget: 5
+      amount: 10
+      distanceTiles: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: SCARECROW
+      description: "허수아비는 적을 도발하며 파괴될 때까지 유지됩니다. 후퇴할 수 없으면 소환만 실행합니다."
+      cancelCardOnFailure: 1
+    targetType: 5
+    rangeTiles: 1
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 9
+    effectSummary: "스킬 범위 안에서 현재 체력이 가장 낮은 적 근처로 순간이동한 뒤 공격합니다."
+    effects:
+    - effectType: 8
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 3
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: "LOWEST_HP_IN_RANGE"
+      description: "스킬 범위 안에서 현재 체력이 가장 낮은 적과 인접한 빈 타일로 순간이동합니다."
+      cancelCardOnFailure: 1
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "자동 선택된 적에게 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 3
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 10
+    effectSummary: "선택한 적에게 기본 공격 피해를 5회 적용합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 0
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 5
+      effectCode: BASIC_ATTACK
+      description: "현재 기본 공격 피해로 동일한 적을 최대 5회 공격합니다. 대상이 죽으면 중단합니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 1
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 11
+    effectSummary: "현재 HP가 최대 HP의 20% 미만인 일반 적을 처형합니다. 엘리트와 보스에게는 물리 피해 2만 줍니다."
+    effects:
+    - effectType: 11
+      effectTarget: 0
+      amount: 20
+      secondaryAmount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: EXECUTE_PERCENT
+      description: "일반 적은 현재 HP 20% 미만일 때만 사용할 수 있으며 처형합니다. 엘리트와 보스에게는 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 1
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 12
+    effectSummary: "주변 적을 공격하고 한 칸 밀어냅니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "주변 1칸의 모든 적에게 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 5
+      effectTarget: 3
+      amount: 0
+      distanceTiles: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "피해를 받은 적을 사용자 반대 방향으로 한 칸 밀어냅니다."
+      cancelCardOnFailure: 0
+    targetType: 1
+    rangeTiles: 0
+    areaType: 1
+    areaSizeTiles: 1
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 13
+    effectSummary: "선택한 적에게 물리 피해 2를 주고 기절을 부여합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 적에게 물리 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "기절"
+      description: "피해를 받은 적에게 기절을 1턴 부여합니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 1
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 14
+    effectSummary: "선택한 적에게 마법 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: HOLY
+      description: "물리 피해를 마법 피해로 전환하여 적용합니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 2
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 15
+    effectSummary: "자신에게 적용된 모든 상태이상을 제거합니다."
+    effects:
+    - effectType: 12
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: CLEANSE_ALL
+      description: "자신에게 적용된 모든 상태이상을 제거합니다."
+      cancelCardOnFailure: 0
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 16
+    effectSummary: "선택 타일에 3턴 동안 유지되는 반경 회복 영역을 생성합니다."
+    effects:
+    - effectType: 10
+      effectTarget: 5
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 3
+      repeatCount: 1
+      effectCode: HEALING_AREA
+      description: "영역 안의 아군을 플레이어 턴마다 5 회복하는 지속 영역을 생성합니다."
+      cancelCardOnFailure: 1
+    targetType: 5
+    rangeTiles: 3
+    areaType: 2
+    areaSizeTiles: 1
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 17
+    effectSummary: "자신의 체력을 2 회복합니다."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "자신의 체력을 2 회복합니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 18
+    effectSummary: "현재 턴 동안 자신의 기본 공격 피해가 2 증가합니다."
+    effects:
+    - effectType: 4
+      effectTarget: 1
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: BASIC_ATTACK_DAMAGE
+      description: "현재 턴 동안 자신의 기본 공격 피해를 2 증가시킵니다."
+      cancelCardOnFailure: 1
+    targetType: 1
+    rangeTiles: 0
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 19
+    effectSummary: "선택한 적에게 마법 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: HOLY
+      description: "물리 피해를 마법 피해로 전환하여 적용합니다."
+      cancelCardOnFailure: 1
+    targetType: 2
+    rangeTiles: 4
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 20
+    effectSummary: "선택 지점 주변 2칸의 모든 적에게 마법 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택 지점 주변 2칸의 모든 적에게 마법 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    targetType: 5
+    rangeTiles: 4
+    areaType: 2
+    areaSizeTiles: 2
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 21
+    effectSummary: "선택 대상 타격 후 가장 가까운 다른 적 최대 2명에게 연쇄 피해를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 적에게 마법 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    - effectType: 0
+      effectTarget: 3
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 2
+      effectCode: CHAIN
+      description: "가장 가까운 첫 연쇄 대상에게 1.5, 두 번째 대상에게 1의 마법 피해를 줍니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 3
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 22
+    effectSummary: "선택한 지점 주변 3칸의 모든 적에게 마법 피해 2를 주고 동상을 부여합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 지점 주변 3칸의 모든 적에게 마법 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "동상"
+      description: "이동 및 공격 MP 비용이 1 증가하는 동상을 부여합니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 3
+    areaType: 2
+    areaSizeTiles: 3
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 23
+    effectSummary: "선택 지점 주변 2칸의 적에게 마법 피해 2를 주고 둔화를 부여합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택 지점 주변 2칸의 모든 적에게 마법 피해 2를 줍니다."
+      cancelCardOnFailure: 1
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "둔화"
+      description: "피해를 받은 적의 이동 범위를 30% 감소시키는 둔화를 1턴 부여합니다."
+      cancelCardOnFailure: 0
+    targetType: 5
+    rangeTiles: 3
+    areaType: 2
+    areaSizeTiles: 2
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 24
+    effectSummary: "선택한 적에게 피해 2를 주고 화상을 부여합니다."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "선택한 적에게 피해 2를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "화상"
+      description: "다음 Player 턴 시작에 현재 HP의 10% 피해를 주고 물리 피해를 30% 감소시키는 화상을 부여합니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 4
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 2
+    cardType: 2
+    legacyCardIndex: 25
+    effectSummary: "선택한 적에게 파쇄와 불안을 부여합니다."
+    effects:
+    - effectType: 3
+      effectTarget: 0
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "파쇄"
+      description: "받는 물리 피해가 30% 증가하는 파쇄를 부여합니다."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 0
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "불안"
+      description: "받는 마법 피해가 30% 증가하는 불안을 부여합니다."
+      cancelCardOnFailure: 0
+    targetType: 2
+    rangeTiles: 3
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 0
+    legacyCardIndex: 26
+    targetType: 2
+    rangeTiles: 4
+    areaType: 0
+    areaSizeTiles: 0
+    shield: 0
+  - category: 0
+    cardType: 1
+    legacyCardIndex: 27
+    effectSummary: "플레이어 주변 2칸의 모든 적에게 마법 피해 5를 주고 자신은 1턴 취약해집니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      description: "플레이어 주변 2칸의 모든 적에게 마법 피해 5를 줍니다."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 1
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "취약"
+      description: "카드 사용 후 자신이 다음 플레이어 턴까지 받는 모든 피해가 25% 증가합니다."
+      cancelCardOnFailure: 0
+    targetType: 1
+    rangeTiles: 0
+    areaType: 2
+    areaSizeTiles: 2
+    shield: 0

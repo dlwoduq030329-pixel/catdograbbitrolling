@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9122a97f86e443a8785bb6a5bde91f1, type: 3}
+  m_Name: BattleShopConfig
+  m_EditorClassIdentifier: 
+  cardSlots: 3
+  equipmentSlots: 3
+  initialRerollPrice: 10
+  maximumRerollPrice: 160
+  rarityByStage:
+  - minimumStage: 1
+    common: 80
+    rare: 20
+    epic: 0
+    legendary: 0
+  - minimumStage: 2
+    common: 55
+    rare: 35
+    epic: 10
+    legendary: 0
+  - minimumStage: 3
+    common: 35
+    rare: 40
+    epic: 20
+    legendary: 5
+  - minimumStage: 4
+    common: 20
+    rare: 35
+    epic: 30
+    legendary: 15
+  equipmentByStage:
+  - minimumStage: 1
+    hand: 55
+    body: 20
+    head: 20
+    twoHand: 5
+  - minimumStage: 2
+    hand: 45
+    body: 20
+    head: 20
+    twoHand: 15
+  - minimumStage: 3
+    hand: 40
+    body: 20
+    head: 20
+    twoHand: 20
