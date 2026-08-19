@@ -1,0 +1,877 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a0db891d07c4e78a89756bbb3bc8814, type: 3}
+  m_Name: BattleCardMasterDatabase
+  m_EditorClassIdentifier: 
+  cards:
+  - cardIndex: 0
+    cardCode: SWING
+    cardName: "\uD718\uB450\uB974\uAE30"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 1
+    rangeTiles: 3
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uC8FC\uBCC0 1\uCE78\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C
+      \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC8FC\uBCC0 1\uCE78\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C
+        \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds:
+    - 
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 1
+    cardCode: BODYSLAM
+    cardName: "\uBAB8\uD1B5 \uBC15\uCE58\uAE30"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 0
+    rangeTiles: 2
+    mpCost: 2
+    baseDamage: 2
+    effectSummary: "\uB300\uC0C1\uC5D0\uAC8C \uB3CC\uC9C4\uD55C \uB4A4 \uD53C\uD574\uB97C
+      \uC8FC\uACE0 \uD55C \uCE78 \uBC00\uC5B4\uB0C5\uB2C8\uB2E4."
+    effects:
+    - effectType: 7
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 2
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uB300\uC0C1 \uC55E\uC758 \uBE48 \uD0C0\uC77C\uAE4C\uC9C0 \uB3CC\uC9C4\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 2
+    cardCode: HIT_DOWN
+    cardName: "\uB0B4\uB824\uCE58\uAE30"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 3
+    rangeTiles: 2
+    mpCost: 2
+    baseDamage: 2
+    effectSummary: "\uC9C1\uC120 \uBC94\uC704\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C
+      \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC9C1\uC120 \uBC94\uC704\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574
+        2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 3
+    cardCode: FACE_GUARD
+    cardName: "\uC5BC\uAD74 \uAC00\uB9AC\uAE30"
+    category: 1
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 2
+    baseDamage: 2
+    effectSummary: "\uC790\uC2E0\uC5D0\uAC8C \uBCF4\uD638\uB9C9 5\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 2
+      effectTarget: 1
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uBCF4\uD638\uB9C9 5\uB97C \uC5BB\uC2B5\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 4
+    cardCode: STALE_JERKY
+    cardName: "\uC624\uB798\uB41C \uC721\uD3EC"
+    category: 2
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 2
+    baseDamage: 2
+    effectSummary: "\uC790\uC2E0\uC758 \uCCB4\uB825\uC744 5 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uCCB4\uB825\uC744 5 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 5
+    cardCode: WEIRD_MUSHROOM
+    cardName: "\uC774\uC0C1\uD55C \uBC84\uC12F"
+    category: 2
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uAC19\uC740 \uC190\uD328 \uC790\uB9AC\uC5D0 \uBB34\uC791\uC704 \uCE74\uB4DC\uB97C \uC0DD\uC131\uD558\uACE0 \uC774\uBC88 \uD134 MP \uBE44\uC6A9\uC744 1 \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
+    effects:
+    - effectType: 4
+      effectTarget: 1
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: WEIRD_MUSHROOM
+      description: "\uBC84\uC12F\uC744 \uBB34\uC791\uC704 \uCE74\uB4DC\uB85C \uAD50\uCCB4\uD558\uACE0 \uC0DD\uC131 \uCE74\uB4DC \uBE44\uC6A9\uC744 \uC774\uBC88 \uD134 1 \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 6
+    cardCode: HEALING_POTION
+    cardName: "\uD68C\uBCF5 \uBB3C\uC57D"
+    category: 2
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uC790\uC2E0\uC758 \uCCB4\uB825\uC744 10 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 10
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uCCB4\uB825\uC744 10 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 7
+    cardCode: POISON_POTION
+    cardName: "\uB3C5 \uBB3C\uC57D"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 0
+    rangeTiles: 1
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574\uC640 \uB3C5\uC744
+      \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uB3C5"
+      description: "\uB2E4\uC74C Player \uD134 \uC2DC\uC791\uC5D0 \uD604\uC7AC HP\uC758 10% \uD53C\uD574\uB97C \uC8FC\uB294 \uB3C5\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4. \uCD5C\uB300 2\uC911\uCCA9\uB429\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 8
+    cardCode: SCARECROW
+    cardName: "\uD5C8\uC218\uC544\uBE44"
+    category: 4
+    cardType: 2
+    targetType: 5
+    areaType: 0
+    rangeTiles: 1
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uC9C0\uC815 \uD0C0\uC77C\uC5D0 \uD5C8\uC218\uC544\uBE44\uB97C
+      \uC18C\uD658\uD55C \uB4A4 \uC0AC\uC6A9\uC790\uAC00 \uD6C4\uD1F4\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 9
+      effectTarget: 5
+      amount: 10
+      distanceTiles: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: SCARECROW
+      description: "\uC9C0\uC815 \uD0C0\uC77C\uC5D0 \uD5C8\uC218\uC544\uBE44\uB97C
+        \uC18C\uD658\uD569\uB2C8\uB2E4. HP\uB294 10\uC774\uBA70 \uD30C\uAD34\uB420 \uB54C\uAE4C\uC9C0 \uC720\uC9C0\uB429\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 9
+    cardCode: VITAL_STRIKE
+    cardName: "\uAE09\uC18C \uACF5\uACA9"
+    category: 3
+    cardType: 0
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 4
+    baseDamage: 2
+    effectSummary: "\uC2A4\uD0AC \uBC94\uC704 \uC548\uC5D0\uC11C \uD604\uC7AC HP\uAC00
+      \uAC00\uC7A5 \uB0AE\uC740 \uC801 \uADFC\uCC98\uB85C \uC21C\uAC04\uC774\uB3D9\uD55C \uB4A4 \uACF5\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 8
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 3
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: LOWEST_HP_IN_RANGE
+      description: "\uC2A4\uD0AC \uBC94\uC704 \uC548\uC5D0\uC11C \uD604\uC7AC HP\uAC00
+        \uAC00\uC7A5 \uB0AE\uC740 \uC801\uACFC \uC778\uC811\uD55C \uBE48 \uD0C0\uC77C\uB85C \uC21C\uAC04\uC774\uB3D9\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 10
+    cardCode: WILD_SLASH
+    cardName: "\uB09C\uB3C4\uC9C8"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC744 \uC5EC\uB7EC \uBC88 \uACF5\uACA9\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 5
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C 5\uD68C
+        \uC801\uC6A9\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 11
+    cardCode: FINISHING_BLOW
+    cardName: "\uB9C8\uBB34\uB9AC \uC77C\uACA9"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uCCB4\uB825\uC774 \uB0AE\uC740 \uC801\uC744 \uCC98\uD615\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 11
+      effectTarget: 0
+      amount: 15
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uB300\uC0C1\uC758 \uD604\uC7AC \uCCB4\uB825\uC774 15 \uC774\uD558\uC774\uBA74
+        \uCC98\uD615\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 12
+    cardCode: WHIRLWIND
+    cardName: "\uD68C\uC624\uB9AC\uBCA0\uAE30"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 1
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC8FC\uBCC0 \uC801\uC744 \uACF5\uACA9\uD558\uACE0 \uD55C \uCE78
+      \uBC00\uC5B4\uB0C5\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC8FC\uBCC0 1\uCE78\uC758 \uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uD53C\uD574
+        2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 5
+      effectTarget: 3
+      amount: 0
+      distanceTiles: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uD53C\uD574\uB97C \uBC1B\uC740 \uC801\uC744 \uC0AC\uC6A9\uC790
+        \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C \uD55C \uCE78 \uBC00\uC5B4\uB0C5\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 13
+    cardCode: POWER_STRIKE
+    cardName: "\uAC15\uD0C0"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uAC15\uD55C \uBB3C\uB9AC
+      \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 14
+    cardCode: DIVINE_STRIKE
+    cardName: "\uC2E0\uC131\uD55C \uC77C\uACA9"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uC2E0\uC131 \uB9C8\uBC95
+      \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: "\uC2E0\uC131"
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uC2E0\uC131 \uD53C\uD574
+        2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 15
+    cardCode: HEALING_BREATH
+    cardName: "\uCE58\uC720\uC758 \uC228\uACB0"
+    category: 2
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 4
+    baseDamage: 0
+    effectSummary: "\uC790\uC2E0\uC5D0\uAC8C \uC801\uC6A9\uB41C \uBAA8\uB4E0 \uC0C1\uD0DC\uC774\uC0C1\uC744 \uC81C\uAC70\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 12
+      effectTarget: 1
+      amount: 0
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: CLEANSE_ALL
+      description: "\uC790\uC2E0\uC5D0\uAC8C \uC801\uC6A9\uB41C \uBAA8\uB4E0 \uC0C1\uD0DC\uC774\uC0C1\uC744 \uC81C\uAC70\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 16
+    cardCode: CONSECRATION
+    cardName: "\uC2E0\uC131\uD55C \uC601\uC5ED"
+    category: 2
+    cardType: 2
+    targetType: 3
+    areaType: 2
+    rangeTiles: 3
+    mpCost: 6
+    baseDamage: 2
+    effectSummary: "\uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uB294 \uC9C0\uC18D \uC601\uC5ED\uC744
+      \uC0DD\uC131\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 10
+      effectTarget: 5
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 3
+      repeatCount: 1
+      effectCode: "\uCE58\uC720\uC601\uC5ED"
+      description: "\uBC18\uACBD \uC548\uC758 \uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uB294
+        \uC601\uC5ED\uC744 3\uD134 \uB3D9\uC548 \uC0DD\uC131\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 1
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 17
+    cardCode: HEALING_TOUCH
+    cardName: "\uCE58\uC720\uC758 \uC190\uAE38"
+    category: 2
+    cardType: 2
+    targetType: 1
+    areaType: 0
+    rangeTiles: 0
+    mpCost: 3
+    baseDamage: 2
+    effectSummary: "\uC790\uC2E0\uC758 \uCCB4\uB825\uC744 2 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 1
+      effectTarget: 1
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC790\uC2E0\uC758 \uCCB4\uB825\uC744 2 \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 18
+    cardCode: WEAPON_BLESSING
+    cardName: "\uBB34\uAE30 \uCD95\uBCF5"
+    category: 2
+    cardType: 2
+    targetType: 3
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC544\uAD70\uC758 \uAE30\uBCF8 \uACF5\uACA9
+      \uD53C\uD574\uB97C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
+    effects:
+    - effectType: 4
+      effectTarget: 0
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uAE30\uBCF8\uACF5\uACA9\uD53C\uD574\uC99D\uAC00"
+      description: "\uAE30\uBCF8 \uACF5\uACA9 \uD53C\uD574 \uC99D\uAC00 \uD6A8\uACFC\uB97C
+        1\uD134 \uB3D9\uC548 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 19
+    cardCode: HOLY_ARROW
+    cardName: "\uC2E0\uC131 \uD654\uC0B4"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 4
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uC2E0\uC131 \uB9C8\uBC95
+      \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: "\uC2E0\uC131"
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uC2E0\uC131 \uD53C\uD574
+        2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 20
+    cardCode: METEOR
+    cardName: "\uC6B4\uC11D"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 2
+    rangeTiles: 3
+    mpCost: 10
+    baseDamage: 2
+    effectSummary: "\uC804\uC7A5\uC758 \uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C
+      \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 4
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 21
+    cardCode: LIGHTNING
+    cardName: "\uBC88\uAC1C"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 6
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uACFC \uAC00\uAE4C\uC6B4 \uC801\uB4E4\uC5D0\uAC8C
+      \uC5F0\uC1C4 \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 0
+      effectTarget: 3
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 2
+      effectCode: "\uC5F0\uC1C4"
+      description: "\uB300\uC0C1\uACFC \uAC00\uC7A5 \uAC00\uAE4C\uC6B4 \uC801 \uB450
+        \uBA85\uC5D0\uAC8C \uC5F0\uC1C4 \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 22
+    cardCode: ICE_MAGIC
+    cardName: "\uC5BC\uC74C \uB9C8\uBC95"
+    category: 0
+    cardType: 1
+    targetType: 6
+    areaType: 2
+    rangeTiles: 3
+    mpCost: 8
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0 3\uCE78\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C \uC8FC\uACE0 \uB3D9\uC0C1\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0 3\uCE78\uC758 \uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uB3D9\uC0C1"
+      description: "\uD53C\uD574\uB97C \uBC1B\uC740 \uC801\uC5D0\uAC8C \uB3D9\uC0C1\uC744
+        1\uD134 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 23
+    cardCode: GROUND_ERUPTION
+    cardName: "\uB300\uC9C0 \uBD84\uCD9C"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 2
+    rangeTiles: 3
+    mpCost: 6
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0\uC758 \uC801\uC5D0\uAC8C
+      \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0 1\uCE78\uC758 \uC801\uC5D0\uAC8C
+        \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 24
+    cardCode: FIRE_BALL
+    cardName: "\uD654\uC5FC\uAD6C"
+    category: 0
+    cardType: 1
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 4
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C \uC8FC\uACE0
+      \uD654\uC0C1\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 0
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 3
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uD654\uC0C1"
+      description: "\uB2E4\uC74C Player \uD134 \uC2DC\uC791\uC5D0 \uD604\uC7AC HP\uC758 10% \uD53C\uD574\uB97C \uC8FC\uACE0 \uBB3C\uB9AC \uD53C\uD574\uB97C 30% \uAC10\uC18C\uC2DC\uD0A4\uB294 \uD654\uC0C1\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 25
+    cardCode: CURSE_MAGIC
+    cardName: "\uC800\uC8FC \uB9C8\uBC95"
+    category: 2
+    cardType: 2
+    targetType: 2
+    areaType: 0
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD\uD55C \uC801\uC5D0\uAC8C \uD30C\uC1C4\uC640 \uBD88\uC548\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    effects:
+    - effectType: 3
+      effectTarget: 0
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uD30C\uC1C4"
+      description: "\uBC1B\uB294 \uBB3C\uB9AC \uD53C\uD574\uAC00 30% \uC99D\uAC00\uD558\uB294 \uD30C\uC1C4\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 0
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uBD88\uC548"
+      description: "\uBC1B\uB294 \uB9C8\uBC95 \uD53C\uD574\uAC00 30% \uC99D\uAC00\uD558\uB294 \uBD88\uC548\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 26
+    cardCode: RAIN_OF_ARROWS
+    cardName: "\uD654\uC0B4\uBE44"
+    category: 0
+    cardType: 0
+    targetType: 2
+    areaType: 2
+    rangeTiles: 3
+    mpCost: 5
+    baseDamage: 2
+    effectSummary: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0\uC758 \uC801\uC5D0\uAC8C
+      \uBB3C\uB9AC \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uC120\uD0DD \uC9C0\uC810 \uC8FC\uBCC0 2\uCE78\uC758 \uC801\uC5D0\uAC8C
+        \uD53C\uD574 2\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 
+  - cardIndex: 27
+    cardCode: EXPLOSION
+    cardName: "\uD3ED\uBC1C"
+    category: 0
+    cardType: 1
+    targetType: 1
+    areaType: 2
+    rangeTiles: 0
+    mpCost: 10
+    baseDamage: 5
+    effectSummary: "\uD50C\uB808\uC774\uC5B4 \uC8FC\uBCC0 2\uCE78\uC758 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C \uC8FC\uACE0 \uC0AC\uC6A9\uC790\uB294 1\uD134 \uCDE8\uC57D\uD574\uC9D1\uB2C8\uB2E4."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 5
+      distanceTiles: 0
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: 
+      description: "\uD50C\uB808\uC774\uC5B4 \uC8FC\uBCC0 2\uCE78\uC758 \uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uB9C8\uBC95 \uD53C\uD574 5\uB97C \uC90D\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    - effectType: 3
+      effectTarget: 1
+      amount: 1
+      distanceTiles: 0
+      durationTurns: 1
+      repeatCount: 1
+      effectCode: "\uCDE8\uC57D"
+      description: "\uB2E4\uC74C \uD50C\uB808\uC774\uC5B4 \uD134\uAE4C\uC9C0 \uBC1B\uB294 \uBAA8\uB4E0 \uD53C\uD574\uAC00 25% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+      cancelCardOnFailure: 0
+    effectIds: []
+    failureCondition: 
+    implementationPriority: "\uC124\uACC4 \uAC80\uD1A0"
+    implementationStatus: "\uB370\uC774\uD130 \uC791\uC131"
+    owner: 
+    notes: 

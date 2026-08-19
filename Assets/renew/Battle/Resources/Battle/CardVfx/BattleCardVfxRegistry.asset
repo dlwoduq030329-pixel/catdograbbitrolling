@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f15fe50526f4d9581e50ee75f59835f, type: 3}
+  m_Name: BattleCardVfxRegistry
+  m_EditorClassIdentifier: 
+  entries:
+  - cardCode: METEOR
+    prefab: {fileID: 971987903814131934, guid: 53cd3fabdb98be34fa536a5d636c025f, type: 3}
+  - cardCode: EXPLOSION
+    prefab: {fileID: 2717540395455739778, guid: 752d40ddbe819b248971f8b3fd633a0c, type: 3}
+  - cardCode: FIRE_BALL
+    prefab: {fileID: 8893179138501517367, guid: 8b1df6156334c6445aca60c080475c1c, type: 3}
+  - cardCode: CURSE_MAGIC
+    prefab: {fileID: 989542983692251155, guid: bf456f9cbe44fd641b205876917c17b1, type: 3}
+  - cardCode: RAIN_OF_ARROWS
+    prefab: {fileID: 4165034617611478321, guid: 161e8583b80cb8e48924139d40b89d77, type: 3}
+  - cardCode: GROUND_ERUPTION
+    prefab: {fileID: 3871640448993452956, guid: c32e7091b3b23b0489ed0532605c7993, type: 3}
+  - cardCode: ICE_MAGIC
+    prefab: {fileID: 7833177356077189626, guid: 49eaff5f3db9c2945b7e3cb48e96bbae, type: 3}
+  - cardCode: LIGHTNING
+    prefab: {fileID: 1541748658764091471, guid: ae2253472c6c98b4b9db88a9f918b45e, type: 3}
+  - cardCode: CONSECRATION
+    prefab: {fileID: 1703228994199647851, guid: 219d84934f94eb4429619a20d73ceff7, type: 3}
+  - cardCode: POISON_POTION
+    prefab: {fileID: 7019049579504631621, guid: cb2025ec2c580db4da3bf7c5519a01cd, type: 3}
+  - cardCode: HOLY_ARROW
+    prefab: {fileID: 2946841771896891860, guid: d56dde98a607e4440ad6c878eddb8c3d, type: 3}
