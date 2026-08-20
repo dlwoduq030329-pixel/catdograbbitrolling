@@ -56,6 +56,25 @@ public class MapGenerator : MonoBehaviour
 
     private bool generatorEnd = false;
 
+    [Header("Terrain 설정")]
+    [SerializeField] private Terrain terrainPrefab;
+
+    [SerializeField] private int terrainHeightmapResolution = 513;
+    [SerializeField] private float terrainHeight = 30f;
+
+    [Header("Terrain Texture")]
+    [SerializeField] private TerrainLayer grassLayer;
+    [SerializeField] private TerrainLayer dirtLayer;
+    [SerializeField] private TerrainLayer rockLayer;
+    [SerializeField] private TerrainLayer sandLayer;
+
+    [Header("Terrain Noise")]
+    [SerializeField] private float terrainNoiseScale = 0.03f;
+    [SerializeField] private float terrainNoiseHeight = 15f;
+    private Terrain generatedTerrain;
+    [Header("Terrain")]
+    [SerializeField] private Material terrainMaterial;
+
     private void Awake()
     {
         mapblueprint = new TileType[blockCountX, blockCountZ];
@@ -99,6 +118,7 @@ public class MapGenerator : MonoBehaviour
         }
 
         DrawGrid();
+        //GenerateTerrain();
     }
 
     private bool CheckPath()
@@ -496,4 +516,94 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
+    private void GenerateTerrain()
+    {
+        // 기존에 생성된 Terrain이 있다면 제거
+        if (generatedTerrain != null)
+        {
+            Destroy(generatedTerrain.gameObject);
+        }
+
+
+        // TerrainData 생성
+        TerrainData terrainData = new TerrainData();
+
+
+        terrainData.heightmapResolution = terrainHeightmapResolution;
+
+
+        float terrainWidth = blockCountX * blockDistance;
+        float terrainLength = blockCountZ * blockDistance;
+
+        terrainData.size = new Vector3(
+            terrainWidth + blockDistance,
+            terrainHeight,
+            terrainLength + blockDistance
+        );
+
+
+        // Terrain Layer 등록
+        terrainData.terrainLayers = new TerrainLayer[]
+        {
+        grassLayer,
+        dirtLayer,
+        rockLayer,
+        sandLayer
+        };
+
+
+        // 높이 생성
+        GenerateTerrainHeight(terrainData);
+
+
+        // Terrain GameObject 생성
+        GameObject terrainObject = Terrain.CreateTerrainGameObject(terrainData);
+
+
+        terrainObject.name = "Generated Terrain";
+
+
+        terrainObject.transform.SetParent(transform);
+
+
+        terrainObject.transform.position =
+            new Vector3(
+                -blockDistance * 0.5f,
+                0,
+                -blockDistance * 0.5f
+            );
+
+        generatedTerrain = terrainObject.GetComponent<Terrain>();
+        
+
+        Debug.Log("Terrain 생성 완료");
+    }
+
+
+    private void GenerateTerrainHeight(TerrainData terrainData)
+    {
+        int resolution = terrainData.heightmapResolution;
+
+        float[,] heights = new float[resolution, resolution];
+
+        for (int z = 0; z < resolution; z++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float normalizedX = (float)x / (resolution - 1);
+                float normalizedZ = (float)z / (resolution - 1);
+
+                float noise = Mathf.PerlinNoise(
+                    normalizedX * terrainNoiseScale * 100f,
+                    normalizedZ * terrainNoiseScale * 100f
+                );
+
+                float height = noise * (terrainNoiseHeight / terrainHeight);
+
+                heights[z, x] = height;
+            }
+        }
+
+        terrainData.SetHeights(0, 0, heights);
+    }
 }
