@@ -67,7 +67,9 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
     }
 
     /// <summary>
-    /// 장식용 Image는 통과시키고 실제 입력을 처리하는 UI 위에서만 전투 맵 입력을 차단한다.
+    /// 모달이 열렸을 때는 모든 UI 레이캐스트 영역을 차단하고, 일반 HUD에서는 실제 조작
+    /// UI만 차단한다. 일반 HUD의 전체 화면 장식 Image까지 항상 차단하면 맵 전체가 클릭
+    /// 불가능해질 수 있으므로 두 상태를 구분한다.
     /// </summary>
     public static bool IsPointerOverInteractiveUI(Vector2 pointerPosition)
     {
@@ -84,6 +86,8 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
 
         UiRaycastResults.Clear();
         eventSystem.RaycastAll(pointerData, UiRaycastResults);
+        bool modalOpen = BattleGameManager.Instance != null &&
+                         BattleGameManager.Instance.IsModalInteractionOpen;
 
         foreach (RaycastResult result in UiRaycastResults)
         {
@@ -93,9 +97,12 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
                 continue;
             }
 
-            // 부모 전체에서 이벤트 핸들러를 찾으면 화면을 덮는 UI 컨테이너 하나 때문에
-            // 그 아래의 장식 Image까지 모두 전투 입력을 막는 문제가 생긴다.
-            // 실제 조작 UI(버튼·선택 항목·스크롤)와 해당 오브젝트가 직접 처리하는 입력만 차단한다.
+            if (modalOpen)
+            {
+                UiRaycastResults.Clear();
+                return true;
+            }
+
             Selectable selectable = target.GetComponentInParent<Selectable>();
             ScrollRect scrollRect = target.GetComponentInParent<ScrollRect>();
             bool hasDirectInputHandler =

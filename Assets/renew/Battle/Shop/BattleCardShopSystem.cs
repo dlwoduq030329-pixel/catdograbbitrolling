@@ -498,9 +498,24 @@ public sealed class BattleCardShopSystem : MonoBehaviour
                 offerButtons[i].interactable = hasOffer && !currentState.Sold[i] && canAfford && !atCardLimit;
             if (offerImages != null && i < offerImages.Length && offerImages[i] != null)
             {
-                Sprite sprite = card != null ? card.myCardSprite : equipment != null ? equipment.myEquipSprite : null;
+                Sprite sprite = card != null ? CardArtResolver.ResolveDisplaySprite(card.myCardSprite) :
+                    equipment != null ? equipment.myEquipSprite : null;
                 offerImages[i].sprite = sprite;
                 offerImages[i].enabled = sprite != null;
+
+                CardCostLabelView offerCostLabel = CardCostLabelView.Ensure(offerImages[i].transform);
+                if (offerCostLabel != null)
+                {
+                    if (card != null)
+                    {
+                        offerCostLabel.Show();
+                        offerCostLabel.SetCost(card.cost, card.rare);
+                    }
+                    else
+                    {
+                        offerCostLabel.Hide();
+                    }
+                }
             }
             if (offerTexts != null && i < offerTexts.Length && offerTexts[i] != null)
             {
@@ -738,6 +753,16 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (card == null) return;
 
         selectedPurchaseSlot = -1;
+        if (IsProtectedStartingCard(cardIndex))
+        {
+            selectedSellCardIndex = -1;
+            purchaseButtonMode = PurchaseButtonMode.None;
+            SetPreviewImage(card.myCardSprite, $"{card.name} (LOCKED)");
+            if (purchaseButton != null) purchaseButton.gameObject.SetActive(false);
+            Debug.Log($"[Shop] 기본 장착 카드는 판매할 수 없습니다: 카드 {cardIndex}", this);
+            return;
+        }
+
         selectedSellCardIndex = cardIndex;
         purchaseButtonMode = PurchaseButtonMode.SellCard;
         HideOfferDetails();
@@ -796,15 +821,92 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         int index = selectedSellCardIndex;
         if (index < 0) { ResetPurchaseSelection(); return; }
         if (!DataConfig.CardsCount.TryGetValue(index, out int owned) || owned <= 0) { ResetPurchaseSelection(); RefreshView(); return; }
+        if (IsProtectedStartingCard(index))
+        {
+            Debug.LogWarning($"[Shop] 기본 장착 카드 판매 요청 차단: 카드 {index}", this);
+            ResetPurchaseSelection();
+            RefreshOwnedInventory();
+            return;
+        }
         CardData card = BattleCardConnector.FindOriginalCard(index, originalCardDatabase);
         if (card == null) { ResetPurchaseSelection(); return; }
 
         int refund = Mathf.Max(0, card.cardCost / 2);
         DataConfig.AddDic(index, -1);
+        int remainingOwned = Mathf.Max(0, owned - 1);
+        SynchronizePlayerCardData(index, remainingOwned);
+        BattleGameManager.Instance?.CardDrawSystem?.SynchronizeOwnedCardCount(index, remainingOwned);
         DataConfig.playerMoney += refund;
-        Debug.Log($"[Shop] 카드 판매: {card.name} / {refund}G", this);
+        RefreshLinkedCardInventories();
+        Debug.Log($"[Shop] 카드 판매: {card.name} / {refund}G / 남은 보유 {remainingOwned}장", this);
         ResetPurchaseSelection();
         RefreshView();
+    }
+
+    /// <summary>전투 시작 당시 기본 덱에 포함된 카드 종류인지 확인해 판매를 잠근다.</summary>
+    private static bool IsProtectedStartingCard(int cardIndex)
+    {
+        BattleCardDrawSystem drawSystem = BattleGameManager.Instance?.CardDrawSystem;
+        if (drawSystem != null) return drawSystem.IsProtectedStartingCard(cardIndex);
+
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+        if (playerDeck == null || playerDeck.deckCardforUI == null) return false;
+        foreach (int equippedCardIndex in playerDeck.deckCardforUI)
+            if (equippedCardIndex == cardIndex) return true;
+        return false;
+    }
+
+    /// <summary>현재 등록 Player의 PlayerDeck을 우선 반환하고 구형 Scene은 비활성 객체 검색으로 보완한다.</summary>
+    private static PlayerDeck ResolveCurrentPlayerDeck()
+    {
+        PlayerDeck playerDeck = BattleGameManager.Instance != null && BattleGameManager.Instance.CurrentPlayer != null
+            ? BattleGameManager.Instance.CurrentPlayer.GetComponentInParent<PlayerDeck>(true)
+            : null;
+        return playerDeck != null
+            ? playerDeck
+            : Object.FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
+    }
+
+    /// <summary>판매 후 저장 덱과 실제 PlayerDeck의 동일 카드 수를 최종 보유 수량 이하로 맞춘다.</summary>
+    private static void SynchronizePlayerCardData(int cardIndex, int remainingOwned)
+    {
+        int savedCount = 0;
+        foreach (int savedCard in DataConfig.cardData)
+            if (savedCard == cardIndex) savedCount++;
+        for (int i = DataConfig.cardData.Count - 1; i >= 0 && savedCount > remainingOwned; i--)
+        {
+            if (DataConfig.cardData[i] != cardIndex) continue;
+            DataConfig.cardData.RemoveAt(i);
+            savedCount--;
+        }
+
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+        if (playerDeck == null) return;
+        if (playerDeck.deckCardforUI != null)
+        {
+            int deckCount = 0;
+            foreach (int equippedCard in playerDeck.deckCardforUI)
+                if (equippedCard == cardIndex) deckCount++;
+            for (int i = playerDeck.deckCardforUI.Length - 1; i >= 0 && deckCount > remainingOwned; i--)
+            {
+                if (playerDeck.deckCardforUI[i] != cardIndex) continue;
+                playerDeck.deckCardforUI[i] = -1;
+                deckCount--;
+            }
+        }
+
+        if (remainingOwned <= 0) playerDeck.cardPool.Remove(cardIndex);
+        else playerDeck.cardPool[cardIndex] = remainingOwned;
+    }
+
+    /// <summary>판매 결과를 상점 밖 일반 카드 인벤토리에도 즉시 전달한다.</summary>
+    private static void RefreshLinkedCardInventories()
+    {
+        foreach (InventorySetting inventory in
+                 Object.FindObjectsByType<InventorySetting>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (inventory != null) inventory.InitAll();
+        }
     }
 
     /// <summary>레거시 sellCard.EquipCardSellBtn과 같은 DataConfig.SellXWeapon() 경로로 장비 1개를 판매한다.</summary>

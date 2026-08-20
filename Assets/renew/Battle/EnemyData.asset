@@ -19,6 +19,31 @@ MonoBehaviour:
       type: 3}
     rank: 0
     attackType: 0
+    attackDamageType: 0
+    maxHP: 9
+    attackDamage: 1
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 1
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 0
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 5
+    wanderChance: 0
+  - id: Test
+    displayName: Test
+    prefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3,
+      type: 3}
+    rank: 0
+    attackType: 0
+    attackDamageType: 0
     maxHP: 9
     attackDamage: 1
     attackRangeTiles: 1

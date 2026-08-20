@@ -35,7 +35,9 @@ public class InventoryStore : MonoBehaviour,
 
         GetCom();
         cardIndex = x;
-        cardIMG.sprite = DataPool.Instance.cardDatabase.cards[x].myCardSprite;
+        CardData cardData = DataPool.Instance.cardDatabase.cards[x];
+        cardIMG.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
+        CardCostLabelView.Ensure(cardIMG.transform)?.SetCost(cardData.cost, cardData.rare);
 
         if (!DataConfig.CardsCount.ContainsKey(x)) return;
         int Count = DataConfig.CardsCount[x];

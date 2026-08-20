@@ -1,26 +1,32 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>Enemy 머리 위에 조작 불능 상태와 남은 턴을 표시한다.</summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyStatusView : MonoBehaviour
 {
+    private const float StatusCanvasWorldScale = 0.01f;
+    [InspectorName("Fallback World Offset")]
     [SerializeField] private Vector3 worldOffset = new Vector3(0f, 2.65f, 0f);
+    [InspectorName("Height Above Collider")]
+    [SerializeField, Min(0f)] private float heightAboveCollider = 0.45f;
+    [InspectorName("Pull Toward Camera")]
+    [Tooltip("Moves the World Space UI slightly toward the camera so the enemy mesh cannot hide it.")]
+    [SerializeField, Min(0f)] private float cameraPullDistance = 0.2f;
     [SerializeField] private Color stunColor = new Color(1f, 0.82f, 0.15f, 1f);
     [SerializeField] private Color rootColor = new Color(1f, 0.42f, 0.18f, 1f);
     [SerializeField] private Color statusColor = new Color(0.75f, 0.92f, 1f, 1f);
     private BattleEnemyControlState state;
     private BattleStatusEffects statusEffects;
-    private CharacterMP characterMP;
     private Canvas canvas;
     private TMP_Text label;
+    private Collider ownerCollider;
 
     private void Awake()
     {
         state = GetComponent<BattleEnemyControlState>();
         statusEffects = GetComponent<BattleStatusEffects>();
-        characterMP = GetComponent<CharacterMP>();
+        ownerCollider = GetComponentInChildren<Collider>();
         EnsureView();
     }
 
@@ -29,8 +35,6 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
         if (state == null) state = GetComponent<BattleEnemyControlState>();
         if (state != null) state.Changed += Refresh;
         BindStatus(statusEffects != null ? statusEffects : GetComponent<BattleStatusEffects>());
-        if (characterMP == null) characterMP = GetComponent<CharacterMP>();
-        if (characterMP != null) characterMP.MPChanged += RefreshMP;
         RefreshAll();
     }
 
@@ -38,7 +42,6 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
     {
         if (state != null) state.Changed -= Refresh;
         if (statusEffects != null) statusEffects.Changed -= RefreshStatus;
-        if (characterMP != null) characterMP.MPChanged -= RefreshMP;
     }
 
     public void BindStatus(BattleStatusEffects effects)
@@ -54,7 +57,25 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
         Camera camera = Camera.main;
         if (canvas != null && camera != null)
         {
-            canvas.transform.position = transform.position + worldOffset;
+            Vector3 anchorPosition;
+            if (ownerCollider != null)
+            {
+                Bounds bounds = ownerCollider.bounds;
+                anchorPosition = new Vector3(
+                    bounds.center.x,
+                    bounds.max.y + heightAboveCollider,
+                    bounds.center.z);
+            }
+            else
+            {
+                anchorPosition = transform.position + worldOffset;
+            }
+
+            Vector3 towardCamera = camera.transform.position - anchorPosition;
+            if (towardCamera.sqrMagnitude > 0.0001f)
+                anchorPosition += towardCamera.normalized * cameraPullDistance;
+
+            canvas.transform.position = anchorPosition;
             canvas.transform.rotation = camera.transform.rotation;
         }
     }
@@ -69,7 +90,11 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
         canvas.sortingOrder = 220;
         RectTransform rect = root.GetComponent<RectTransform>();
         rect.sizeDelta = new Vector2(240f, 42f);
-        rect.localScale = Vector3.one * 0.01f;
+        Vector3 parentScale = transform.lossyScale;
+        rect.localScale = new Vector3(
+            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
+            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)),
+            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.z)));
 
         GameObject text = new GameObject("Status Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
         text.transform.SetParent(root.transform, false);
@@ -82,6 +107,7 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
         label.fontSize = 28f;
         label.fontStyle = FontStyles.Bold;
         label.raycastTarget = false;
+
     }
 
     private void Refresh(BattleEnemyControlState changedState)
@@ -90,11 +116,6 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
     }
 
     private void RefreshStatus(BattleStatusEffects changedStatus)
-    {
-        RefreshAll();
-    }
-
-    private void RefreshMP(int current, int maximum)
     {
         RefreshAll();
     }
@@ -116,11 +137,9 @@ public sealed class BattleEnemyStatusView : MonoBehaviour
         string statusText = string.IsNullOrEmpty(rawStatusText)
             ? string.Empty
             : $"<color=#{ColorUtility.ToHtmlStringRGB(statusColor)}>{rawStatusText}</color>";
-        string mpText = characterMP != null ? $"MP {characterMP.CurrentMP}/{characterMP.MaxMP}" : string.Empty;
         string combinedStatus = string.IsNullOrEmpty(controlText) ? statusText :
             string.IsNullOrEmpty(statusText) ? controlText : controlText + "  " + statusText;
-        label.text = string.IsNullOrEmpty(combinedStatus) ? mpText :
-            string.IsNullOrEmpty(mpText) ? combinedStatus : mpText + "  " + combinedStatus;
+        label.text = combinedStatus;
         canvas.gameObject.SetActive(!string.IsNullOrEmpty(label.text));
     }
 }

@@ -266,6 +266,7 @@ public class BattlePlayerActionController : MonoBehaviour
         currentMoveRange = Mathf.Clamp(moveRange, minMoveRange, maxMoveRange);
         turnActionState.MarkDiceRolled();
         Debug.Log($"이동 범위 설정: {currentMoveRange}칸", this);
+        ShowMoveRange();
     }
 
     /// <summary>QA 전투에서 주사위 이동 범위 상한을 빠르게 확장한다.</summary>
@@ -346,7 +347,10 @@ public class BattlePlayerActionController : MonoBehaviour
         }
     }
 
-    /// <summary>Player 클릭으로 범위를 열고, 범위 밖 클릭으로 현재 단계를 취소한다.</summary>
+    /// <summary>
+    /// 이동 가능 타일 좌클릭으로 목적지를 고르고, 목적지가 선택된 상태에서 Player를
+    /// 좌클릭하면 이동을 확정한다. 주사위 이후 이동 범위는 별도 버튼 없이 계속 유지한다.
+    /// </summary>
     private void HandleLeftClick(Vector2 pointerPosition)
     {
         if (IsAnyActionMoving)
@@ -361,8 +365,14 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (TryRaycastPlayer(pointerPosition, out GameObject clickedPlayer))
         {
-            // 카드 사거리 표시·대상 선택 중에도 이동 범위를 열 수 있도록 IsCardActionActive는 더 이상 막지 않는다.
-            if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive)
+            if (battleMovementController.IsAwaitingConfirmation)
+            {
+                Debug.Log($"플레이어 클릭으로 이동 확정: {battleMovementController.PendingTarget?.name}", clickedPlayer);
+                ConfirmMove();
+                return;
+            }
+
+            if (IsBasicAttackActive || IsCardActionActive)
             {
                 return;
             }
@@ -388,17 +398,20 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (rangeVisible)
         {
-            // R 적 위협 범위는 이동 타일 선택 상태가 아니다.
-            // 따라서 빈 바닥을 좌클릭해도 이동 범위의 범위 밖 클릭 취소 규칙을 적용하지 않는다.
-            if (rangeToggleActive)
+            bool clickedReachableTile =
+                TryRaycastMapTile(pointerPosition, out MapInfo clickedTile) &&
+                battlePlayerRangeController.IsReachable(clickedTile);
+
+            if (clickedReachableTile && !turnActionState.MovementUsed &&
+                !IsBasicAttackActive && !IsCardActionActive)
             {
+                SelectMoveTile(clickedTile);
                 return;
             }
 
-            bool clickedReachableTile =
-                TryRaycastMapTile(pointerPosition, out MapInfo clickedTile) && battlePlayerRangeController.IsReachable(clickedTile);
-
-            if (!clickedReachableTile)
+            // R 적 위협 범위는 빈 바닥 클릭으로 닫지 않는다. 일반 이동 범위에서는
+            // 범위 밖 클릭 시 목적지 선택만 취소하고 이동 가능 범위를 다시 표시한다.
+            if (!clickedReachableTile && !rangeToggleActive)
             {
                 CancelMoveSelection();
             }
@@ -460,7 +473,7 @@ public class BattlePlayerActionController : MonoBehaviour
         }
     }
 
-    /// <summary>이동 가능 타일 우클릭으로 목적지를 선택하며 범위 밖 우클릭은 취소한다.</summary>
+    /// <summary>우클릭은 카드 대상 및 Enemy 기본 공격 선택에만 사용한다. 일반 이동은 좌클릭 전용이다.</summary>
     private void HandleRightClick(Vector2 pointerPosition)
     {
         if (battleCardActionController != null && battleCardActionController.IsSelectingTarget)
@@ -486,14 +499,8 @@ public class BattlePlayerActionController : MonoBehaviour
             return;
         }
 
-        if (!turnActionState.MovementUsed &&
-            TryRaycastMapTile(pointerPosition, out MapInfo tile) && battlePlayerRangeController.IsReachable(tile))
-        {
-            SelectMoveTile(tile);
-            return;
-        }
-
-        CancelMoveSelection();
+        // 일반 이동 목적지는 좌클릭으로만 선택한다. 빈 바닥 우클릭은 현재 이동 선택을
+        // 변경하거나 범위를 닫지 않는다.
     }
 
     /// <summary>카드 대상 유형에 맞는 적 또는 타일을 우클릭으로 선택한다.</summary>
@@ -660,7 +667,8 @@ public class BattlePlayerActionController : MonoBehaviour
             battlePlayerRangeController.OccupiedEnemyTiles);
     }
 
-    /// <summary>이전 선택 색상을 복구한 뒤 새 목적지 강조, 화살표, 확정 UI를 표시한다.</summary>
+    /// <summary>이전 선택 색상을 복구한 뒤 새 목적지 강조와 화살표를 표시한다.
+    /// 이동 확정은 별도 UI가 아니라 Player 본체 좌클릭으로 수행한다.</summary>
     private void SelectMoveTile(MapInfo targetTile)
     {
         // 다른 타일을 다시 선택할 때 이전 선택 강조를 먼저 제거한다.
@@ -673,19 +681,10 @@ public class BattlePlayerActionController : MonoBehaviour
 
         SetTileColor(targetTile, selectedTileColor, selectedColorBlend);
         ShowMoveArrow(targetTile);
-        SetActionConfirmText("선택한 타일로 이동하시겠습니까?");
-
-        if (confirmMoveButton != null)
-        {
-            confirmMoveButton.interactable = true;
-        }
-
-        if (quitMoveButton != null)
-        {
-            quitMoveButton.interactable = true;
-        }
-
-        SetMoveButtonGroupVisible(true);
+        SetActionConfirmText(string.Empty);
+        if (confirmMoveButton != null) confirmMoveButton.interactable = false;
+        if (quitMoveButton != null) quitMoveButton.interactable = false;
+        SetMoveButtonGroupVisible(false);
     }
 
     /// <summary>
@@ -1159,6 +1158,8 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         EnsureBattleMovePreview();
         battleMovePreview.Show(targetTile);
+        EnsureBattleMoveThreatPreview();
+        battleMoveThreatPreview.ShowSelectedDestination(targetTile);
     }
 
     /// <summary>화살표 인스턴스를 파괴하지 않고 비활성화해 재사용한다.</summary>
@@ -1166,5 +1167,7 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         EnsureBattleMovePreview();
         battleMovePreview.Hide();
+        EnsureBattleMoveThreatPreview();
+        battleMoveThreatPreview.ClearSelectedDestination();
     }
 }

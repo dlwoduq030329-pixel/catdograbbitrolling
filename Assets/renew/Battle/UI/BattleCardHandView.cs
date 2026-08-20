@@ -11,12 +11,13 @@ public sealed class BattleCardHandView : MonoBehaviour
 {
     private const int SlotCount = 5;
 
-    /// <summary>MP가 부족해 사용할 수 없는 카드에 적용하는 어둡고 반투명한 톤(블러 대체 표현).</summary>
-    private static readonly Color InsufficientMPTint = new Color(0.4f, 0.4f, 0.4f, 0.55f);
-
     [Header("카드 슬롯")]
     [Tooltip("CardPanel에 직접 배치한 카드 버튼 5개를 순서대로 연결합니다.")]
     [SerializeField] private Button[] cardButtons = new Button[SlotCount];
+
+    [Header("MP 부족 표시")]
+    [Tooltip("현재 MP가 카드 비용보다 낮을 때 카드 이미지에 적용하는 색입니다.")]
+    [SerializeField] private Color insufficientMPTint = new Color(0.32f, 0.32f, 0.38f, 0.58f);
 
     [Header("카드 정보")]
     [Tooltip("카드 정보창을 열기 위해 누르고 있어야 하는 시간입니다.")]
@@ -26,6 +27,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     private BattleCardDrawSystem drawSystem;
     private BattlePlayerActionController playerActionController;
     private BattleCardInfoPresenter cardInfoPresenter;
+    private CharacterMP boundPlayerMP;
     private readonly BattleCardLongPressHandler[] longPressHandlers =
         new BattleCardLongPressHandler[SlotCount];
     private float nextTargetRefreshTime;
@@ -45,6 +47,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         ConnectDrawSystem();
         ConnectPlayerActionController();
+        ConnectPlayerMP();
         SubscribeCardAvailability();
         RefreshCurrentHand();
     }
@@ -53,6 +56,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         ConnectDrawSystem();
         ConnectPlayerActionController();
+        ConnectPlayerMP();
         SubscribeCardAvailability();
         RefreshCurrentHand();
     }
@@ -76,6 +80,8 @@ public sealed class BattleCardHandView : MonoBehaviour
         {
             BattleGameManager.Instance.CardUseAvailabilityChanged -= HandleCardAvailabilityChanged;
         }
+
+        UnsubscribePlayerMP();
     }
 
     /// <summary>현재 손패를 연결된 카드 버튼에 다시 표시한다.</summary>
@@ -94,6 +100,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 ClearButtonArtwork(button);
+                CardCostLabelView.Ensure(button.transform)?.Hide();
                 SetGeneratedHighlight(button, false);
                 continue;
             }
@@ -103,19 +110,16 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 SetButtonArtworkTint(button, new Color(0.32f, 0.32f, 0.32f, 1f));
+                CardCostLabelView.Ensure(button.transform)?.Hide();
                 SetGeneratedHighlight(button, false);
                 continue;
             }
 
             CardVisualData visual = ResolveVisualData(hand[i]);
             button.gameObject.SetActive(true);
-            BattleCardData battleCard = drawSystem != null && drawSystem.Database != null
-                ? drawSystem.Database.FindByLegacyCardIndex(hand[i]) : null;
-            bool hasValidTarget = playerActionController == null ||
-                                  playerActionController.HasValidTargetForCard(battleCard);
             bool hasEnoughMP = HasEnoughMPForCard(hand[i]);
             button.interactable = BattleGameManager.Instance != null &&
-                                  BattleGameManager.Instance.CanUsePlayerCards && hasValidTarget && hasEnoughMP;
+                                  BattleGameManager.Instance.CanUsePlayerCards && hasEnoughMP;
 
             Image cardImage = button.targetGraphic as Image;
             if (cardImage == null)
@@ -130,7 +134,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                     cardImage.sprite = visual.Artwork;
                     cardImage.enabled = true;
                     cardImage.preserveAspect = true;
-                    cardImage.color = hasEnoughMP ? Color.white : InsufficientMPTint;
+                    cardImage.color = hasEnoughMP ? Color.white : insufficientMPTint;
                 }
                 else
                 {
@@ -138,6 +142,22 @@ public sealed class BattleCardHandView : MonoBehaviour
                     cardImage.enabled = false;
                 }
             }
+
+            CardCostLabelView costLabel = CardCostLabelView.Ensure(button.transform);
+            if (costLabel != null)
+            {
+                if (visual.Artwork != null)
+                {
+                    costLabel.Show();
+                    costLabel.SetCost(visual.Cost, visual.Rare);
+                    costLabel.SetAffordable(hasEnoughMP);
+                }
+                else
+                {
+                    costLabel.Hide();
+                }
+            }
+
             SetGeneratedHighlight(button, drawSystem != null && drawSystem.IsGeneratedCardSlot(i));
 
         }
@@ -147,14 +167,17 @@ public sealed class BattleCardHandView : MonoBehaviour
     /// 정보를 확인할 수 없을 때는(참조 미연결 등) 기존처럼 막지 않고 true를 반환한다.</summary>
     private bool HasEnoughMPForCard(int legacyCardIndex)
     {
-        ConnectPlayerActionController();
-        GameObject playerObject = playerActionController != null ? playerActionController.player : null;
+        ConnectPlayerMP();
+        GameObject playerObject = boundPlayerMP != null ? boundPlayerMP.gameObject :
+            playerActionController != null ? playerActionController.player : null;
         if (playerObject == null)
         {
             return true;
         }
 
-        CharacterMP playerMP = playerObject.GetComponent<CharacterMP>();
+        CharacterMP playerMP = boundPlayerMP != null
+            ? boundPlayerMP
+            : playerObject.GetComponent<CharacterMP>();
         if (playerMP == null)
         {
             return true;
@@ -192,6 +215,14 @@ public sealed class BattleCardHandView : MonoBehaviour
         if (BattleGameManager.Instance == null || !BattleGameManager.Instance.CanUsePlayerCards)
         {
             Debug.Log("주사위를 굴린 뒤 카드를 사용할 수 있습니다.", this);
+            return;
+        }
+
+        if (drawSystem == null || handIndex < 0 || handIndex >= drawSystem.Hand.Count ||
+            !HasEnoughMPForCard(drawSystem.Hand[handIndex]))
+        {
+            Debug.Log("MP가 부족해 이 카드를 사용할 수 없습니다.", this);
+            RefreshCurrentHand();
             return;
         }
 
@@ -284,6 +315,42 @@ public sealed class BattleCardHandView : MonoBehaviour
         }
     }
 
+    /// <summary>현재 Player MP 변경 이벤트에 연결해 이동·공격·카드 사용 직후 손패 상태를 갱신한다.</summary>
+    private void ConnectPlayerMP()
+    {
+        CharacterMP nextMP = BattleGameManager.Instance != null
+            ? BattleGameManager.Instance.CurrentPlayerMP
+            : null;
+        if (nextMP == null)
+        {
+            ConnectPlayerActionController();
+            nextMP = playerActionController != null && playerActionController.player != null
+                ? playerActionController.player.GetComponent<CharacterMP>()
+                : null;
+        }
+
+        if (nextMP == boundPlayerMP) return;
+        UnsubscribePlayerMP();
+        boundPlayerMP = nextMP;
+        if (boundPlayerMP != null)
+        {
+            boundPlayerMP.MPChanged -= HandlePlayerMPChanged;
+            boundPlayerMP.MPChanged += HandlePlayerMPChanged;
+        }
+    }
+
+    private void UnsubscribePlayerMP()
+    {
+        if (boundPlayerMP != null)
+            boundPlayerMP.MPChanged -= HandlePlayerMPChanged;
+        boundPlayerMP = null;
+    }
+
+    private void HandlePlayerMPChanged(int current, int maximum)
+    {
+        RefreshCurrentHand();
+    }
+
     private void SubscribeCardAvailability()
     {
         if (BattleGameManager.Instance == null)
@@ -305,12 +372,39 @@ public sealed class BattleCardHandView : MonoBehaviour
         Refresh(drawSystem != null ? drawSystem.Hand : null);
     }
 
+    private const string NoNumberResourceFolder = "UI/Cards/NoNumber/";
+
     private CardVisualData ResolveVisualData(int cardIndex)
     {
         CardData originalCard = BattleCardConnector.FindOriginalCard(
             cardIndex,
             drawSystem != null ? drawSystem.OriginalDatabase : null);
-        return new CardVisualData(originalCard != null ? originalCard.myCardSprite : null);
+
+        if (originalCard == null)
+        {
+            return new CardVisualData(null, 0, null);
+        }
+
+        Sprite artwork = ResolveNoNumberSprite(originalCard.myCardSprite) ?? originalCard.myCardSprite;
+        return new CardVisualData(artwork, originalCard.cost, originalCard.rare);
+    }
+
+    /// <summary>
+    /// 코스트 숫자를 지운 카드 아트가 있으면 그것을 사용하고, 없으면 null을 반환해
+    /// 호출부가 원본 아트로 대체하도록 한다("no number" 폴더에 없는 equip/tribe 등은 자동으로 원본 유지).
+    /// </summary>
+    private static Sprite ResolveNoNumberSprite(Sprite originalSprite)
+    {
+        if (originalSprite == null) return null;
+
+        string spriteName = originalSprite.name;
+        const string multiSuffix = "_0";
+        if (spriteName.EndsWith(multiSuffix))
+        {
+            spriteName = spriteName.Substring(0, spriteName.Length - multiSuffix.Length);
+        }
+
+        return Resources.Load<Sprite>(NoNumberResourceFolder + spriteName);
     }
 
     private bool TryGetButton(int index, out Button button)
@@ -330,6 +424,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 ClearButtonArtwork(button);
+                CardCostLabelView.Ensure(button.transform)?.Hide();
             }
         }
     }
@@ -385,10 +480,14 @@ public sealed class BattleCardHandView : MonoBehaviour
     private readonly struct CardVisualData
     {
         public readonly Sprite Artwork;
+        public readonly int Cost;
+        public readonly string Rare;
 
-        public CardVisualData(Sprite artwork)
+        public CardVisualData(Sprite artwork, int cost, string rare)
         {
             Artwork = artwork;
+            Cost = cost;
+            Rare = rare;
         }
     }
 }

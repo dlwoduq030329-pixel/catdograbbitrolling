@@ -23,6 +23,16 @@ public class EnemySpawner : MonoBehaviour
     [InspectorName("기본 적 프리팹")]
     [SerializeField] private GameObject enemyPrefab;
 
+    [Header("Enemy Type Icons")]
+    [InspectorName("Ranged Physical Icon")]
+    [SerializeField] private Sprite rangedPhysicalIcon;
+    [InspectorName("Ranged Magic Icon")]
+    [SerializeField] private Sprite rangedMagicIcon;
+    [InspectorName("Melee Physical Icon")]
+    [SerializeField] private Sprite meleePhysicalIcon;
+    [InspectorName("Melee Magic Icon")]
+    [SerializeField] private Sprite meleeMagicIcon;
+
     [Header("맵 배치")]
     [InspectorName("생성할 적 수")]
     [SerializeField, Min(0)] private int enemyCount = 5;
@@ -30,6 +40,17 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private Vector2Int sanctuarySize = new Vector2Int(5, 5);
     [InspectorName("기본 스폰 높이(Y)")]
     [SerializeField] private float defaultSpawnHeight = 0.5f;
+
+    [Header("Enemy Tile Footprint")]
+    [InspectorName("Normalize Enemy To One Tile")]
+    [Tooltip("Shrinks oversized Enemy renderers to fit inside one Road tile. The original prefab asset is not modified.")]
+    [SerializeField] private bool normalizeEnemyToTile = true;
+    [InspectorName("Tile Fill Ratio")]
+    [SerializeField, Range(0.1f, 1f)] private float enemyTileFillRatio = 0.75f;
+    [InspectorName("Allow Small Enemy Upscaling")]
+    [SerializeField] private bool allowEnemyUpscaling;
+    [InspectorName("Minimum Scale Multiplier")]
+    [SerializeField, Range(0.01f, 1f)] private float minimumScaleMultiplier = 0.05f;
 
     private readonly List<GameObject> spawnedEnemies = new List<GameObject>();
 
@@ -101,11 +122,11 @@ public class EnemySpawner : MonoBehaviour
         Vector3 spawnPosition = enemyTile.position;
         spawnPosition.y = defaultSpawnHeight;
 
-        GameObject enemy = Instantiate(
-            selectedPrefab,
-            spawnPosition,
-            Quaternion.identity,
-            enemyTile);
+        // Instantiate in world space first. Passing enemyTile directly to Instantiate makes the
+        // Enemy inherit the Road prefab scale before its visual footprint can be measured.
+        GameObject enemy = Instantiate(selectedPrefab, spawnPosition, Quaternion.identity);
+        NormalizeEnemyFootprint(enemy, enemyTile);
+        enemy.transform.SetParent(enemyTile, true);
 
         EnemyDetector detector = enemy.GetComponentInChildren<EnemyDetector>();
         if (detector == null)
@@ -140,7 +161,8 @@ public class EnemySpawner : MonoBehaviour
 
         enemyHealth.Initialize(selectedData != null ? selectedData.maxHP : 10f);
         deathHandler.Configure(enemyHealth);
-        BattleHealthBarFactory.AttachEnemyBar(enemy, enemyHealth);
+        Sprite typeIcon = selectedData != null ? ResolveTypeIcon(selectedData) : null;
+        BattleHealthBarFactory.AttachEnemyBar(enemy, enemyHealth, enemyMP, typeIcon);
 
         if (selectedData != null)
         {
@@ -157,6 +179,91 @@ public class EnemySpawner : MonoBehaviour
         spawnedEnemies.Add(enemy);
         EnemySpawned?.Invoke(enemy);
         return enemy;
+    }
+
+    /// <summary>Selects one of the four authored type icons from attack range and damage type.</summary>
+    private Sprite ResolveTypeIcon(BattleEnemyData data)
+    {
+        bool ranged = data.attackType == BattleEnemyAttackType.Ranged;
+        bool magic = data.attackDamageType == BattleDamageType.Magic;
+        if (ranged) return magic ? rangedMagicIcon : rangedPhysicalIcon;
+        return magic ? meleeMagicIcon : meleePhysicalIcon;
+    }
+
+    /// <summary>
+    /// Uniformly scales only the spawned instance so its XZ renderer bounds fit one Road tile.
+    /// Parenting happens afterwards with worldPositionStays=true, preventing Road scale inheritance.
+    /// </summary>
+    private void NormalizeEnemyFootprint(GameObject enemy, Transform tile)
+    {
+        if (!normalizeEnemyToTile || enemy == null || tile == null ||
+            !TryGetVisualBounds(enemy, out Bounds enemyBounds) ||
+            !TryGetTileBounds(tile, out Bounds tileBounds))
+        {
+            return;
+        }
+
+        float enemyFootprint = Mathf.Max(enemyBounds.size.x, enemyBounds.size.z);
+        float tileFootprint = Mathf.Min(tileBounds.size.x, tileBounds.size.z) * enemyTileFillRatio;
+        if (enemyFootprint <= 0.001f || tileFootprint <= 0.001f)
+        {
+            return;
+        }
+
+        float multiplier = tileFootprint / enemyFootprint;
+        if (!allowEnemyUpscaling)
+        {
+            multiplier = Mathf.Min(1f, multiplier);
+        }
+        multiplier = Mathf.Max(minimumScaleMultiplier, multiplier);
+        enemy.transform.localScale *= multiplier;
+        Debug.Log(
+            $"[Enemy Scale] {enemy.name}: model footprint {enemyFootprint:0.##}, " +
+            $"tile target {tileFootprint:0.##}, scale multiplier {multiplier:0.###}",
+            enemy);
+    }
+
+    /// <summary>Combines only model renderers, excluding particles and runtime UI from size measurement.</summary>
+    private static bool TryGetVisualBounds(GameObject owner, out Bounds bounds)
+    {
+        Renderer[] renderers = owner.GetComponentsInChildren<Renderer>(true);
+        bool found = false;
+        bounds = default;
+        foreach (Renderer renderer in renderers)
+        {
+            if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+            if (!found)
+            {
+                bounds = renderer.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+        return found;
+    }
+
+    /// <summary>Uses the Road collider first and falls back to its renderer bounds.</summary>
+    private static bool TryGetTileBounds(Transform tile, out Bounds bounds)
+    {
+        Collider tileCollider = tile.GetComponentInChildren<Collider>();
+        if (tileCollider != null)
+        {
+            bounds = tileCollider.bounds;
+            return true;
+        }
+
+        Renderer tileRenderer = tile.GetComponentInChildren<Renderer>();
+        if (tileRenderer != null)
+        {
+            bounds = tileRenderer.bounds;
+            return true;
+        }
+
+        bounds = default;
+        return false;
     }
 
     /// <summary>파괴된 Enemy 참조를 생성 목록에서 제거한다.</summary>

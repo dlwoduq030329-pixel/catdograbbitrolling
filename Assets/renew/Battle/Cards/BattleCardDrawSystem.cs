@@ -45,7 +45,7 @@ public class BattleCardDrawSystem : MonoBehaviour
     [SerializeField] private bool shuffleAtBattleStart = true;
 
     [Header("디버그 설정")]
-    [Tooltip("활성화하면 플레이어가 전투 카드 데이터베이스에 등록된 모든 카드를 한 장씩 소지합니다.")]
+    [Tooltip("활성화하면 판매 QA를 위해 전투 카드 데이터베이스에 등록된 모든 카드를 두 장씩 소지합니다.")]
     [InspectorName("모든 카드 소지")]
     [SerializeField] private bool ownAllCardsInDebugMode = true;
 
@@ -54,6 +54,7 @@ public class BattleCardDrawSystem : MonoBehaviour
     private readonly List<int> handCostReductions = new List<int>();
     private readonly List<int> discardPile = new List<int>();
     private readonly HashSet<int> generatedHandSlots = new HashSet<int>();
+    private readonly HashSet<int> protectedStartingCards = new HashSet<int>();
     private bool initialized;
 
     public IReadOnlyList<int> DrawPile => drawPile;
@@ -63,6 +64,7 @@ public class BattleCardDrawSystem : MonoBehaviour
     public BattleCardDatabase Database => battleCardDatabase;
     public CardDatabase OriginalDatabase => originalCardDatabase;
     public bool IsGeneratedCardSlot(int handIndex) => generatedHandSlots.Contains(handIndex);
+    public bool IsProtectedStartingCard(int cardIndex) => protectedStartingCards.Contains(cardIndex);
 
     /// <summary>손패가 드로우되거나 카드 사용 확정으로 변경될 때 UI에 알린다.</summary>
     public event Action<IReadOnlyList<int>> HandChanged;
@@ -105,42 +107,40 @@ public class BattleCardDrawSystem : MonoBehaviour
     /// <summary>친구 PlayerDeck의 카드 인덱스 배열을 복사해 전투용 드로우 덱을 초기화한다.</summary>
     public void InitializeDeck()
     {
+        InitializeDeck(null);
+    }
+
+    /// <summary>등록된 실제 PlayerDeck을 우선 사용해 전투 덱과 디버그 보유량을 초기화한다.</summary>
+    public void InitializeDeck(PlayerDeck registeredPlayerDeck)
+    {
         drawPile.Clear();
         hand.Clear();
         handCostReductions.Clear();
         discardPile.Clear();
         generatedHandSlots.Clear();
+        protectedStartingCards.Clear();
 
-        PlayerDeck sourceDeck = FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
+        PlayerDeck sourceDeck = registeredPlayerDeck != null
+            ? registeredPlayerDeck
+            : FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
+        if (sourceDeck != null && sourceDeck.deckCardforUI != null)
+        {
+            foreach (int equippedCardIndex in sourceDeck.deckCardforUI)
+                if (equippedCardIndex >= 0) protectedStartingCards.Add(equippedCardIndex);
+        }
 
         if (ownAllCardsInDebugMode)
         {
-            AddAllCardsForDebug(sourceDeck);
+            GrantAllCardsForDebug(sourceDeck);
         }
-        else if (sourceDeck != null && sourceDeck.deckCardforUI != null)
-        {
-            foreach (int cardIndex in sourceDeck.deckCardforUI)
-            {
-                if (cardIndex >= 0 &&
-                    BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase) != null &&
-                    battleCardDatabase != null &&
-                    battleCardDatabase.FindByLegacyCardIndex(cardIndex) != null)
-                {
-                    drawPile.Add(cardIndex);
-                }
-            }
-        }
+        BuildDrawPileFromEquippedDeck(sourceDeck);
 
-        // PlayerDeck을 찾지 못한 테스트 Scene에서는 확장 DB의 연결 인덱스로 덱을 구성한다.
-        if (drawPile.Count == 0 && battleCardDatabase != null)
+        if (drawPile.Count == 0)
         {
-            foreach (BattleCardData card in battleCardDatabase.Cards)
-            {
-                if (card != null && card.legacyCardIndex >= 0)
-                {
-                    drawPile.Add(card.legacyCardIndex);
-                }
-            }
+            Debug.LogError(
+                "전투 덱 초기화 실패: PlayerDeck.deckCardforUI에 유효한 장착 카드가 없습니다. " +
+                "보유 카드 전체를 임의 드로우 덱으로 사용하지 않습니다.",
+                this);
         }
 
         if (shuffleAtBattleStart)
@@ -153,10 +153,11 @@ public class BattleCardDrawSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 디버그 전투에서 사용할 수 있도록 등록된 모든 전투 카드를 소지 목록과 드로우 덱에 추가합니다.
+    /// 디버그 전투에서 판매 QA를 위해 모든 전투 카드의 보유 수량만 2장으로 설정합니다.
+    /// 실제 손패 드로우 덱은 이 목록이 아니라 PlayerDeck.deckCardforUI 10칸만 사용합니다.
     /// 실제 저장 데이터는 변경하지 않고 현재 실행 중인 메모리 값만 변경합니다.
     /// </summary>
-    private void AddAllCardsForDebug(PlayerDeck sourceDeck)
+    private void GrantAllCardsForDebug(PlayerDeck sourceDeck)
     {
         if (battleCardDatabase == null)
         {
@@ -173,17 +174,33 @@ public class BattleCardDrawSystem : MonoBehaviour
             }
 
             int cardIndex = card.legacyCardIndex;
-            drawPile.Add(cardIndex);
-
             if (sourceDeck != null)
             {
-                sourceDeck.cardPool[cardIndex] = 1;
+                sourceDeck.cardPool[cardIndex] = 2;
             }
 
-            DataConfig.CardsCount[cardIndex] = 1;
+            DataConfig.CardsCount[cardIndex] = 2;
         }
 
-        Debug.Log($"디버그 카드 지급 완료: 총 {drawPile.Count}장", this);
+        Debug.Log("디버그 카드 보유량 지급 완료: 유효 카드별 2장", this);
+    }
+
+    /// <summary>PlayerDeck의 장착 10칸에서 유효한 카드만 순서대로 전투 드로우 더미에 복사한다.</summary>
+    private void BuildDrawPileFromEquippedDeck(PlayerDeck sourceDeck)
+    {
+        if (sourceDeck == null || sourceDeck.deckCardforUI == null) return;
+        foreach (int cardIndex in sourceDeck.deckCardforUI)
+        {
+            if (cardIndex < 0 ||
+                BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase) == null ||
+                battleCardDatabase == null ||
+                battleCardDatabase.FindByLegacyCardIndex(cardIndex) == null)
+            {
+                continue;
+            }
+            drawPile.Add(cardIndex);
+        }
+        Debug.Log($"장착 덱 복사 완료: deckCardforUI 기준 {drawPile.Count}장", this);
     }
 
     /// <summary>현재 손패가 최대 손패 수가 될 때까지 드로우한다.</summary>
@@ -254,12 +271,49 @@ public class BattleCardDrawSystem : MonoBehaviour
 
         // Keep the consumed slot until the next player turn so the UI can retain
         // and darken the used card artwork instead of shifting/removing it.
+        // 약초 버섯 등으로 생성된 보너스 카드는 장착 덱 소속이 아니므로, 버림 더미로 보내면
+        // RecycleDiscardPile()을 통해 이후 턴에도 계속 드로우 덱을 돌며 나오게 된다.
+        // 장착 덱 카드만 계속 순환하도록 보너스 카드는 사용 후 완전히 소멸시킨다.
+        bool wasGeneratedCard = generatedHandSlots.Contains(handIndex);
         hand[handIndex] = -1;
         generatedHandSlots.Remove(handIndex);
         if (handIndex < handCostReductions.Count) handCostReductions[handIndex] = 0;
-        discardPile.Add(pendingUse.CardIndex);
+        if (!wasGeneratedCard)
+        {
+            discardPile.Add(pendingUse.CardIndex);
+        }
         HandChanged?.Invoke(hand);
         return true;
+    }
+
+    /// <summary>판매 후 최종 보유 수량에 맞춰 드로우·버림·손패의 동일 카드 수를 정규화한다.</summary>
+    public void SynchronizeOwnedCardCount(int cardIndex, int remainingOwned)
+    {
+        int excess = CountRuntimeCardCopies(cardIndex) - Mathf.Max(0, remainingOwned);
+        while (excess > 0 && drawPile.Remove(cardIndex)) excess--;
+        while (excess > 0 && discardPile.Remove(cardIndex)) excess--;
+
+        bool handChanged = false;
+        for (int i = hand.Count - 1; i >= 0 && excess > 0; i--)
+        {
+            if (hand[i] != cardIndex) continue;
+            hand[i] = -1;
+            if (i < handCostReductions.Count) handCostReductions[i] = 0;
+            generatedHandSlots.Remove(i);
+            handChanged = true;
+            excess--;
+        }
+        if (handChanged) HandChanged?.Invoke(hand);
+    }
+
+    /// <summary>전투 런타임의 모든 더미와 손패에 존재하는 특정 카드 장수를 합산한다.</summary>
+    private int CountRuntimeCardCopies(int cardIndex)
+    {
+        int count = 0;
+        foreach (int value in drawPile) if (value == cardIndex) count++;
+        foreach (int value in discardPile) if (value == cardIndex) count++;
+        foreach (int value in hand) if (value == cardIndex) count++;
+        return count;
     }
 
     /// <summary>소모된 버섯의 손패 자리에 무작위 카드를 넣고 이번 턴 MP 비용을 1 낮춘다.</summary>
@@ -364,8 +418,10 @@ public class BattleCardDrawSystem : MonoBehaviour
             return;
         }
 
+        // 손패에 남은 보너스(생성) 카드는 장착 덱 소속이 아니므로 버림 더미로 보내지 않는다.
+        // 그대로 보내면 이후 턴에 장착하지 않은 카드가 계속 드로우되는 원인이 된다.
         for (int i = 0; i < hand.Count; i++)
-            if (hand[i] >= 0) discardPile.Add(hand[i]);
+            if (hand[i] >= 0 && !generatedHandSlots.Contains(i)) discardPile.Add(hand[i]);
         hand.Clear();
         handCostReductions.Clear();
         generatedHandSlots.Clear();

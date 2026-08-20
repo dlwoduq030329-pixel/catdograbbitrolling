@@ -81,9 +81,8 @@ public sealed class BattleCardActionController : MonoBehaviour
         {
             if (!TrySelectLowestHealthEnemyInRange(out selectedTarget, out selectedTargetTile))
             {
-                Debug.Log("카드 사용 불가: 스킬 범위 안에 살아 있는 Enemy가 없습니다.", this);
-                ClearStateAndRange();
-                return false;
+                ReturnToTargetSelection();
+                return true;
             }
 
             OpenConfirmation();

@@ -19,6 +19,14 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
     [SerializeField, Min(1f)] private float hpRingPadding = 8f;
     [SerializeField, Min(1f)] private float shieldRingPadding = 15f;
 
+    [Header("체력 변화 연출")]
+    [InspectorName("피해 감소 속도 (비율/초)")]
+    [Tooltip("1이면 최대 체력 전체를 1초에 걸쳐 감소시킵니다.")]
+    [SerializeField, Min(0.01f)] private float damageDecreaseSpeed = 1.5f;
+    [InspectorName("회복 증가 속도 (비율/초)")]
+    [Tooltip("회복은 피해보다 빠르게 보이도록 별도로 조절할 수 있습니다.")]
+    [SerializeField, Min(0.01f)] private float healingIncreaseSpeed = 3f;
+
     private BattleHealth targetHealth;
     private RectTransform overlayRoot;
     private Image hpFill;
@@ -27,6 +35,16 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
     private Texture2D ringTexture;
     private Sprite ringSprite;
     private float nextAttachAttemptTime;
+    private float targetHpRatio;
+    private float displayedHpRatio;
+    private bool hasInitializedHpRatio;
+
+    /// <summary>런타임 자동 생성 시 BattleGameManager의 Inspector 값을 전달받는다.</summary>
+    public void ConfigureAnimation(float decreaseSpeed, float increaseSpeed)
+    {
+        damageDecreaseSpeed = Mathf.Max(0.01f, decreaseSpeed);
+        healingIncreaseSpeed = Mathf.Max(0.01f, increaseSpeed);
+    }
 
     public void Bind(BattleHealth health)
     {
@@ -39,6 +57,18 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
 
     private void Update()
     {
+        if (hasInitializedHpRatio && hpFill != null)
+        {
+            float speed = targetHpRatio < displayedHpRatio
+                ? damageDecreaseSpeed
+                : healingIncreaseSpeed;
+            displayedHpRatio = Mathf.MoveTowards(
+                displayedHpRatio,
+                targetHpRatio,
+                speed * Time.unscaledDeltaTime);
+            hpFill.fillAmount = displayedHpRatio;
+        }
+
         if (overlayRoot != null || Time.unscaledTime < nextAttachAttemptTime)
         {
             return;
@@ -225,6 +255,9 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
     {
         if (targetHealth == null)
         {
+            targetHpRatio = 0f;
+            displayedHpRatio = 0f;
+            hasInitializedHpRatio = true;
             if (hpFill != null)
             {
                 hpFill.fillAmount = 0f;
@@ -233,11 +266,17 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
             return;
         }
 
+        targetHpRatio = targetHealth.MaxHealth > 0f
+            ? Mathf.Clamp01(targetHealth.CurrentHealth / targetHealth.MaxHealth)
+            : 0f;
+        if (!hasInitializedHpRatio)
+        {
+            displayedHpRatio = targetHpRatio;
+            hasInitializedHpRatio = true;
+        }
         if (hpFill != null)
         {
-            hpFill.fillAmount = targetHealth.MaxHealth > 0f
-                ? Mathf.Clamp01(targetHealth.CurrentHealth / targetHealth.MaxHealth)
-                : 0f;
+            hpFill.fillAmount = displayedHpRatio;
         }
 
         bool hasShield = targetHealth.CurrentShield > 0f;

@@ -70,13 +70,17 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
     }
 
     /// <summary>공용 피해 서비스를 통해 기본 공격 피해를 대상에게 적용한다. 대상에 BattleHealth가 없으면 아무 효과가 없다.</summary>
-    public bool TryApplyBasicAttackDamage(GameObject attacker, GameObject target, float damage)
+    public bool TryApplyBasicAttackDamage(
+        GameObject attacker,
+        GameObject target,
+        float damage,
+        BattleDamageType damageType = BattleDamageType.Physical)
     {
         return BattleDamageService.TryApplyDamage(
             attacker,
             target,
             damage,
-            BattleDamageType.Physical,
+            damageType,
             out _);
     }
 }

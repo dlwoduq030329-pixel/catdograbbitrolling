@@ -86,6 +86,7 @@ public sealed class BattleHealth : MonoBehaviour
         currentHealth = Mathf.Min(maxHealth, currentHealth + amount);
         float appliedHealing = currentHealth - previousHealth;
         HealthChanged?.Invoke(this);
+        BattleCombatLog.Add($"{name}  +{appliedHealing:0.#} HP HEALED");
         return appliedHealing;
     }
 
