@@ -765,6 +765,8 @@ public class BattleGameManager : MonoBehaviour
         Transform[] allTransforms = FindObjectsByType<Transform>(
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
+        //MapGenerator 하위의 오브젝트만 가져오는걸로 Find너무 빡임.
+
         foreach (Transform candidate in allTransforms)
         {
             if (candidate == null || candidate.name != "CharacterListUI")
@@ -810,6 +812,9 @@ public class BattleGameManager : MonoBehaviour
             bool canRollNow = isPlayerTurn && !diceRolledThisTurn && !battleStopped;
             diceButton.gameObject.SetActive(canRollNow);
             diceButton.interactable = canRollNow && !IsModalInteractionOpen;
+        }else
+        {
+            Debug.Log("없음");
         }
 
         CardUseAvailabilityChanged?.Invoke(CanUsePlayerCards);
