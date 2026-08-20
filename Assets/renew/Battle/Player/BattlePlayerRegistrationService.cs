@@ -58,7 +58,8 @@ public static class BattlePlayerRegistrationService
 
         playerMPUI?.Bind(playerMP);
         playerMP.RestoreFull();
-        cardDrawSystem?.InitializeDeck();
+        PlayerDeck registeredDeck = player.GetComponentInParent<PlayerDeck>(true);
+        cardDrawSystem?.InitializeDeck(registeredDeck);
         actionController?.SetPlayer(player);
         return true;
     }

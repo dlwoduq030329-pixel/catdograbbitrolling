@@ -64,6 +64,9 @@ public class BattleEnemyData
     public BattleEnemyRank rank = BattleEnemyRank.Normal;
     [InspectorName("공격 방식")]
     public BattleEnemyAttackType attackType = BattleEnemyAttackType.Melee;
+    [InspectorName("Attack Damage Type")]
+    [Tooltip("Controls the enemy attack indicator color. Physical is red and Magic is blue.")]
+    public BattleDamageType attackDamageType = BattleDamageType.Physical;
 
     [Header("전투 능력치")]
     [InspectorName("최대 체력")]

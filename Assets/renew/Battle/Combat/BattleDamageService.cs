@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>전투 피해의 속성 분류. 방어력과 저항 계산을 추가할 때 같은 진입점을 확장한다.</summary>
@@ -47,6 +48,9 @@ public readonly struct BattleDamageResult
 /// </summary>
 public static class BattleDamageService
 {
+    /// <summary>피해가 실제 HP에 반영된 직후 UI·VFX가 결과를 구독하는 공용 알림이다.</summary>
+    public static event Action<BattleDamageResult> DamageApplied;
+
     /// <summary>유효한 대상에게 피해를 적용하고 Enemy 피격 인식 및 결과 데이터를 함께 처리한다.</summary>
     public static bool TryApplyDamage(
         GameObject attacker,
@@ -99,6 +103,11 @@ public static class BattleDamageService
             appliedDamage,
             health.CurrentHealth,
             health.IsDead);
+        string attackerName = attacker != null ? attacker.name : "Environment";
+        BattleCombatLog.Add(
+            $"{attackerName} → {target.name}  -{appliedDamage:0.#} HP" +
+            (health.IsDead ? "  [DEFEATED]" : string.Empty));
+        DamageApplied?.Invoke(result);
         return true;
     }
 }

@@ -15,14 +15,10 @@ public class BattleGameManager : MonoBehaviour
     public static BattleGameManager Instance { get; private set; }
 
     [Header("턴 화면 참조")]
-    [InspectorName("MP 옆 통합 행동 버튼")]
+    [InspectorName("턴 종료 전용 버튼")]
     [SerializeField] private Button turnEndButton;
-    [InspectorName("기존 주사위 버튼 (이미지 호환)")]
+    [InspectorName("독립 주사위 굴리기 버튼(화면 중앙 등)")]
     [SerializeField] private Button diceButton;
-    [InspectorName("주사위 버튼 이미지")]
-    [SerializeField] private Sprite diceButtonSprite;
-    [InspectorName("턴 종료 버튼 이미지")]
-    [SerializeField] private Sprite turnEndButtonSprite;
     [InspectorName("턴 버튼 제어 모듈")]
     [SerializeField] private BattleTurnButtonController turnButtonController;
     [InspectorName("턴 디버그 텍스트")]
@@ -55,7 +51,20 @@ public class BattleGameManager : MonoBehaviour
     [SerializeField] private GameObject playerHpPrefab;
     [InspectorName("플레이어 초상화 HP·보호막 화면")]
     [SerializeField] private BattlePlayerPortraitStatusView playerPortraitStatusView;
+    [Header("플레이어 체력 변화 연출")]
+    [InspectorName("피해 감소 속도 (비율/초)")]
+    [SerializeField, Min(0.01f)] private float portraitDamageDecreaseSpeed = 1.5f;
+    [InspectorName("회복 증가 속도 (비율/초)")]
+    [SerializeField, Min(0.01f)] private float portraitHealingIncreaseSpeed = 3f;
+    [Header("Combat Log")]
+    [InspectorName("Combat Log TMP Text")]
+    [SerializeField] private TMP_Text combatLogText;
+    [InspectorName("Maximum Visible Log Lines")]
+    [SerializeField, Range(1, 20)] private int combatLogVisibleEntries = 6;
+    [InspectorName("Mirror Combat Log To Console")]
+    [SerializeField] private bool mirrorCombatLogToConsole;
     private BattleTurnAnnouncementView turnAnnouncementView;
+    private BattleCardPanelToggle cardPanelToggle;
 
     [Header("Debug QA Boost")]
     [InspectorName("Debug QA boost enabled")]
@@ -113,6 +122,7 @@ public class BattleGameManager : MonoBehaviour
         modalInteractionCount++;
         ResolvePlayerActionController();
         playerActionController?.SetBattleInputEnabled(false);
+        BattleMapCameraInput.SetEnabledOnMainCamera(false);
         if (modalInteractionCount == 1)
         {
             SetHudCanvasLocked(true);
@@ -127,6 +137,7 @@ public class BattleGameManager : MonoBehaviour
         {
             ResolvePlayerActionController();
             playerActionController?.SetBattleInputEnabled(isPlayerTurn);
+            BattleMapCameraInput.SetEnabledOnMainCamera(isPlayerTurn);
             SetHudCanvasLocked(false);
         }
         SyncTurnUI();
@@ -270,6 +281,9 @@ public class BattleGameManager : MonoBehaviour
     public event System.Action PlayerTurnStarted;
     /// <summary>턴 또는 주사위 상태가 바뀌어 카드 사용 가능 여부가 변경됐을 때 알린다.</summary>
     public event System.Action<bool> CardUseAvailabilityChanged;
+    /// <summary>주사위 입력이 있을 때마다 알린다. true=실제로 굴림, false=조건이 안 맞아 무시됨.
+    /// 추후 주사위 연출(VFX)을 이 이벤트에 걸면 된다.</summary>
+    public event System.Action<bool> DiceRolled;
 
     /// <summary>싱글턴과 버튼 이벤트를 구성하고 카드 드로우 시스템을 자동으로 보완한다.</summary>
     private void Awake()
@@ -283,6 +297,11 @@ public class BattleGameManager : MonoBehaviour
         Instance = this;
         battleStopped = false;
         Time.timeScale = 1f;
+        BattleCombatLog.Clear();
+        BattleComponentResolver.GetOrAdd<BattleCombatLogView>(gameObject, null).Configure(
+            combatLogText,
+            combatLogVisibleEntries,
+            mirrorCombatLogToConsole);
 
         CardDrawSystem = BattleCardDrawSystemFactory.CreateOrConfigure(
             gameObject,
@@ -300,23 +319,23 @@ public class BattleGameManager : MonoBehaviour
         EnsureTurnButtonController();
         EnsureEnemyTurnRunner();
         EnsureTurnDebugView();
-        Sprite resolvedDiceSprite = diceButtonSprite != null
-            ? diceButtonSprite
-            : diceButton != null && diceButton.image != null ? diceButton.image.sprite : null;
-        Sprite resolvedTurnEndSprite = turnEndButtonSprite != null
-            ? turnEndButtonSprite
-            : turnEndButton != null && turnEndButton.image != null ? turnEndButton.image.sprite : null;
 
-        turnButtonController.Bind(
-            turnEndButton,
-            resolvedDiceSprite,
-            resolvedTurnEndSprite,
-            EndTurn,
-            RollDice);
+        // 턴 종료 버튼은 이제 턴 종료 전용이다. 주사위 기능은 완전히 분리했다.
+        turnButtonController.Bind(turnEndButton, EndTurn);
 
+        // 독립 주사위 버튼: 더 이상 숨기지 않는다.
+        // (통합 행동 버튼과 별개로 화면 중앙 등에 배치해 매 턴 시작을 강조하는 용도)
+        // BattleDiceRollButton(꾹 눌러 게이지가 오가는 방식)이 붙어 있으면 그 컴포넌트가
+        // PointerDown/Up으로 직접 RollDice를 호출하므로, 여기서는 onClick을 이중으로 걸지 않는다.
         if (diceButton != null && diceButton != turnEndButton)
         {
-            diceButton.gameObject.SetActive(false);
+            BattlePointerSelectionClearer.Ensure(diceButton.gameObject);
+            bool hasHoldGauge = diceButton.GetComponent<BattleDiceRollButton>() != null;
+            if (!hasHoldGauge)
+            {
+                diceButton.onClick.RemoveListener(RollDice);
+                diceButton.onClick.AddListener(RollDice);
+            }
         }
 
         RefreshDebugView();
@@ -345,6 +364,7 @@ public class BattleGameManager : MonoBehaviour
         diceRolledThisTurn = false;
         currentDiceValue = 0;
         totalTurn++;
+        HideCardPanelUntilDice();
         RefreshDebugView();
         SyncTurnUI();
 
@@ -394,9 +414,11 @@ public class BattleGameManager : MonoBehaviour
         CurrentPlayerMP?.RestoreFull();
         PrepareEnemiesForNextTurn();
         ResetPlayerMoveState();
+        HideCardPanelUntilDice();
         RefreshDebugView();
         SyncTurnUI();
         PlayerTurnStarted?.Invoke();
+        BattleCombatLog.Add($"TURN {totalTurn}  PLAYER TURN");
         // 첫 전투 진입은 기존 입장 흐름이 페이드 한 번을 이미 담당한다.
         // 호출 경로가 추가되더라도 TURN 1에서 두 번째 페이드가 발생하지 않게 방어한다.
         bool willPlayTurnTransition = showAnnouncement && totalTurn > 1;
@@ -579,6 +601,9 @@ public class BattleGameManager : MonoBehaviour
         playerPortraitStatusView = BattleComponentResolver.GetOrAdd(
             gameObject,
             playerPortraitStatusView);
+        playerPortraitStatusView.ConfigureAnimation(
+            portraitDamageDecreaseSpeed,
+            portraitHealingIncreaseSpeed);
         playerPortraitStatusView.Bind(CurrentPlayerHealth);
 
         if (CurrentPlayerHealth != null)
@@ -686,11 +711,12 @@ public class BattleGameManager : MonoBehaviour
         if (!isPlayerTurn || diceRolledThisTurn)
         {
             Debug.LogWarning($"주사위 입력 무시: 플레이어 턴={isPlayerTurn}, 이미 굴림={diceRolledThisTurn}", this);
+            DiceRolled?.Invoke(false);
             return;
         }
 
         diceRolledThisTurn = true;
-        currentDiceValue = Random.Range(1, 4);
+        currentDiceValue = Random.Range(1, 7);
         SyncTurnUI();
         EnsureTurnDebugView();
         turnDebugView.ShowDice(currentDiceValue);
@@ -700,6 +726,12 @@ public class BattleGameManager : MonoBehaviour
         {
             playerActionController.SetMoveRange(currentDiceValue);
         }
+
+        ResolveCardPanelToggle();
+        cardPanelToggle?.Show();
+
+        // 주사위를 실제로 굴렸을 때만 true로 알린다. 추후 주사위 굴리는 연출(VFX)을 여기 걸면 된다.
+        DiceRolled?.Invoke(true);
     }
 
     /// <summary>이동 완료 후 Debug 주사위 표시만 0으로 되돌린다.</summary>
@@ -720,6 +752,7 @@ public class BattleGameManager : MonoBehaviour
         BeginModalInteraction();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
         int enemyRound = Mathf.Max(1, totalTurn - 1);
+        BattleCombatLog.Add($"TURN {enemyRound}  ENEMY TURN");
         yield return turnAnnouncementView.ShowEnemyTurnRoutine(enemyRound, 1f);
         EndModalInteraction();
         yield return enemyTurnRunner.RunAll(battleDataPool);
@@ -767,9 +800,17 @@ public class BattleGameManager : MonoBehaviour
     private void SyncTurnUI()
     {
         EnsureTurnButtonController();
-        turnButtonController.ApplyTurnState(isPlayerTurn, diceRolledThisTurn);
+        turnButtonController.ApplyTurnState(isPlayerTurn);
         if (turnEndButton != null && IsModalInteractionOpen)
             turnEndButton.interactable = false;
+
+        // 독립 주사위 버튼은 플레이어 턴이면서 아직 굴리지 않았을 때만 보이고 눌린다.
+        if (diceButton != null && diceButton != turnEndButton)
+        {
+            bool canRollNow = isPlayerTurn && !diceRolledThisTurn && !battleStopped;
+            diceButton.gameObject.SetActive(canRollNow);
+            diceButton.interactable = canRollNow && !IsModalInteractionOpen;
+        }
 
         CardUseAvailabilityChanged?.Invoke(CanUsePlayerCards);
     }
@@ -811,6 +852,20 @@ public class BattleGameManager : MonoBehaviour
         {
             playerActionController = FindFirstObjectByType<BattlePlayerActionController>(FindObjectsInactive.Include);
         }
+    }
+
+    /// <summary>비활성 전투 UI까지 포함해 카드 패널 제어기를 찾아 재사용한다.</summary>
+    private void ResolveCardPanelToggle()
+    {
+        if (cardPanelToggle == null)
+            cardPanelToggle = FindFirstObjectByType<BattleCardPanelToggle>(FindObjectsInactive.Include);
+    }
+
+    /// <summary>새 Player 턴과 Enemy 턴에는 카드 패널을 숨겨 주사위 이후에만 표시한다.</summary>
+    private void HideCardPanelUntilDice()
+    {
+        ResolveCardPanelToggle();
+        cardPanelToggle?.Hide();
     }
 
 }

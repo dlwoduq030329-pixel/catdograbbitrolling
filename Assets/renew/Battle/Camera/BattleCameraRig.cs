@@ -3,22 +3,24 @@ using UnityEngine;
 /// <summary>
 /// 전투 중 플레이어 추적, 수동 이동, 확대·축소와 맵 경계 제한을 담당한다.
 /// 원본 CameraChase를 수정하지 않고 전투 진입 후 카메라 제어를 인계받는다.
-/// 카메라 각도는 사이드뷰(0도)에서 탑뷰(90도)까지 런타임에 틸트 조절이 가능하다.
-/// 대상 스폰 Y가 0.5라는 전제 하에 0도일 때 카메라 Y는 기본적으로 2.5가 된다.
+/// 카메라 각도는 기본적으로 사이드뷰(30도)에서 탑뷰(90도)까지 런타임에 조절한다.
+/// 최소·최대 각도는 Inspector에서 변경할 수 있어 이후 연출 범위를 다시 조정할 수 있다.
 /// 후방 거리(Z) 제한 기능은 코드에 남겨두되 기본은 비활성화(일단 해제) 상태다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleCameraRig : MonoBehaviour
 {
-    [Header("전투 카메라 틸트 (사이드뷰 0도 ↔ 탑뷰 90도)")]
+    [Header("전투 카메라 틸트 범위")]
     [InspectorName("기본 시작 각도")]
     [SerializeField, Range(0f, 90f)] private float defaultTiltAngle = 45f;
     [InspectorName("최소 틸트 각도(사이드뷰)")]
-    [SerializeField, Range(0f, 90f)] private float minTiltAngle = 0f;
+    [SerializeField, Range(0f, 90f)] private float minTiltAngle = 30f;
     [InspectorName("최대 틸트 각도(탑뷰)")]
     [SerializeField, Range(0f, 90f)] private float maxTiltAngle = 90f;
     [InspectorName("원근 투영 사용")]
     [SerializeField] private bool usePerspectiveProjection = true;
+    [InspectorName("View Transition Speed (Degrees/Second)")]
+    [SerializeField, Min(1f)] private float tiltTransitionSpeed = 90f;
 
     [Header("플레이어 추적")]
     [InspectorName("카메라-대상 거리(줌으로 조절)")]
@@ -50,15 +52,18 @@ public sealed class BattleCameraRig : MonoBehaviour
 
     /// <summary>minTiltAngle(사이드뷰)에서 maxTiltAngle(탑뷰) 사이의 현재 카메라 피치 각도.</summary>
     private float currentTiltAngle;
+    private float targetTiltAngle;
 
     public float CurrentZoomHeight => camDistance;
 
-    /// <summary>현재 카메라 틸트 각도(도). minTiltAngle(0도, 사이드뷰)~maxTiltAngle(90도, 탑뷰) 사이를 오간다.</summary>
+    /// <summary>현재 카메라 틸트 각도. Inspector에 설정된 최소~최대 범위 사이를 오간다.</summary>
     public float CurrentTiltAngle => currentTiltAngle;
 
     private void Awake()
     {
+        ValidateTiltRange();
         currentTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
+        targetTiltAngle = currentTiltAngle;
     }
 
     private void OnEnable()
@@ -99,6 +104,10 @@ public sealed class BattleCameraRig : MonoBehaviour
         }
 
         ClampPanToMap();
+        currentTiltAngle = Mathf.MoveTowards(
+            currentTiltAngle,
+            targetTiltAngle,
+            tiltTransitionSpeed * Time.unscaledDeltaTime);
         Vector3 targetPosition = activeTarget.position + ComputeFollowOffset() + manualPanOffset;
         transform.position = holdPlayerDuringMovement
             ? targetPosition
@@ -174,23 +183,43 @@ public sealed class BattleCameraRig : MonoBehaviour
             maxZoomHeight);
     }
 
-    /// <summary>minTiltAngle(0도, 사이드뷰)~maxTiltAngle(90도, 탑뷰) 범위 안에서 카메라 틸트 각도를 변경한다.
-    /// degreesDelta가 양수이면 탑뷰 방향으로, 음수이면 사이드뷰(수평) 방향으로 기운다.</summary>
+    /// <summary>Inspector에 설정된 최소~최대 각도 안에서 카메라 틸트를 변경한다.
+    /// degreesDelta가 양수이면 탑뷰 방향으로, 음수이면 사이드뷰 방향으로 기운다.</summary>
     public void AddTilt(float degreesDelta)
     {
-        currentTiltAngle = Mathf.Clamp(currentTiltAngle + degreesDelta, minTiltAngle, maxTiltAngle);
+        targetTiltAngle = Mathf.Clamp(targetTiltAngle + degreesDelta, minTiltAngle, maxTiltAngle);
     }
 
-    /// <summary>카메라 틸트 각도를 기본 시작 각도(defaultTiltAngle)로 즉시 되돌린다.</summary>
+    /// <summary>Transitions between the configured side-view and top-view angle.</summary>
+    public void ToggleSideTopView()
+    {
+        float middle = (minTiltAngle + maxTiltAngle) * 0.5f;
+        targetTiltAngle = targetTiltAngle > middle ? minTiltAngle : maxTiltAngle;
+    }
+
+    /// <summary>카메라 틸트 목표를 기본 시작 각도로 되돌리고 설정된 속도로 전환한다.</summary>
     public void ResetTilt()
     {
-        currentTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
+        targetTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
     }
 
     /// <summary>수동 이동·확대 오프셋을 초기화하여 카메라를 Player 중심 추적으로 복귀시킨다.</summary>
     public void ResetManualView()
     {
         manualPanOffset = Vector3.zero;
+    }
+
+    /// <summary>Inspector에서 최소값이 최대값을 넘겨도 항상 유효한 틸트 범위로 보정한다.</summary>
+    private void OnValidate()
+    {
+        ValidateTiltRange();
+        defaultTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
+    }
+
+    private void ValidateTiltRange()
+    {
+        minTiltAngle = Mathf.Clamp(minTiltAngle, 0f, 90f);
+        maxTiltAngle = Mathf.Clamp(maxTiltAngle, minTiltAngle, 90f);
     }
 
     /// <summary>현재 틸트 각도와 줌 거리로부터 대상 기준 카메라 오프셋을 계산한다.

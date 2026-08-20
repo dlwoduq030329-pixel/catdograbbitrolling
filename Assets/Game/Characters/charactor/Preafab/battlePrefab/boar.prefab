@@ -170,12 +170,12 @@ GameObject:
   - component: {fileID: 6321489608806981509}
   - component: {fileID: 1502310594948081878}
   m_Layer: 6
-  m_Name: EnemyHPBar
+  m_Name: LegacyEnemyHPBar_disabled
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6321489608806981509
 Transform:
   m_ObjectHideFlags: 0

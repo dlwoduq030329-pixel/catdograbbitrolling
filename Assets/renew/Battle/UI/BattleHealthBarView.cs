@@ -58,6 +58,11 @@ public sealed class BattleHealthBarView : MonoBehaviour
     [SerializeField] private bool lockWorldRotation = true;
     [InspectorName("고정할 월드 회전")]
     [SerializeField] private Vector3 lockedWorldEulerAngles = new Vector3(90f, 0f, 0f);
+    [InspectorName("카메라를 항상 바라보기(빌보드)")]
+    [Tooltip("켜면 lockWorldRotation 설정 대신 매 프레임 카메라를 정면으로 바라본다. " +
+             "카메라 각도가 0도(사이드뷰)에 가까워질수록 바닥에 눕혀둔 게이지는 옆에서 거의 안 보이므로, " +
+             "Enemy처럼 카메라 각도가 자주 바뀌는 대상에는 이 옵션을 켠다.")]
+    [SerializeField] private bool billboardToCamera;
 
     public BattleHealth TargetHealth => targetHealth;
 
@@ -186,11 +191,25 @@ public sealed class BattleHealthBarView : MonoBehaviour
         transform.localScale = scale;
     }
 
+    /// <summary>코드에서 동적으로 조립한 바에 채움 이미지를 연결한다(Inspector 배선 없이 런타임 조립할 때 사용).</summary>
+    public void ConfigureFillImage(Image image)
+    {
+        fillImage = image;
+    }
+
     /// <summary>부모 Enemy나 Camera 상태와 무관하게 HP 바의 월드 회전을 고정한다.</summary>
     public void ConfigureWorldRotationLock(bool enabled, Vector3 worldEulerAngles)
     {
+        billboardToCamera = false;
         lockWorldRotation = enabled;
         lockedWorldEulerAngles = worldEulerAngles;
+        ApplyWorldRotationLock();
+    }
+
+    /// <summary>고정 회전 대신 매 프레임 카메라를 정면으로 바라보게 한다(Enemy 등 카메라 각도가 자주 바뀌는 대상용).</summary>
+    public void ConfigureBillboard(bool enabled)
+    {
+        billboardToCamera = enabled;
         ApplyWorldRotationLock();
     }
 
@@ -250,9 +269,9 @@ public sealed class BattleHealthBarView : MonoBehaviour
 
         if (fillImage != null)
         {
+            // fillMethod/fillOrigin은 프리팹에서 미리 설정한 값을 그대로 존중한다
+            // (세로로 차오르는 실린더형 게이지 등, Horizontal이 아닌 프리팹도 있기 때문).
             fillImage.type = Image.Type.Filled;
-            fillImage.fillMethod = Image.FillMethod.Horizontal;
-            fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
             fillImage.fillAmount = ratio;
         }
 
@@ -348,6 +367,17 @@ public sealed class BattleHealthBarView : MonoBehaviour
 
     private void ApplyWorldRotationLock()
     {
+        if (billboardToCamera)
+        {
+            Camera camera = targetCamera != null ? targetCamera : Camera.main;
+            if (camera != null)
+            {
+                transform.rotation = camera.transform.rotation;
+            }
+
+            return;
+        }
+
         if (lockWorldRotation)
         {
             transform.rotation = Quaternion.Euler(lockedWorldEulerAngles);

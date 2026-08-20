@@ -62,7 +62,9 @@ public class InventoryCard : MonoBehaviour,
             return;
         }
 
-        CardIMG.sprite = DataPool.Instance.cardDatabase.cards[index].myCardSprite;
+        CardData cardData = DataPool.Instance.cardDatabase.cards[index];
+        CardIMG.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
+        CardCostLabelView.Ensure(CardIMG.transform)?.SetCost(cardData.cost, cardData.rare);
 
     }
 
@@ -144,22 +146,25 @@ public class InventoryCard : MonoBehaviour,
             //return;
         }
 
+        // 이전 보유/장착 Sprite가 남지 않도록 보유 여부를 검사하기 전에 두 칸을 항상 비운다.
+        // 카드 수가 0이 되어 CardsCount 키가 제거된 경우에도 UI 게이지가 정확히 0장으로 보인다.
+        for (int i = 0; i < have.Length; i++)
+        {
+            have[i].sprite = noHaveSP;
+        }
+
         if (!es.returnHaveCard(index).hasCard)
         {
             int dicCount = es.returnHaveCard(index).value;
             CardIMG.GetComponent<UIEffect>().toneFilter = ToneFilter.None;
 
-            for(int i =0;i<2;i++)
-            {
-                have[i].sprite = noHaveSP;
-            }
-            for (int i = 0; i < dicCount; i++)
+            for (int i = 0; i < Mathf.Min(dicCount, have.Length); i++)
             {
                 have[i].sprite = haveSP;
             }
             int listCount = retunListValue(index);
 
-            for (int i = 0; i < listCount; i++)
+            for (int i = 0; i < Mathf.Min(listCount, have.Length); i++)
             {
                 have[i].sprite = usingSP;
             }

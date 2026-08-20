@@ -25,7 +25,13 @@ public class BattleMapCameraInput : MonoBehaviour
     [InspectorName("마우스 휠 확대/축소 속도")]
     [SerializeField] private float zoomSpeed = 2f;
 
-    [Header("카메라 틸트 (사이드뷰 0~45도, 탑뷰 90도 미사용)")]
+    [Header("Camera View Transition")]
+    [InspectorName("Side / Top View Toggle Key")]
+    [SerializeField] private KeyCode viewToggleKey = KeyCode.C;
+    [InspectorName("Manual Tilt Down Key")]
+    [SerializeField] private KeyCode tiltDownKey = KeyCode.PageDown;
+    [InspectorName("Manual Tilt Up Key")]
+    [SerializeField] private KeyCode tiltUpKey = KeyCode.PageUp;
     [InspectorName("틸트 입력 속도(도/초)")]
     [SerializeField] private float tiltInputSpeed = 40f;
 
@@ -111,13 +117,19 @@ public class BattleMapCameraInput : MonoBehaviour
         }
     }
 
-    /// <summary>Q/E 키 입력으로 0도(완전 수평 사이드뷰)~45도(기본 사이드뷰) 사이의 카메라 틸트 각도를 조절한다.
-    /// 탑뷰 90도는 사용하지 않는다. Q는 각도를 낮추는(더 눕는) 방향, E는 각도를 높이는 방향으로 기울인다.</summary>
+    /// <summary>C로 Side/Top View를 토글하고 PageDown/PageUp으로 목표 각도를 미세 조정한다.
+    /// E는 턴 종료 전용 입력이므로 카메라에서 사용하지 않는다.</summary>
     private void HandleTilt()
     {
+        if (Input.GetKeyDown(viewToggleKey))
+        {
+            cameraRig.ToggleSideTopView();
+            return;
+        }
+
         float tiltInput = 0f;
-        if (Input.GetKey(KeyCode.Q)) tiltInput -= 1f;
-        if (Input.GetKey(KeyCode.E)) tiltInput += 1f;
+        if (Input.GetKey(tiltDownKey)) tiltInput -= 1f;
+        if (Input.GetKey(tiltUpKey)) tiltInput += 1f;
 
         if (!Mathf.Approximately(tiltInput, 0f))
         {

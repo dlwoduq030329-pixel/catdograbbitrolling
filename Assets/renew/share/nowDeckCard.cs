@@ -56,6 +56,7 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
         {
             cardSprite.sprite = null;
             cardSprite.enabled = false;
+            CardCostLabelView.Ensure(cardSprite.transform)?.Hide();
             thisIndex = -1;
             return;
         }
@@ -67,7 +68,14 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
 
         thisIndex = v;
         cardSprite.enabled = true;
-        cardSprite.sprite = database.cards[thisIndex].myCardSprite;
+        CardData cardData = database.cards[thisIndex];
+        cardSprite.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
+        CardCostLabelView deckCostLabel = CardCostLabelView.Ensure(cardSprite.transform);
+        if (deckCostLabel != null)
+        {
+            deckCostLabel.Show();
+            deckCostLabel.SetCost(cardData.cost, cardData.rare);
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -81,7 +89,14 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
     public void ChangeSet(int x)
     {
        // im.CardSet(cardIndex, x);
-        cardSprite.sprite = DataPool.Instance.cardDatabase.cards[x].myCardSprite;
+        CardData cardData = DataPool.Instance.cardDatabase.cards[x];
+        cardSprite.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
+        CardCostLabelView changeCostLabel = CardCostLabelView.Ensure(cardSprite.transform);
+        if (changeCostLabel != null)
+        {
+            changeCostLabel.Show();
+            changeCostLabel.SetCost(cardData.cost, cardData.rare);
+        }
         es.ChangeCard(thisIndex, x);
         //DataConfig.AddCard(cardIndex,x);
         //im.SaveDeck();

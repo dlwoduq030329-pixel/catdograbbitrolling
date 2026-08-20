@@ -9,7 +9,30 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattleEnemyTurnRunner : MonoBehaviour
 {
+    [Header("안전 제한")]
+    [InspectorName("적 1명당 최대 실행 시간 (초)")]
+    [Tooltip("버그로 적 행동이 끝나지 않을 때 다음 턴으로 넘어가기 위한 안전 제한입니다.")]
     [SerializeField, Min(1f)] private float maximumSecondsPerEnemy = 10f;
+
+    [Header("Enemy 턴 페이싱")]
+    [InspectorName("한 칸 이동 시간 (초)")]
+    [Tooltip("값이 클수록 적이 타일 사이를 천천히 이동합니다.")]
+    [SerializeField, Min(0.01f)] private float movementSecondsPerTile = 0.35f;
+    [InspectorName("행동 전 카메라 집중 시간 (초)")]
+    [Tooltip("적이 실제 이동하거나 공격하기 전에 카메라가 적을 보여주는 시간입니다.")]
+    [SerializeField, Min(0f)] private float focusLeadInSeconds = 0.5f;
+    [InspectorName("공격 타격 시점 지연 (초)")]
+    [Tooltip("공격 애니메이션을 시작한 뒤 실제 피해가 적용될 때까지의 시간입니다.")]
+    [SerializeField, Min(0f)] private float attackImpactDelaySeconds = 0.3f;
+    [InspectorName("행동 후 확인 시간 (초)")]
+    [Tooltip("이동 또는 공격 결과를 플레이어가 확인할 수 있도록 기다리는 시간입니다.")]
+    [SerializeField, Min(0f)] private float afterActionSeconds = 0.4f;
+    [InspectorName("적 사이 대기 시간 (초)")]
+    [Tooltip("한 적의 행동이 끝난 뒤 다음 적이 행동하기 전까지의 간격입니다.")]
+    [SerializeField, Min(0f)] private float betweenEnemiesSeconds = 0.25f;
+    [InspectorName("적 턴 종료 후 대기 시간 (초)")]
+    [Tooltip("마지막 적 행동이 끝난 뒤 플레이어 턴 연출로 넘어가기 전까지의 시간입니다.")]
+    [SerializeField, Min(0f)] private float afterEnemyTurnSeconds = 0.7f;
     /// <summary>가장 최근 RunAll 실행에서 실제로 이동/공격한 Enemy가 하나라도 있었는지 여부.
     /// BattleGameManager가 다음 Player 턴의 페이드·배너 표시 여부를 결정할 때 사용한다.</summary>
     public bool AnyEnemyActedLastRun { get; private set; }
@@ -46,11 +69,16 @@ public sealed class BattleEnemyTurnRunner : MonoBehaviour
                 if (enemy != null)
                 {
                     yield return RunEnemyWithTimeout(enemy, cameraRig);
-                    if (enemy.ActedThisTurn) AnyEnemyActedLastRun = true;
+                    if (enemy.ActedThisTurn)
+                    {
+                        AnyEnemyActedLastRun = true;
+                        yield return WaitRealtime(betweenEnemiesSeconds);
+                    }
                 }
             }
 
             cameraRig?.ClearTemporaryFocus();
+            if (AnyEnemyActedLastRun) yield return WaitRealtime(afterEnemyTurnSeconds);
             yield break;
         }
 
@@ -61,16 +89,26 @@ public sealed class BattleEnemyTurnRunner : MonoBehaviour
             if (enemy != null)
             {
                 yield return RunEnemyWithTimeout(enemy, cameraRig);
-                if (enemy.ActedThisTurn) AnyEnemyActedLastRun = true;
+                if (enemy.ActedThisTurn)
+                {
+                    AnyEnemyActedLastRun = true;
+                    yield return WaitRealtime(betweenEnemiesSeconds);
+                }
             }
         }
 
         cameraRig?.ClearTemporaryFocus();
+        if (AnyEnemyActedLastRun) yield return WaitRealtime(afterEnemyTurnSeconds);
     }
 
     /// <summary>한 적의 행동이 멈춰도 적 턴 전체가 영구 정지하지 않도록 실시간 제한을 둔다.</summary>
     private IEnumerator RunEnemyWithTimeout(EnemyTurnActor enemy, BattleCameraRig cameraRig)
     {
+        enemy.ConfigurePacing(
+            movementSecondsPerTile,
+            focusLeadInSeconds,
+            attackImpactDelaySeconds,
+            afterActionSeconds);
         bool completed = false;
         IEnumerator RunAndMarkComplete()
         {
@@ -91,5 +129,11 @@ public sealed class BattleEnemyTurnRunner : MonoBehaviour
         StopCoroutine(actionRoutine);
         BattleCharacterAnimationBridge.PlayIdle(enemy.gameObject);
         Debug.LogError($"{enemy.name}: 적 행동 제한 시간을 초과하여 이번 행동을 강제 종료했습니다.", enemy);
+    }
+
+    /// <summary>Time.timeScale과 무관하게 설정된 Enemy 턴 연출 간격을 기다린다.</summary>
+    private static IEnumerator WaitRealtime(float seconds)
+    {
+        if (seconds > 0f) yield return new WaitForSecondsRealtime(seconds);
     }
 }

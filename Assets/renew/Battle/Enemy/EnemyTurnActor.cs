@@ -17,9 +17,27 @@ public class EnemyTurnActor : MonoBehaviour
     [SerializeField, Min(1)] private int maxBasicAttacksPerTurn = 1;
     [InspectorName("턴당 최대 행동 트리 평가 횟수")]
     [SerializeField, Min(1)] private int maxTreeEvaluationsPerTurn = 16;
+    [InspectorName("Attack Damage Type")]
+    [SerializeField] private BattleDamageType attackDamageType = BattleDamageType.Physical;
+    private float focusLeadInSeconds = 0.5f;
+    private float attackImpactDelaySeconds = 0.3f;
+    private float afterActionSeconds = 0.4f;
 
     /// <summary>Player R 토글 등 외부에서 이 Enemy의 실제 공격 사거리(칸)를 읽을 때 사용한다.</summary>
     public int AttackRangeTiles => attackRangeTiles;
+
+    /// <summary>EnemyTurnRunner의 공용 페이싱 값을 이동 실행기와 행동 전후 대기에 적용한다.</summary>
+    public void ConfigurePacing(
+        float moveSecondsPerTile,
+        float focusSeconds,
+        float impactDelaySeconds,
+        float actionHoldSeconds)
+    {
+        secondsPerTile = Mathf.Max(0.01f, moveSecondsPerTile);
+        focusLeadInSeconds = Mathf.Max(0f, focusSeconds);
+        attackImpactDelaySeconds = Mathf.Max(0f, impactDelaySeconds);
+        afterActionSeconds = Mathf.Max(0f, actionHoldSeconds);
+    }
 
     /// <summary>이번 TakeTurn 호출에서 실제로 이동하거나 공격했는지 여부. 카메라는 이 값이
     /// true가 되는 시점(첫 실제 행동 직전)에만 포커스를 옮긴다. 대상이 없거나, 기절/속박으로
@@ -45,6 +63,7 @@ public class EnemyTurnActor : MonoBehaviour
         }
 
         attackRangeTiles = Mathf.Max(1, data.attackRangeTiles);
+        attackDamageType = data.attackDamageType;
     }
 
     /// <summary>적 행동에 필요한 감지, 인식, 경로 표시 참조와 공용 행동 트리를 준비한다.</summary>
@@ -152,7 +171,7 @@ public class EnemyTurnActor : MonoBehaviour
 
                     yield return BeginActionFocus(cameraRig);
                     basicAttackCount++;
-                    ApplyBasicAttackDamage(target);
+                    yield return PlayBasicAttackAndApplyDamage(target);
                     Debug.Log(
                         $"{name}: 기본 공격 {basicAttackCount}회차 선택, " +
                         $"MP {basicAttackCost} 소모, 남은 MP {characterMP.CurrentMP}",
@@ -164,6 +183,8 @@ public class EnemyTurnActor : MonoBehaviour
                     // MP remains random, while attack and movement costs stay fixed.
                     if (basicAttackCount >= 1)
                     {
+                        if (afterActionSeconds > 0f)
+                            yield return new WaitForSecondsRealtime(afterActionSeconds);
                         yield break;
                     }
 
@@ -172,6 +193,9 @@ public class EnemyTurnActor : MonoBehaviour
                 default:
                     yield break;
             }
+
+            if (context.Decision == EnemyAIDecision.Move && afterActionSeconds > 0f)
+                yield return new WaitForSecondsRealtime(afterActionSeconds);
 
             // 행동이 MP를 소비하지 않으면 같은 판단이 무한 반복될 수 있으므로 턴을 종료한다.
             if (characterMP.CurrentMP >= mpBeforeAction)
@@ -195,15 +219,16 @@ public class EnemyTurnActor : MonoBehaviour
 
         ActedThisTurn = true;
         cameraRig?.SetTemporaryFocus(transform);
-        yield return new WaitForSecondsRealtime(0.2f);
+        if (focusLeadInSeconds > 0f)
+            yield return new WaitForSecondsRealtime(focusLeadInSeconds);
     }
 
-    /// <summary>DB에 설정된 기본 공격 피해량으로 공용 피해 서비스를 호출한다. 대상이 없으면 아무 일도 하지 않는다.</summary>
-    private void ApplyBasicAttackDamage(Transform target)
+    /// <summary>대상을 바라보고 공격 애니메이션을 먼저 재생한 뒤 타격 시점에 실제 피해를 적용한다.</summary>
+    private IEnumerator PlayBasicAttackAndApplyDamage(Transform target)
     {
         if (target == null)
         {
-            return;
+            yield break;
         }
 
         float damage = runtimeData != null && runtimeData.Data != null
@@ -211,12 +236,16 @@ public class EnemyTurnActor : MonoBehaviour
             : 0f;
         if (damage <= 0f)
         {
-            return;
+            yield break;
         }
 
         BattleTransformMovement.FaceTowards(transform, target.position);
         BattleCharacterAnimationBridge.PlayAttack(gameObject);
-        actionExecutor.TryApplyBasicAttackDamage(gameObject, target.gameObject, damage);
+        if (attackImpactDelaySeconds > 0f)
+            yield return new WaitForSecondsRealtime(attackImpactDelaySeconds);
+
+        if (target == null || !target.gameObject.activeInHierarchy) yield break;
+        actionExecutor.TryApplyBasicAttackDamage(gameObject, target.gameObject, damage, attackDamageType);
     }
 
     /// <summary>기억 중인 Target을 우선 사용하고, 없으면 Detector의 직접 감지 결과를 확인한다.</summary>
