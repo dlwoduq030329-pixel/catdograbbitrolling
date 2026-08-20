@@ -72,6 +72,8 @@ public class MapGenerator : MonoBehaviour
     [SerializeField] private float terrainNoiseScale = 0.03f;
     [SerializeField] private float terrainNoiseHeight = 15f;
     private Terrain generatedTerrain;
+    [Header("Terrain")]
+    [SerializeField] private Material terrainMaterial;
 
     private void Awake()
     {
@@ -116,7 +118,7 @@ public class MapGenerator : MonoBehaviour
         }
 
         DrawGrid();
-        GenerateTerrain();
+        //GenerateTerrain();
     }
 
     private bool CheckPath()
@@ -530,10 +532,13 @@ public class MapGenerator : MonoBehaviour
         terrainData.heightmapResolution = terrainHeightmapResolution;
 
 
+        float terrainWidth = blockCountX * blockDistance;
+        float terrainLength = blockCountZ * blockDistance;
+
         terrainData.size = new Vector3(
-            blockCountX * blockDistance,
+            terrainWidth + blockDistance,
             terrainHeight,
-            blockCountZ * blockDistance
+            terrainLength + blockDistance
         );
 
 
@@ -561,11 +566,15 @@ public class MapGenerator : MonoBehaviour
         terrainObject.transform.SetParent(transform);
 
 
-        terrainObject.transform.position = Vector3.zero;
-
+        terrainObject.transform.position =
+            new Vector3(
+                -blockDistance * 0.5f,
+                0,
+                -blockDistance * 0.5f
+            );
 
         generatedTerrain = terrainObject.GetComponent<Terrain>();
-
+        
 
         Debug.Log("Terrain 생성 완료");
     }

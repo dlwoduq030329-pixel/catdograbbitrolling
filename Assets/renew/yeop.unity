@@ -3511,12 +3511,17 @@ MonoBehaviour:
   terrainPrefab: {fileID: 1501114753}
   terrainHeightmapResolution: 513
   terrainHeight: 30
-  grassLayer: {fileID: 0}
-  dirtLayer: {fileID: 0}
-  rockLayer: {fileID: 0}
-  sandLayer: {fileID: 0}
+  grassLayer: {fileID: 8574412962073106934, guid: 8e51c05463600354ab04b7e502bd3341,
+    type: 2}
+  dirtLayer: {fileID: 8574412962073106934, guid: 8bd09c792de5d414fbbd855158c82aac,
+    type: 2}
+  rockLayer: {fileID: 8574412962073106934, guid: 59188ea8324b9624f87ac9159b9d02e9,
+    type: 2}
+  sandLayer: {fileID: 8574412962073106934, guid: 72803a19bd91f214daaf303606e9a741,
+    type: 2}
   terrainNoiseScale: 0.03
-  terrainNoiseHeight: 15
+  terrainNoiseHeight: 2
+  terrainMaterial: {fileID: 0}
 --- !u!1 &186707978
 GameObject:
   m_ObjectHideFlags: 0
@@ -4569,6 +4574,7 @@ MonoBehaviour:
     type: 3}
   enemyCount: 5
   sanctuarySize: {x: 5, y: 5}
+  defaultSpawnHeight: 0.5
 --- !u!1001 &328692125
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8451,6 +8457,7 @@ MonoBehaviour:
   charactorStatus: {fileID: 530456153}
   loading: {fileID: 1219382121}
   hudCanvas: {fileID: 46094244}
+  defaultSpawnHeight: 0.5
 --- !u!1 &766737457
 GameObject:
   m_ObjectHideFlags: 0
@@ -15630,7 +15637,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!218 &1501114753
 Terrain:
   m_ObjectHideFlags: 0
