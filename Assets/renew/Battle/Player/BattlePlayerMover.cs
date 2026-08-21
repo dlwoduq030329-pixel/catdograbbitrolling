@@ -42,7 +42,7 @@ public sealed class BattlePlayerMover : MonoBehaviour
             }
 
             Vector3 targetPosition = pathTile.transform.position + Vector3.up * heightOffset;
-            yield return BattleTransformMovement.MoveToPosition(
+            yield return BattleUnitMotionAnimator.MoveToPosition(
                 player.transform,
                 targetPosition,
                 durationPerTile);
@@ -56,7 +56,7 @@ public sealed class BattlePlayerMover : MonoBehaviour
     {
         float duration = Mathf.Max(0.01f, travelledTileCount * GetDurationPerTile());
         BattleCharacterAnimationBridge.PlayWalk(player);
-        yield return BattleTransformMovement.MoveToPosition(
+        yield return BattleUnitMotionAnimator.MoveToPosition(
             player != null ? player.transform : null,
             targetPosition,
             duration);

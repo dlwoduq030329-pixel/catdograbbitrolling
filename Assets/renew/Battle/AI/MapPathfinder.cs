@@ -19,11 +19,14 @@ public static class MapPathfinder
     {
         path = new List<MapInfo>();
 
+        // 경로 요청자는 시작·목적 타일을 보장하는 것이 원칙이다. 다만 Map 생성/등록 누락이
+        // 실제 전투 중 무한 탐색이나 NullReference로 확대되지 않도록 공개 경계에서 한 번 거부한다.
         if (start == null || target == null)
         {
             return false;
         }
 
+        // 이미 목적 타일에 있으면 이동할 칸이 없으므로 빈 경로를 성공으로 반환한다.
         if (start == target)
         {
             return true;
@@ -34,6 +37,7 @@ public static class MapPathfinder
         queue.Enqueue(start);
         previous[start] = null;
 
+        // BFS는 시작점에서 같은 거리의 타일을 먼저 검사하므로 목적지를 처음 발견한 경로가 최단 경로다.
         while (queue.Count > 0)
         {
             MapInfo current = queue.Dequeue();
@@ -52,6 +56,8 @@ public static class MapPathfinder
 
                 if (neighbour == target)
                 {
+                    // previous를 목적지부터 시작점까지 역추적한 뒤 실제 이동 순서로 뒤집는다.
+                    // 반환 경로에는 출발 타일을 넣지 않아 Path.Count가 실제 이동 칸 수와 일치한다.
                     MapInfo pathTile = target;
                     while (pathTile != start)
                     {

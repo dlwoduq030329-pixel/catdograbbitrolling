@@ -44,7 +44,7 @@ public sealed class BattleEnemyInspectView : MonoBehaviour
     {
         EnsureView();
         BattleEnemyData data = runtime.Data;
-        CharacterMP mp = runtime.GetComponent<CharacterMP>();
+        BattleUnitMP mp = runtime.GetComponent<BattleUnitMP>();
         int moveTiles = data.moveMPCostPerTile > 0 ? data.maxTurnMP / data.moveMPCostPerTile : 0;
         text.text =
             $"<b>{data.displayName}</b>\n" +

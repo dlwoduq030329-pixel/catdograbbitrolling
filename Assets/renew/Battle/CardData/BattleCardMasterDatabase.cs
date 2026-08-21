@@ -1,7 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>카드 효과 실행기가 구분할 공용 효과 종류입니다.</summary>
+/// <summary>
+/// EffectPipeline이 카드 효과 한 단계를 어떤 규칙으로 실행할지 구분한다.
+/// 이 enum과 EffectData는 실제 사용 중이지만 현재 유령 MasterDatabase 파일에 함께 있어 BattleCardDatabase로 이동할 예정이다.
+/// </summary>
 public enum BattleCardEffectType
 {
     [InspectorName("피해")] Damage,
@@ -19,7 +22,10 @@ public enum BattleCardEffectType
     [InspectorName("상태이상 제거")] Cleanse
 }
 
-/// <summary>각 효과가 실제로 적용될 대상을 지정합니다.</summary>
+/// <summary>
+/// 카드가 선택받은 대상과 별개로, 효과 단계 하나가 실제로 적용될 대상 집합을 지정한다.
+/// PreviousEffectTargets는 돌진 후 피해처럼 바로 앞 효과의 성공 대상을 이어받을 때 사용한다.
+/// </summary>
 public enum BattleCardEffectTarget
 {
     [InspectorName("선택한 대상")] SelectedTarget,
@@ -30,7 +36,11 @@ public enum BattleCardEffectTarget
     [InspectorName("지정 타일")] SelectedTile
 }
 
-/// <summary>인스펙터에서 조절하는 카드 효과 한 단계의 설정입니다.</summary>
+/// <summary>
+/// 카드 한 장이 순서대로 실행할 효과 한 단계의 정적 설정이다.
+/// 예를 들어 돌진→피해→밀치기 카드는 이 데이터 세 개를 목록 순서대로 보유한다.
+/// 실행 중 대상과 계산 결과는 저장하지 않는다.
+/// </summary>
 [System.Serializable]
 public sealed class BattleCardEffectData
 {
@@ -64,7 +74,7 @@ public sealed class BattleCardEffectData
 
     [Tooltip("같은 효과를 연속으로 적용하는 횟수입니다. 일반적인 단일 효과는 1을 사용합니다.")]
     [InspectorName("반복 횟수")]
-    [Min(1)] public int repeatCount = 1;
+    [Min(1)] public int repeatCount = 1; // 평타 연속 치는거
 
     [Tooltip("상태이상 이름, 변경할 능력치, 소환할 개체처럼 실행기가 추가로 구분해야 하는 값을 입력합니다. 예: 독, 화상, 공격속도증가, 허수아비")]
     [InspectorName("상태이상 또는 소환 코드")]
@@ -133,8 +143,9 @@ public sealed class BattleCardMasterData
 }
 
 /// <summary>
-/// Battle 카드의 기준 데이터베이스입니다.
+/// Battle 카드의 기준 데이터베이스로 작성됐지만 현재 실행 코드에서 참조되지 않는 유령 데이터다.
 /// 카드 번호는 설계표와 동일하게 0부터 27까지 유지합니다.
+/// 실제 효과 enum과 EffectData를 BattleCardDatabase로 옮긴 뒤 이 데이터베이스와 FindByCardIndex를 삭제할 예정이다.
 /// </summary>
 [CreateAssetMenu(fileName = "BattleCardMasterDatabase", menuName = "Renew/전투/카드 기준 데이터베이스")]
 public sealed class BattleCardMasterDatabase : ScriptableObject

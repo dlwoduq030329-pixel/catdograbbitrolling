@@ -27,7 +27,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     private BattleCardDrawSystem drawSystem;
     private BattlePlayerActionController playerActionController;
     private BattleCardInfoPresenter cardInfoPresenter;
-    private CharacterMP boundPlayerMP;
+    private BattleUnitMP boundPlayerMP;
     private readonly BattleCardLongPressHandler[] longPressHandlers =
         new BattleCardLongPressHandler[SlotCount];
     private float nextTargetRefreshTime;
@@ -175,9 +175,9 @@ public sealed class BattleCardHandView : MonoBehaviour
             return true;
         }
 
-        CharacterMP playerMP = boundPlayerMP != null
+        BattleUnitMP playerMP = boundPlayerMP != null
             ? boundPlayerMP
-            : playerObject.GetComponent<CharacterMP>();
+            : playerObject.GetComponent<BattleUnitMP>();
         if (playerMP == null)
         {
             return true;
@@ -318,14 +318,14 @@ public sealed class BattleCardHandView : MonoBehaviour
     /// <summary>현재 Player MP 변경 이벤트에 연결해 이동·공격·카드 사용 직후 손패 상태를 갱신한다.</summary>
     private void ConnectPlayerMP()
     {
-        CharacterMP nextMP = BattleGameManager.Instance != null
+        BattleUnitMP nextMP = BattleGameManager.Instance != null
             ? BattleGameManager.Instance.CurrentPlayerMP
             : null;
         if (nextMP == null)
         {
             ConnectPlayerActionController();
             nextMP = playerActionController != null && playerActionController.player != null
-                ? playerActionController.player.GetComponent<CharacterMP>()
+                ? playerActionController.player.GetComponent<BattleUnitMP>()
                 : null;
         }
 

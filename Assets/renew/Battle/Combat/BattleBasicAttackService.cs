@@ -17,7 +17,7 @@ public static class BattleBasicAttackService
         Func<MapInfo, bool> isWalkable,
         int attackRange,
         int actionCost,
-        CharacterMP playerMP,
+        BattleUnitMP playerMP,
         out List<MapInfo> movementPath,
         out int totalCost)
     {
@@ -97,7 +97,7 @@ public static class BattleBasicAttackService
             playerTile,
             enemyTile,
             pendingAction.RangeTiles);
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int movementCost = movementPath.Count;
         int actionCost = Mathf.Max(0, currentActionCost);
         int totalCost = movementCost + actionCost;

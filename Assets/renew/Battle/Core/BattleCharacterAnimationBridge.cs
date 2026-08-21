@@ -1,14 +1,9 @@
-using System;
 using UnityEngine;
 
 /// <summary>
-/// Player/Enemy가 이미 갖고 있는 레거시 Animator 연출(EnemyBattleAnim 등)을
-/// Battle 모듈의 이동·공격 코드에서 그대로 재생하기 위한 공용 진입점이다.
-/// 새 애니메이션 State를 만들지 않고, 기존 Animator Controller에 있는 State 이름만 재생한다.
-/// 대상에 필요한 컴포넌트가 없으면 아무 효과 없이 조용히 넘어간다.
-///
-/// 캐릭터 하나에 Animator가 2개(이동용 + 전투용) 동시에 붙어있는 레거시 구조를 그대로 사용한다.
-/// Battle 모듈은 항상 전투 상황에서만 호출되므로, Controller 이름에 "Battle"이 포함된 쪽을 우선 사용한다.
+/// Player와 Enemy의 이동·공격·사망 코드를 실제 Animator State 재생으로 연결하는 공용 진입점이다.
+/// 행동 코드는 Animator가 어느 자식에 있는지 알 필요 없이 이 클래스에 캐릭터 루트만 전달한다.
+/// 이 클래스는 애니메이션만 재생하며 이동, 공격 판정, 피해 적용, 사망 판정은 결정하지 않는다.
 /// </summary>
 public static class BattleCharacterAnimationBridge
 {
@@ -18,10 +13,12 @@ public static class BattleCharacterAnimationBridge
     private const string DefaultAttackState = "IdleAttackMelee";
 
     /// <summary>
-    /// 캐릭터에 붙은 여러 Animator 중 Controller 이름에 "Battle"이 포함된 전투용을 우선 반환한다.
-    /// 전투용을 못 찾으면 붙어있는 첫 번째 Animator라도 반환해 최대한 연출이 끊기지 않게 한다.
-    /// </summary>
-    private static Animator ResolveBattleAnimator(GameObject character)
+    /// 캐릭터 루트와 모든 자식에서 전투에 사용할 Animator를 찾는다.
+    /// 모델 Animator가 캐릭터 루트가 아닌 자식 프리팹에 붙어 있으므로 자식까지 검색해야 한다.
+    /// 여러 Animator가 있으면 Controller 이름에 "Battle"이 포함된 것을 우선하고,
+    /// 전투 전용 Controller가 없을 때만 첫 번째 Animator를 대체 대상으로 사용한다.
+/// </summary>
+    private static Animator FindBattleAnimator(GameObject character)
     {
         // Cat_Player 등 스폰되는 루트 오브젝트 자체에는 Animator가 없고, 그 안에 중첩된
         // 실제 모델 프리팹(Ch_Cat_fix 등) 자식 오브젝트에 Animator가 붙어있는 구조라 자식까지 검색한다.
@@ -35,34 +32,15 @@ public static class BattleCharacterAnimationBridge
         {
             if (candidate != null &&
                 candidate.runtimeAnimatorController != null &&
-                candidate.runtimeAnimatorController.name.IndexOf("Battle", StringComparison.OrdinalIgnoreCase) >= 0)
+                candidate.runtimeAnimatorController.name.IndexOf(
+                    "Battle",
+                    System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return candidate;
             }
         }
 
         return animators[0];
-    }
-
-    /// <summary>
-    /// EnemyBattleAnim은 내부적으로 자기 자신에서만 Animator를 찾는 레거시 코드라(자식 검색 없음),
-    /// Cat_Player처럼 실제 Animator가 자식에 중첩된 구조에서는 내부 참조가 비어 예외를 던질 수 있다.
-    /// 그런 경우 여기서 잡아서 호출부가 일반 Animator 경로로 안전하게 대체하도록 false를 반환한다.
-    /// </summary>
-    private static bool TryPlayLegacyEnemyAnim(System.Action legacyCall, GameObject character)
-    {
-        try
-        {
-            legacyCall();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning(
-                $"{character.name}: EnemyBattleAnim 연출 실패, 기본 Animator 재생으로 대체합니다. ({ex.GetType().Name})",
-                character);
-            return false;
-        }
     }
 
     /// <summary>이동 시작 시 걷기 연출을 재생한다.</summary>
@@ -73,13 +51,7 @@ public static class BattleCharacterAnimationBridge
             return;
         }
 
-        EnemyBattleAnim enemyAnim = character.GetComponentInChildren<EnemyBattleAnim>(true);
-        if (enemyAnim != null && TryPlayLegacyEnemyAnim(enemyAnim.Walk, character))
-        {
-            return;
-        }
-
-        Animator animator = ResolveBattleAnimator(character);
+        Animator animator = FindBattleAnimator(character);
         if (animator != null)
         {
             animator.Play(WalkState);
@@ -94,13 +66,7 @@ public static class BattleCharacterAnimationBridge
             return;
         }
 
-        EnemyBattleAnim enemyAnim = character.GetComponentInChildren<EnemyBattleAnim>(true);
-        if (enemyAnim != null && TryPlayLegacyEnemyAnim(enemyAnim.Idle, character))
-        {
-            return;
-        }
-
-        Animator animator = ResolveBattleAnimator(character);
+        Animator animator = FindBattleAnimator(character);
         if (animator != null)
         {
             animator.Play(IdleState);
@@ -108,9 +74,9 @@ public static class BattleCharacterAnimationBridge
     }
 
     /// <summary>
-    /// 기본 공격 연출을 재생한다. Enemy는 기존 EnemyBattleAnim의 랜덤 공격 모션을 그대로 쓰고,
-    /// Player는 실제 스폰 프리팹에 무기 타입별 레거시 데이터(BattlePlayer)가 없어
-    /// 항상 기본 근접 공격 State를 재생한다.
+    /// 기본 공격 연출을 재생한다.
+    /// 현재 Player와 Enemy 모두 같은 기본 근접 공격 State를 사용하며,
+    /// 추후 무기·Enemy 종류별 공격 State가 확정되면 호출자가 State 이름을 명시하는 구조로 확장한다.
     /// </summary>
     public static void PlayAttack(GameObject character)
     {
@@ -119,13 +85,7 @@ public static class BattleCharacterAnimationBridge
             return;
         }
 
-        EnemyBattleAnim enemyAnim = character.GetComponentInChildren<EnemyBattleAnim>(true);
-        if (enemyAnim != null && TryPlayLegacyEnemyAnim(enemyAnim.Attack, character))
-        {
-            return;
-        }
-
-        Animator animator = ResolveBattleAnimator(character);
+        Animator animator = FindBattleAnimator(character);
         if (animator == null)
         {
             return;
@@ -134,11 +94,16 @@ public static class BattleCharacterAnimationBridge
         animator.Play(DefaultAttackState);
     }
 
-    /// <summary>지정한 레거시 Animator State가 실제로 있을 때만 재생한다.</summary>
+    /// <summary>
+    /// 호출자가 지정한 Animator State를 실제로 보유한 경우에만 재생한다.
+    /// 카드 연출처럼 행동마다 State 이름이 달라지는 코드가 이 공용 함수를 사용한다.
+    /// 반환값이 true면 State를 찾아 재생을 요청한 것이고, false면 캐릭터·이름·Animator·State 중 하나가 없다는 뜻이다.
+    /// 이 반환값을 이용하면 호출자가 기본 공격 애니메이션이나 VFX 같은 대체 연출을 선택할 수 있다.
+    /// </summary>
     public static bool PlayState(GameObject character, string stateName)
     {
         if (character == null || string.IsNullOrWhiteSpace(stateName)) return false;
-        Animator animator = ResolveBattleAnimator(character);
+        Animator animator = FindBattleAnimator(character);
         if (animator == null) return false;
         int stateHash = Animator.StringToHash(stateName);
         if (!animator.HasState(0, stateHash)) return false;
@@ -146,24 +111,18 @@ public static class BattleCharacterAnimationBridge
         return true;
     }
 
-    /// <summary>사망 연출을 재생한다. 사망 판정 자체는 이 메서드가 결정하지 않는다.</summary>
-    public static void PlayDeath(GameObject character)
+    /// <summary>
+    /// 사망 Animator State를 재생하고 재생 요청 성공 여부를 반환한다.
+    /// 사망 판정이나 오브젝트 제거는 담당하지 않는다.
+    /// 호출자는 반환값과 별개로 사망 VFX를 재생할 수 있고, false일 때 대체 연출을 선택할 수도 있다.
+    /// </summary>
+    public static bool PlayDeath(GameObject character)
     {
         if (character == null)
         {
-            return;
+            return false;
         }
 
-        EnemyBattleAnim enemyAnim = character.GetComponentInChildren<EnemyBattleAnim>(true);
-        if (enemyAnim != null && TryPlayLegacyEnemyAnim(enemyAnim.Die, character))
-        {
-            return;
-        }
-
-        Animator animator = ResolveBattleAnimator(character);
-        if (animator != null)
-        {
-            animator.Play(DeathState);
-        }
+        return PlayState(character, DeathState);
     }
 }

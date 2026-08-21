@@ -16,16 +16,7 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
     [Header("디버그 입력")]
     [InspectorName("이동·공격 사거리 토글 키")]
     [SerializeField] private KeyCode rangeToggleKey = KeyCode.R;
-    [InspectorName("디버그 더블 클릭 간격")]
-    [SerializeField, Min(0.1f)] private float doubleClickInterval = 0.3f;
-    [InspectorName("더블 클릭 허용 이동 거리")]
-    [SerializeField, Min(0f)] private float doubleClickPixelTolerance = 24f;
-
-    private float lastLeftClickTime = float.NegativeInfinity;
-    private Vector2 lastLeftClickPosition;
-
     public event Action<Vector2> LeftClickRequested;
-    public event Action<Vector2> DoubleLeftClickRequested;
     public event Action<Vector2> RightClickRequested;
     public event Action CancelRequested;
     /// <summary>Player를 클릭하지 않고도 단축키로 이동·공격 사거리를 켜고 끌 때 발생한다.</summary>
@@ -49,15 +40,9 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
         Vector2 pointerPosition = Input.mousePosition;
         if (Input.GetMouseButtonDown(0))
         {
-            bool isDoubleClick = Time.unscaledTime - lastLeftClickTime <= doubleClickInterval &&
-                                 Vector2.Distance(pointerPosition, lastLeftClickPosition) <= doubleClickPixelTolerance;
-            lastLeftClickTime = Time.unscaledTime;
-            lastLeftClickPosition = pointerPosition;
-
-            if (isDoubleClick)
-                DoubleLeftClickRequested?.Invoke(pointerPosition);
-            else
-                LeftClickRequested?.Invoke(pointerPosition);
+            // 빠른 연속 클릭도 각각 일반 좌클릭으로 전달한다. 이전 Debug 더블 클릭은
+            // MP·경로·이동 확정 단계를 건너뛰고 Player를 타일로 순간이동시켜 정식 이동 규칙을 깨뜨렸다.
+            LeftClickRequested?.Invoke(pointerPosition);
         }
 
         if (Input.GetMouseButtonDown(1))

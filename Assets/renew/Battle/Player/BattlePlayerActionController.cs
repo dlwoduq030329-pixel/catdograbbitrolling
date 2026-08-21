@@ -215,7 +215,6 @@ public class BattlePlayerActionController : MonoBehaviour
         if (battlePlayerInputReader != null)
         {
             battlePlayerInputReader.LeftClickRequested -= HandleLeftClick;
-            battlePlayerInputReader.DoubleLeftClickRequested -= HandleDebugDoubleClick;
             battlePlayerInputReader.RightClickRequested -= HandleRightClick;
             battlePlayerInputReader.CancelRequested -= HandleCancelInput;
             battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
@@ -418,26 +417,6 @@ public class BattlePlayerActionController : MonoBehaviour
         }
     }
 
-    /// <summary>디버그 QA 모드에서 더블 클릭한 타일로 MP와 이동 규칙을 소비하지 않고 즉시 이동한다.</summary>
-    private void HandleDebugDoubleClick(Vector2 pointerPosition)
-    {
-        BattleGameManager manager = BattleGameManager.Instance;
-        if (manager == null || !manager.IsDebugQaBoostEnabled || IsAnyActionMoving ||
-            BattlePlayerInputReader.IsPointerOverInteractiveUI(pointerPosition) ||
-            !TryRaycastMapTile(pointerPosition, out MapInfo targetTile) || player == null)
-            return;
-
-        MapInfo currentTile = FindClosestMapTile(player.transform.position);
-        float heightOffset = currentTile != null
-            ? player.transform.position.y - currentTile.transform.position.y
-            : 0f;
-
-        CancelMoveSelection();
-        player.transform.position = targetTile.transform.position + Vector3.up * heightOffset;
-        BattleCharacterAnimationBridge.PlayIdle(player);
-        Debug.Log($"[Debug] Player teleported to tile {targetTile.Index}.", targetTile);
-    }
-
     /// <summary>
     /// Player를 직접 클릭하지 않고 단축키만으로 이동·공격 사거리를 켜고 끈다.
     /// 클릭으로 여는 경우와 동일한 조건(주사위 굴림, 다른 행동 진행 중 여부)을 그대로 적용한다.
@@ -583,7 +562,7 @@ public class BattlePlayerActionController : MonoBehaviour
             return;
         }
 
-        CharacterMP playerMP = player != null ? player.GetComponent<CharacterMP>() : null;
+        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
         int mpLimitedRange = playerMP != null && !turnActionState.MovementUsed
             ? Mathf.Min(currentMoveRange, playerMP.CurrentMP)
             : 0;
@@ -708,7 +687,7 @@ public class BattlePlayerActionController : MonoBehaviour
             FindClosestMapTile);
 
         MapInfo startTile = FindClosestMapTile(player.transform.position);
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int maxMovementTiles = playerMP != null
             ? Mathf.Min(currentMoveRange, playerMP.CurrentMP)
             : 0;
@@ -937,7 +916,7 @@ public class BattlePlayerActionController : MonoBehaviour
         SetActionConfirmText(string.Empty);
         ActionConfirmed?.Invoke(result);
 
-        CharacterMP playerMP = player != null ? player.GetComponent<CharacterMP>() : null;
+        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
         Debug.Log(
             $"기본 공격 확정: 이동 {result.MovementMPCost}MP + 공격 {result.ActionMPCost}MP, " +
             $"남은 MP {(playerMP != null ? playerMP.CurrentMP : 0)}. 피해 적용은 아직 연결하지 않았습니다.",
@@ -1002,7 +981,7 @@ public class BattlePlayerActionController : MonoBehaviour
         FindFirstObjectByType<BattleCardPanelToggle>()?.Hide();
         ActionConfirmed?.Invoke(result);
 
-        CharacterMP playerMP = player != null ? player.GetComponent<CharacterMP>() : null;
+        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
         Debug.Log(
             $"카드 사용 확정: {result.Request.DisplayName}, 소모 {result.ActionMPCost}MP, " +
             $"남은 MP {(playerMP != null ? playerMP.CurrentMP : 0)}.",
@@ -1045,12 +1024,10 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         battlePlayerInputReader = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerInputReader);
         battlePlayerInputReader.LeftClickRequested -= HandleLeftClick;
-        battlePlayerInputReader.DoubleLeftClickRequested -= HandleDebugDoubleClick;
         battlePlayerInputReader.RightClickRequested -= HandleRightClick;
         battlePlayerInputReader.CancelRequested -= HandleCancelInput;
         battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
         battlePlayerInputReader.LeftClickRequested += HandleLeftClick;
-        battlePlayerInputReader.DoubleLeftClickRequested += HandleDebugDoubleClick;
         battlePlayerInputReader.RightClickRequested += HandleRightClick;
         battlePlayerInputReader.CancelRequested += HandleCancelInput;
         battlePlayerInputReader.RangeToggleRequested += HandleRangeToggleRequested;

@@ -23,8 +23,9 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     }
 
     private readonly Dictionary<MapInfo, StoreState> stores = new Dictionary<MapInfo, StoreState>();
-    private BattleCardDatabase battleCardDatabase;
-    private CardDatabase originalCardDatabase;
+    [Header("카드 데이터")]
+    [SerializeField] private BattleCardDatabase battleCardDatabase;
+    [SerializeField] private CardDatabase originalCardDatabase;
     private EquipDatabase equipmentDatabase;
     private BattleShopConfig shopConfig;
     private MapInfo currentStore;
@@ -85,12 +86,17 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         Close();
     }
 
+    private void Awake()
+    {
+        equipmentDatabase = BattleEquipmentDatabaseReference.Load()?.Database;
+        shopConfig = BattleShopConfig.Load();
+    }
+
+    /// <summary>기존 호출부 호환용으로 카드 Database 참조를 명시적으로 교체한다.</summary>
     public void Configure(BattleCardDatabase battleCards, CardDatabase originalCards)
     {
         battleCardDatabase = battleCards;
         originalCardDatabase = originalCards;
-        equipmentDatabase = BattleEquipmentDatabaseReference.Load()?.Database;
-        shopConfig = BattleShopConfig.Load();
     }
 
     public bool TryEnter(MapInfo tile)
@@ -113,7 +119,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         }
         viewRoot.SetActive(true);
         AcquireModalLock();
-        BattleGameManager.Instance?.SetShopHudVisible(false, viewRoot);
+        BattleGameManager.Instance?.SetShopOpen(true);
         RefreshView();
         Debug.Log($"[Shop] {tile.name} 상점 진입", tile);
         return true;
@@ -444,7 +450,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         ResetPurchaseSelection();
         HideOfferDetails();
         if (viewRoot != null) viewRoot.SetActive(false);
-        BattleGameManager.Instance?.SetShopHudVisible(true);
+        BattleGameManager.Instance?.SetShopOpen(false);
         ReleaseModalLock();
         currentStore = null;
         currentState = null;
@@ -458,7 +464,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private void AcquireModalLock()
     {
         if (holdsModalLock) return;
-        BattleGameManager.Instance?.BeginModalInteraction();
+        BattleGameManager.Instance?.LockBattleInputForOverlay();
         holdsModalLock = true;
     }
 
@@ -466,7 +472,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         if (!holdsModalLock) return;
         holdsModalLock = false;
-        BattleGameManager.Instance?.EndModalInteraction();
+        BattleGameManager.Instance?.UnlockBattleInputAfterOverlay();
     }
 
     private void OnDisable()
@@ -636,7 +642,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
 
         // EscButton keeps a prefab-authored persistent onClick that calls
         // Event_Store.SetActive(false) directly, bypassing Close() (and therefore
-        // SetShopHudVisible(true)/EndModalInteraction). Replacing the event object
+        // SetShopOpen(false)/UnlockBattleInputAfterOverlay). Replacing the event object
         // drops that legacy call and routes the button through our own cleanup.
         if (binding.EscButton != null)
         {

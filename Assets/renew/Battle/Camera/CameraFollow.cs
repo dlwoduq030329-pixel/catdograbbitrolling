@@ -1,6 +1,9 @@
 using UnityEngine;
 
-/// <summary>대상 위치에 보정값을 더한 지점을 보간 이동으로 추적한다.</summary>
+/// <summary>
+/// 대상 위치에 고정 offset을 더한 지점을 LateUpdate에서 보간 추적하는 단순 레거시 카메라 컴포넌트다.
+/// Moon Battle의 확대·각도·Map 제한은 BattleCameraRig가 담당하므로 같은 Camera에서 동시에 활성화하면 서로 Transform을 덮어쓴다.
+/// </summary>
 public class CameraFollow : MonoBehaviour
 {
     [Header("추적 대상 참조")]

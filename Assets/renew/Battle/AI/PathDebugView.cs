@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// AI가 계산한 최단 경로를 LineRenderer로 표시하는 디버그 전용 컴포넌트다.
+/// R키 디버그 표시에서 AI가 계산한 최단 경로를 Enemy별 LineRenderer로 표시하는 전용 컴포넌트다.
 /// Player 이동 범위가 보이는 동안에는 두 표시가 겹치지 않도록 자동으로 숨긴다.
+/// 실제 이동, 경로 계산 또는 MP 차감에는 관여하지 않는다.
 /// </summary>
 public class PathDebugView : MonoBehaviour
 {
@@ -67,7 +68,10 @@ public class PathDebugView : MonoBehaviour
         hasPath = false;
     }
 
-    /// <summary>경로선 표시기가 없으면 생성하고 디버그용 기본 재질과 굵기를 설정한다.</summary>
+    /// <summary>
+    /// 경로선 표시기가 없으면 런타임에 생성하고 디버그용 기본 재질과 굵기를 설정한다.
+    /// 최종 구조에서는 Enemy Prefab에 LineRenderer를 직접 연결해 런타임 AddComponent와 Material 생성을 제거한다.
+    /// </summary>
     private void EnsureLineRenderer()
     {
         if (lineRenderer != null)

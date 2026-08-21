@@ -2,8 +2,11 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Player와 Enemy가 공유하는 Transform 위치 이동 연출이다.
+/// Player와 Enemy가 공유하는 Transform 위치 이동·회전 연출이다.
 /// 경로, 이동 가능 여부, MP와 행동 규칙은 판단하지 않는다.
+/// MoveToPosition(실제 위치 이동)과 FaceTowards(위치 변화 없이 제자리 회전만)로 역할이 나뉘며,
+/// Player 4곳(BattleCardEffectPipeline/BattleBasicAttackController/BattlePlayerMover x2)과
+/// Enemy 2곳(BattleEnemyActionExecutor/EnemyTurnActor)에서 총 6번 호출된다.
 /// </summary>
 public static class BattleTransformMovement
 {

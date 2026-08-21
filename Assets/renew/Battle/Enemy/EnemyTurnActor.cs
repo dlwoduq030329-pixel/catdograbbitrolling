@@ -44,15 +44,20 @@ public class EnemyTurnActor : MonoBehaviour
     /// 아무 것도 못 했거나, 행동 트리가 대기를 선택한 경우는 false로 남는다.</summary>
     public bool ActedThisTurn { get; private set; }
 
+    // 아래 9개는 전부 이 Enemy 하나가 자기 턴을 처리하는 데 필요한 "런타임 참조"다(공용/싱글턴 아님).
+    // detector: 시야 감지(EnemyDetector, 자식 오브젝트에 있을 수 있음). awareness: 감지 후 기억하는 Target.
+    // pathDebugView: 이동 경로 디버그 표시. characterMP: 이 Enemy의 MP. runtimeData: BattleEnemyData(공격력 등 원본 스탯)로 가는 다리.
+    // behaviorTree: 이동/공격 중 무엇을 할지 판단하는 공용 행동 트리 인스턴스. battleDataPool: 현재 전투의 타일/유닛 풀(Enemy 전체가 공유).
+    // actionExecutor: 실제 이동/기본공격 실행기. mapContext: 타일 조회/다른 Enemy 점유 타일 조회.
     private EnemyDetector detector;
     private EnemyAwareness awareness;
     private PathDebugView pathDebugView;
-    private CharacterMP characterMP;
+    private BattleUnitMP characterMP;
     private BattleEnemyRuntimeData runtimeData;
     private BehaviorNode behaviorTree;
     private BattleDataPool battleDataPool;
     private BattleEnemyActionExecutor actionExecutor;
-    private BattleEnemyMapContext mapContext;
+    private BattleEnemyMapLookup mapContext;
 
     /// <summary>Spawner가 선택한 DB 데이터 중 행동 판단에 필요한 값을 적용한다.</summary>
     public void ConfigureFromData(BattleEnemyData data)
@@ -66,7 +71,9 @@ public class EnemyTurnActor : MonoBehaviour
         attackDamageType = data.attackDamageType;
     }
 
-    /// <summary>적 행동에 필요한 감지, 인식, 경로 표시 참조와 공용 행동 트리를 준비한다.</summary>
+    /// <summary>적 행동에 필요한 감지, 인식, 경로 표시 참조와 공용 행동 트리를 준비한다.
+    /// detector는 GetComponentInChildren로 찾는다 — EnemyDetector가 루트가 아니라 "eyePoint"를 가진
+    /// 자식 오브젝트에 붙는 프리팹 구조를 전제로 하기 때문이다(EnemySpawner.cs의 EnemyDetector 확보 로직과 동일한 이유).</summary>
     private void Awake()
     {
         detector = GetComponentInChildren<EnemyDetector>();
@@ -107,7 +114,7 @@ public class EnemyTurnActor : MonoBehaviour
                 yield break;
             }
 
-            IReadOnlyList<MapInfo> mapTiles = mapContext.ResolveMapTiles(battleDataPool);
+            IReadOnlyList<MapInfo> mapTiles = mapContext.GetMapTiles(battleDataPool);
             MapInfo startTile = MapPathfinder.FindClosestTile(transform.position, mapTiles);
             MapInfo targetTile = MapPathfinder.FindClosestTile(target.position, mapTiles);
             HashSet<MapInfo> occupiedTiles =
@@ -239,7 +246,7 @@ public class EnemyTurnActor : MonoBehaviour
             yield break;
         }
 
-        BattleTransformMovement.FaceTowards(transform, target.position);
+        BattleUnitMotionAnimator.FaceTowards(transform, target.position);
         BattleCharacterAnimationBridge.PlayAttack(gameObject);
         if (attackImpactDelaySeconds > 0f)
             yield return new WaitForSecondsRealtime(attackImpactDelaySeconds);
@@ -248,13 +255,17 @@ public class EnemyTurnActor : MonoBehaviour
         actionExecutor.TryApplyBasicAttackDamage(gameObject, target.gameObject, damage, attackDamageType);
     }
 
-    /// <summary>기억 중인 Target을 우선 사용하고, 없으면 Detector의 직접 감지 결과를 확인한다.</summary>
+    /// <summary>도발(허수아비) 대상이 있으면 최우선으로 반환하고, 없으면 평소 타겟팅(ResolveNormalTarget)으로
+    /// 넘어간다. null 대비용 보험 코드가 아니라 "도발 우선순위"를 구현하는 실제 분기다.</summary>
     private Transform ResolveTarget()
     {
         Transform tauntTarget = BattleScarecrowSummon.FindNearest(transform.position);
         return tauntTarget != null ? tauntTarget : ResolveNormalTarget();
     }
 
+    /// <summary>도발이 없을 때의 일반 타겟팅. awareness가 이미 기억 중인 Target이 있으면 그대로 쓰고,
+    /// 없으면 detector가 직접 감지한 Player를 확인해 처음으로 발견됐다면 awareness에 기억시킨다.
+    /// "해제"가 아니라 "결정/획득" 의미의 Resolve다.</summary>
     private Transform ResolveNormalTarget()
     {
         if (awareness != null && awareness.HasTarget)
@@ -272,16 +283,28 @@ public class EnemyTurnActor : MonoBehaviour
         return null;
     }
 
-    /// <summary>DB에 설정된 타일당 이동 MP 비용을 반환하며 DB가 없으면 1을 사용한다.</summary>
+    /// <summary>DB(runtimeData.Data)에 설정된 타일당 이동 MP 비용을 반환한다. runtimeData/Data가
+    /// 비어 있는 것은 정상 상황이 아니므로, 기본값 1로 대체하되 경고 로그를 남겨 데이터 연결 누락을
+    /// 바로 알아챌 수 있게 한다(사용자 요청: 보험 코드가 조용히 넘어가지 않도록).</summary>
     private int GetMoveCostPerTile()
     {
-        int cost = runtimeData != null && runtimeData.Data != null
-            ? Mathf.Max(1, runtimeData.Data.moveMPCostPerTile)
-            : 1;
+        int cost;
+        if (runtimeData != null && runtimeData.Data != null)
+        {
+            cost = Mathf.Max(1, runtimeData.Data.moveMPCostPerTile);
+        }
+        else
+        {
+            cost = 1;
+            Debug.LogWarning($"{name}: runtimeData/Data가 없어 이동 MP 비용을 기본값 1로 사용합니다.", this);
+        }
+
         BattleStatusEffects status = GetComponent<BattleStatusEffects>();
         return status != null ? status.ModifyMoveCost(cost) : cost;
     }
 
+    /// <summary>이번 적 턴에 사용할 MP를 data.minTurnMP~maxTurnMP 범위에서 매번 새로 무작위로 뽑는다
+    /// (누적/회복이 아니라 매 턴 새 값으로 덮어씀). data가 없으면 MaxMP까지 전부 회복시킨다.</summary>
     private void RollTurnMP()
     {
         if (characterMP == null) return;
@@ -307,7 +330,12 @@ public class EnemyTurnActor : MonoBehaviour
         RollTurnMP();
     }
 
-    /// <summary>이번 턴 기본 공격 순번에 따라 기본 비용을 누적 배율로 계산한다.</summary>
+    /// <summary>같은 턴 안에서 기본 공격을 반복할수록(successfulAttackCount) 비용이 (횟수+1)배로 커지는
+    /// 점진적 증가 계산이다. 이동 후 공격 비용을 다시 계산하는 코드가 아니다.
+    /// 단, 현재 TakeTurn은 기본 공격 1회 성공 시 바로 턴을 끝내므로(위 switch의 Attack 분기, basicAttackCount>=1 -> yield break)
+    /// successfulAttackCount가 0보다 커지는 경우가 실제로 없어 이 배율 로직은 현재 도달 불가 상태다.
+    /// 같은 이유로 위쪽 maxBasicAttacksPerTurn 필드도 선언만 되어 있고 어디서도 읽히지 않는 죽은 설정이다.
+    /// 턴당 여러 번 공격을 허용하는 기믹 Enemy를 만들 때 함께 정리해야 한다.</summary>
     private int GetBasicAttackCost(int successfulAttackCount)
     {
         int baseCost = runtimeData != null && runtimeData.Data != null
@@ -320,6 +348,11 @@ public class EnemyTurnActor : MonoBehaviour
         return status != null ? status.ModifyAttackCost(cost) : cost;
     }
 
+    /// <summary>Player가 아니라 씬에 하나 있는 공용 BattleDataPool(타일/유닛 데이터 풀)을 찾아 캐시한다.
+    /// BattleEnemyTurnRunner.RunAll이 받는 battleDataPool을 TakeTurn까지 전달하지 않는 구조라서
+    /// 이 Enemy가 각자 독립적으로 Find하는 것이며, Scene에 BattleDataPool이 하나뿐이라 결과적으로 같은
+    /// 인스턴스로 귀결될 뿐 RunAll의 시그니처만으로는 이 사실이 보이지 않는다(BattleEnemyTurnRunner.cs 리뷰에서
+    /// 이미 지적한 것과 같은 문제).</summary>
     private void ResolveBattleDataPool()
     {
         if (battleDataPool == null)

@@ -61,7 +61,7 @@ public sealed class BattleBasicAttackController : MonoBehaviour
         MapInfo enemyTile = findClosestTile(enemy.transform.position);
         int attackRange = combatData.BasicAttackRangeTiles;
         int actionCost = GetCurrentAttackCost();
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
 
         if (!BattleBasicAttackService.TryCreatePlan(
                 playerTile,
@@ -143,7 +143,7 @@ public sealed class BattleBasicAttackController : MonoBehaviour
             return;
         }
 
-        BattleTransformMovement.FaceTowards(player.transform, pendingEnemy.transform.position);
+        BattleUnitMotionAnimator.FaceTowards(player.transform, pendingEnemy.transform.position);
         BattleCharacterAnimationBridge.PlayAttack(player);
         attackCountThisTurn++;
         IsAwaitingConfirmation = false;

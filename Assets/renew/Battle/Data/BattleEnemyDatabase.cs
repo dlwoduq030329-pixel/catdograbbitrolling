@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-/// <summary>Enemy의 전투 등급 분류.</summary>
+/// <summary>
+/// Enemy의 전투 등급 분류. BattleCardEffectPipeline이 Elite·Boss만 상태이상 저항(보호 등급)으로 특별 취급한다.
+/// Totem은 현재 어떤 코드에서도 분기하지 않으며 실제 데이터 에셋에도 의도적으로 배정된 사례가 없는 미사용 값이다.
+/// </summary>
 public enum BattleEnemyRank
 {
     [InspectorName("토템")]
@@ -24,7 +27,11 @@ public enum BattleEnemyAttackType
     Ranged
 }
 
-/// <summary>플레이어를 감지하지 못했을 때 수행할 기본 행동.</summary>
+/// <summary>
+/// 플레이어를 감지하지 못했을 때 수행할 기본 행동(설계 의도).
+/// idleBehavior와 아래 wanderRadiusTiles·wanderTilesPerTurn·wanderChance는 현재 어떤 AI 코드에서도 읽지 않는다.
+/// 배회(Wander) 행동 자체가 아직 구현되어 있지 않으므로 기획자가 Inspector에 값을 넣어도 실제 동작에는 영향이 없다.
+/// </summary>
 public enum EnemyIdleBehavior
 {
     [InspectorName("제자리 대기")]
@@ -33,7 +40,11 @@ public enum EnemyIdleBehavior
     Wander
 }
 
-/// <summary>공용 BT 노드의 우선순위를 결정할 AI 성향.</summary>
+/// <summary>
+/// 공용 BT 노드의 우선순위를 결정할 AI 성향(설계 의도).
+/// 현재는 BattleEnemyData.aiProfile에 값만 저장될 뿐 이를 읽어 분기하는 코드가 없어 실제로는 아무 효과가 없다.
+/// AI 스킬 확장 시 연결하거나, 계획이 없으면 필드 자체를 제거한다.
+/// </summary>
 public enum EnemyAIProfileType
 {
     [InspectorName("공격형")]
@@ -138,7 +149,11 @@ public class BattleEnemyDatabase : ScriptableObject
         return index >= 0 && index < enemies.Count ? enemies[index] : null;
     }
 
-    /// <summary>목록에서 임의의 Enemy 데이터를 하나 반환한다.</summary>
+    /// <summary>
+    /// 목록에서 등급·층 구분 없이 완전 무작위로 Enemy 데이터를 하나 반환한다. EnemySpawner가 databaseIndex를
+    /// 지정하지 않았을 때 사용한다. 층별로 출현 등급을 조정하려면 이 무작위 방식으로는 제어할 수 없으므로
+    /// 필터링 가능한 별도 API(GetRandomByRank 등) 추가를 검토한다.
+    /// </summary>
     public BattleEnemyData GetRandom()
     {
         return enemies.Count > 0
@@ -146,7 +161,11 @@ public class BattleEnemyDatabase : ScriptableObject
             : null;
     }
 
-    /// <summary>고유 ID가 일치하는 첫 데이터를 반환한다.</summary>
+    /// <summary>
+    /// 고유 ID가 일치하는 첫 데이터를 반환한다.
+    /// 2026-08-21 기준 코드베이스 전체에서 호출부가 없는 미사용 API다(유령 코드 후보). id 기반 조회가 필요한
+    /// 기능(예: 특정 보스 강제 스폰)이 생기기 전까지는 삭제 후보로 남겨둔다.
+    /// </summary>
     public BattleEnemyData FindById(string id)
     {
         return enemies.Find(enemy => enemy != null && enemy.id == id);

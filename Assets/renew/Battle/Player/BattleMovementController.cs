@@ -136,7 +136,7 @@ public sealed class BattleMovementController : MonoBehaviour
             yield break;
         }
 
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int movementCost = path.Count;
         BattleStatusEffects movementStatus = player.GetComponent<BattleStatusEffects>();
         if (movementStatus != null && path.Count > 0)

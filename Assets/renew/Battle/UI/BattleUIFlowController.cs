@@ -20,6 +20,10 @@ public class BattleUIFlowController : MonoBehaviour
     [SerializeField] private MapGenerator mapGenerator;
     [InspectorName("전투 게임 관리자")]
     [SerializeField] private BattleGameManager battleGameManager;
+    [InspectorName("플레이어 생성기")]
+    [SerializeField] private SpawnPlayer playerSpawner;
+    [InspectorName("적 생성기")]
+    [SerializeField] private EnemySpawner enemySpawner;
 
     [Header("카메라 전환 완료 판정")]
     [InspectorName("전환 카메라")]
@@ -100,20 +104,22 @@ public class BattleUIFlowController : MonoBehaviour
             yield break;
         }
 
-        if (!battleGameManager.RegisterSpawnedPlayerFromBody())
+        if (playerSpawner == null || playerSpawner.SpawnedPlayer == null)
         {
+            Debug.LogError("전투 UI 전환 실패: SpawnPlayer의 생성 결과가 없습니다.", this);
             transitionRoutine = null;
             yield break;
         }
 
-        EnemySpawner enemySpawner = FindFirstObjectByType<EnemySpawner>();
+        battleGameManager.RegisterPlayer(playerSpawner.SpawnedPlayer);
+
         enemySpawner?.SpawnEnemiesOnGeneratedMap(battleGameManager.CurrentPlayer.transform);
 
         yield return WaitForCameraMovementToFinish();
 
         SetCanvasState(showBattle: true);
         SetBattleCanvasInputLocked(true);
-        battleGameManager.BeginModalInteraction();
+        battleGameManager.LockBattleInputForOverlay();
         yield return battleGameManager.PlayStageIntro();
         // SpawnPlayer.waitUnitMApGen()이 맵 생성 완료 시점에 LoadingUI로 이미 페이드 아웃/인을
         // 한 번 재생한다(화면 검게 → HUD 활성화 → 다시 밝게). 여기서 곧바로 이어지는 최초
@@ -123,8 +129,8 @@ public class BattleUIFlowController : MonoBehaviour
         battleGameManager.StartPlayerTurn(showAnnouncement: false);
 
         // showAnnouncement: false라 StartPlayerTurn은 더 이상 모달 잠금을 새로 걸지 않으므로,
-        // 여기서 진입 전용 잠금(BeginModalInteraction)만 정상적으로 해제하면 곧바로 열린다.
-        battleGameManager.EndModalInteraction();
+        // 여기서 진입 전용 잠금(LockBattleInputForOverlay)만 정상적으로 해제하면 곧바로 열린다.
+        battleGameManager.UnlockBattleInputAfterOverlay();
         while (battleGameManager.IsModalInteractionOpen)
         {
             yield return null;

@@ -190,7 +190,7 @@ public sealed class BattleCameraRig : MonoBehaviour
         targetTiltAngle = Mathf.Clamp(targetTiltAngle + degreesDelta, minTiltAngle, maxTiltAngle);
     }
 
-    /// <summary>Transitions between the configured side-view and top-view angle.</summary>
+    /// <summary>현재 목표 각도를 기준으로 Inspector의 사이드뷰 최소 각도와 탑뷰 최대 각도 사이를 전환한다.</summary>
     public void ToggleSideTopView()
     {
         float middle = (minTiltAngle + maxTiltAngle) * 0.5f;
@@ -216,6 +216,10 @@ public sealed class BattleCameraRig : MonoBehaviour
         defaultTiltAngle = Mathf.Clamp(defaultTiltAngle, minTiltAngle, maxTiltAngle);
     }
 
+    /// <summary>
+    /// 최소 각도를 0~90도로 제한하고 최대 각도가 최소 각도보다 작아지지 않도록 Inspector 값을 정규화한다.
+    /// 기본 30~90도 범위는 Inspector에서 추후 변경할 수 있다.
+    /// </summary>
     private void ValidateTiltRange()
     {
         minTiltAngle = Mathf.Clamp(minTiltAngle, 0f, 90f);
@@ -248,6 +252,10 @@ public sealed class BattleCameraRig : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// BattleGameManager의 PlayerRegistered 이벤트를 중복 없이 구독하고 이미 생성된 Player가 있으면 즉시 추적한다.
+    /// 현재 Singleton에 의존하므로 SceneInstaller 직접 참조 연결로 전환할 예정이다.
+    /// </summary>
     private void TryBindGameManager()
     {
         if (BattleGameManager.Instance == null)
@@ -264,6 +272,10 @@ public sealed class BattleCameraRig : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 생성된 모든 MapInfo의 XZ 최소·최대 좌표를 계산해 수동 카메라 이동 한계로 저장한다.
+    /// 현재 Player 등록 때마다 Scene 검색하므로 MapRegistry의 등록 타일을 직접 받도록 변경할 예정이다.
+    /// </summary>
     private void RefreshMapBounds()
     {
         MapInfo[] tiles = FindObjectsByType<MapInfo>(FindObjectsSortMode.None);
@@ -292,6 +304,10 @@ public sealed class BattleCameraRig : MonoBehaviour
         hasMapBounds = true;
     }
 
+    /// <summary>
+    /// Player 또는 임시 포커스 대상에 수동 이동값을 더한 초점이 Map 경계를 벗어나지 않도록 보정한다.
+    /// 카메라 Transform 자체가 아니라 추적 초점을 제한한다.
+    /// </summary>
     private void ClampPanToMap()
     {
         Transform activeTarget = temporaryFocusTarget != null ? temporaryFocusTarget : playerTarget;

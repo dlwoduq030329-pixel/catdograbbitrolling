@@ -5,21 +5,28 @@ using UnityEngine;
 /// <summary>
 /// Enemy가 결정한 이동과 행동 MP 차감을 실제 게임 상태에 적용한다.
 /// Target 선택, 경로 계산, 행동 우선순위와 턴 종료 여부는 판단하지 않는다.
+/// EnemySpawner가 스폰 시 부착하고 EnemyTurnActor가 Configure()로 초기화하며, Enemy 개체마다 각자
+/// 자기 전용 인스턴스를 갖는다(공용/싱글턴 아님, BattleComponentResolver.GetOrAdd가 개별 GameObject에 부착).
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyActionExecutor : MonoBehaviour
 {
-    private CharacterMP characterMP;
+    private BattleUnitMP characterMP;
     private float secondsPerTile = 0.2f;
 
     /// <summary>행동 실행에 필요한 MP와 타일 이동 시간을 전달받는다.</summary>
-    public void Configure(CharacterMP targetMP, float moveSecondsPerTile)
+    public void Configure(BattleUnitMP targetMP, float moveSecondsPerTile)
     {
         characterMP = targetMP;
         secondsPerTile = Mathf.Max(0.01f, moveSecondsPerTile);
     }
 
-    /// <summary>현재 MP로 가능한 만큼 공격 사거리 직전까지 이동하고 도착한 타일마다 MP를 차감한다.</summary>
+    /// <summary>
+    /// 현재 MP로 가능한 만큼 공격 사거리 직전까지 이동하고 도착한 타일마다 MP를 차감한다.
+    /// moveCount는 "MP로 갈 수 있는 칸 수"와 "path.Count - 공격 사거리(최소 1칸)" 중 작은 값으로 정해진다.
+    /// path가 시작 타일(startTile)을 포함하는지 여부에 따라 실제 정지 위치가 한 칸 달라질 수 있으므로
+    /// 이동 결과가 의심되면 실기 QA로 path 구성 규칙을 먼저 확인한다.
+    /// </summary>
     public IEnumerator MoveAlongPath(
         IReadOnlyList<MapInfo> path,
         MapInfo startTile,
@@ -41,6 +48,8 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
             yield break;
         }
 
+        // 시작 타일 표면보다 이 유닛이 얼마나 위에 떠 있는지(피벗 오프셋)를 미리 재둔다.
+        // 경로의 각 타일로 이동할 때 이 오프셋을 함께 더해 이동 중 파묻히거나 붕 뜨지 않게 한다.
         float heightOffset = transform.position.y - startTile.transform.position.y;
 
         BattleCharacterAnimationBridge.PlayWalk(gameObject);
@@ -48,7 +57,7 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
         for (int i = 0; i < moveCount; i++)
         {
             Vector3 targetPosition = path[i].transform.position + Vector3.up * heightOffset;
-            yield return BattleTransformMovement.MoveToPosition(
+            yield return BattleUnitMotionAnimator.MoveToPosition(
                 transform,
                 targetPosition,
                 secondsPerTile);

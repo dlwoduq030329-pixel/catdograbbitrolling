@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Enemy·Player HP 바와 같은 프리팹 인스턴스 안에서 함께 쓰이는 행동력(MP) 게이지 표시 컴포넌트다.
-/// CharacterMP의 MPChanged 이벤트를 받아 Filled Image만 갱신한다.
+/// BattleUnitMP의 MPChanged 이벤트를 받아 Filled Image만 갱신한다.
 /// BattleHealthBarView와 별개로 동작하므로 HP 바가 없는 오브젝트에도 단독으로 붙일 수 있다.
 /// </summary>
 [DisallowMultipleComponent]
@@ -11,7 +11,7 @@ public sealed class BattleManaBarView : MonoBehaviour
 {
     [Header("행동력 데이터")]
     [InspectorName("표시할 행동력")]
-    [SerializeField] private CharacterMP targetMP;
+    [SerializeField] private BattleUnitMP targetMP;
 
     [Header("행동력 바 UI")]
     [InspectorName("행동력 채움 이미지 (Filled)")]
@@ -56,7 +56,7 @@ public sealed class BattleManaBarView : MonoBehaviour
     }
 
     /// <summary>표시할 행동력 컴포넌트를 연결한다.</summary>
-    public void Bind(CharacterMP mp)
+    public void Bind(BattleUnitMP mp)
     {
         Unsubscribe();
         targetMP = mp;

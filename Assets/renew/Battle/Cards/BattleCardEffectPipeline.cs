@@ -8,6 +8,10 @@ using UnityEngine;
 /// </summary>
 internal static class BattleCardEffectPipeline
 {
+    /// <summary>
+    /// 카드 한 번을 준비·실행하는 데 필요한 입력과 외부 기능을 묶는다.
+    /// 현재 이름과 callback 의존성이 추상적이므로 추후 CardEffectExecutionInput과 직접 참조 구조로 정리한다.
+    /// </summary>
     internal sealed class Context
     {
         public GameObject Player;
@@ -23,11 +27,16 @@ internal static class BattleCardEffectPipeline
         public Color PersistentAreaColor;
     }
 
+    /// <summary>Confirm 전에 검증과 대상 계산을 마친 실행 가능한 효과 단계 목록.</summary>
     internal sealed class PreparedUse
     {
         internal readonly List<PreparedEffect> Effects = new List<PreparedEffect>();
     }
 
+    /// <summary>
+    /// 효과 데이터 한 단계와 확정 대상, 이동·소환 계획을 함께 보관한다.
+    /// Execute는 이 사전 계산 결과를 사용하므로 Preview와 실제 실행의 판정이 달라지는 것을 막는다.
+    /// </summary>
     internal sealed class PreparedEffect
     {
         internal BattleCardEffectData Data;
@@ -37,6 +46,11 @@ internal static class BattleCardEffectPipeline
         internal bool IsLegacyFallback;
     }
 
+    /// <summary>
+    /// 카드 효과를 목록 순서대로 읽어 대상과 이동 계획을 미리 계산한다.
+    /// 실패한 단계가 cancelCardOnFailure이면 카드 전체를 거부하고, 아니면 해당 단계만 건너뛴다.
+    /// 성공한 경우에만 Execute에 전달할 PreparedUse를 반환하며 이 단계에서는 HP·위치·상태를 변경하지 않는다.
+    /// </summary>
     internal static bool TryPrepare(Context context, out PreparedUse prepared, out string failureReason)
     {
         prepared = new PreparedUse();
@@ -81,6 +95,10 @@ internal static class BattleCardEffectPipeline
         return true;
     }
 
+    /// <summary>
+    /// Confirm이 끝난 카드의 준비된 효과를 데이터 목록 순서대로 실제 적용한다.
+    /// 이동, 피해, 회복, 상태, 소환을 여기서 분기하고 마지막에 Legacy 표현 브릿지로 VFX를 요청한다.
+    /// </summary>
     internal static void Execute(Context context, PreparedUse prepared)
     {
         foreach (PreparedEffect step in prepared.Effects)
@@ -186,6 +204,10 @@ internal static class BattleCardEffectPipeline
             context.Card.category);
     }
 
+    /// <summary>
+    /// 새 effects 목록이 있으면 그대로 사용하고, 비어 있으면 기존 카드의 category와 Request.Power로 임시 효과 한 개를 만든다.
+    /// 이 fallback은 이전 카드 데이터 호환용이며 데이터 이전 완료 후 삭제 대상이다.
+    /// </summary>
     private static List<BattleCardEffectData> BuildEffectiveList(Context context)
     {
         if (context.Card.effects != null && context.Card.effects.Count > 0)
@@ -213,6 +235,10 @@ internal static class BattleCardEffectPipeline
         return new List<BattleCardEffectData> { fallback };
     }
 
+    /// <summary>
+    /// 효과 종류별 필수 대상·수치·이동 가능 여부를 검사하고 필요한 Movement/Summon 계획을 저장한다.
+    /// false이면 failure에 사용자가 이해할 수 있는 실패 이유를 기록한다.
+    /// </summary>
     private static bool ValidateAndPrepareStep(Context context, PreparedEffect step, out string failure)
     {
         failure = string.Empty;
@@ -413,7 +439,7 @@ internal static class BattleCardEffectPipeline
                 BattleDamageService.TryApplyDamage(context.Player, target, amount, type, out _);
         }
         if (targets.Count > 0 && targets[0] != null)
-            BattleTransformMovement.FaceTowards(context.Player.transform, targets[0].transform.position);
+            BattleUnitMotionAnimator.FaceTowards(context.Player.transform, targets[0].transform.position);
     }
 
     private static void ExecuteChainDamage(Context context, List<GameObject> targets, float amount)

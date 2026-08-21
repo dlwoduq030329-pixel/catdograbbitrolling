@@ -828,7 +828,6 @@ GameObject:
   - component: {fileID: 8379199364670783684}
   - component: {fileID: 8101901153000597972}
   - component: {fileID: 2210873187191890481}
-  - component: {fileID: 4087792783783685542}
   - component: {fileID: 7351048926112046382}
   m_Layer: 9
   m_Name: Bunny_Player
@@ -952,18 +951,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &4087792783783685542
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4335434078742904821}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbb9ae5077a2442391d247e797eabab6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &7351048926112046382
 MonoBehaviour:
   m_ObjectHideFlags: 0

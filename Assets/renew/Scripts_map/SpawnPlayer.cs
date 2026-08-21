@@ -22,6 +22,12 @@ public class SpawnPlayer : MonoBehaviour
 
     private GameObject player;
 
+    /// <summary>
+    /// PlayerPosInit이 실제로 생성한 전투 Player다.
+    /// 다른 시스템이 Player Body의 자식 순서를 추측하지 않고 생성 결과를 직접 받을 때 사용한다.
+    /// </summary>
+    public GameObject SpawnedPlayer => player;
+
 
     // Start is called before the first frame update
     void Start()

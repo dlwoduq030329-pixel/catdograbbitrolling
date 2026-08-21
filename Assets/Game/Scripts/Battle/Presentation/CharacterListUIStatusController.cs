@@ -46,7 +46,7 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
     // 호출이라 코드로 가로채지 않았다). 대신 이 컴포넌트가 같은 GameObject에 붙어있으므로
     // OnEnable/OnDisable이 열고 닫을 때마다 항상 같이 호출된다는 점을 이용해 여기서 배경
     // 입력과 카메라를 잠그고 푼다.
-    // 모달(BeginModalInteraction) 동안 BattleGameManager가 HUDCanvas 전체를 CanvasGroup으로
+    // 오버레이 잠금 동안 BattleGameManager가 HUDCanvas 전체를 CanvasGroup으로
     // 잠그는데, 이 패널 자신이 HUDCanvas 안에 중첩되어 있어(HUDCanvas.prefab의 자식) 같이
     // 잠기면 EscButton조차 눌리지 않아 패널을 닫을 수 없게 된다. 이 패널 자신의 GameObject에
     // ignoreParentGroups = true인 CanvasGroup을 붙여 부모(HUDCanvas)의 잠금에서 예외로 둔다.
@@ -59,14 +59,14 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
 
     private void LockBattleInput()
     {
-        BattleGameManager.Instance?.BeginModalInteraction();
+        BattleGameManager.Instance?.LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
     }
 
     private void UnlockBattleInput()
     {
         BattleGameManager manager = BattleGameManager.Instance;
-        manager?.EndModalInteraction();
+        manager?.UnlockBattleInputAfterOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(
             manager == null || !manager.IsModalInteractionOpen);
     }

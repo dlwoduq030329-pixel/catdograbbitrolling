@@ -23,8 +23,9 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
 
     private readonly HashSet<MapInfo> openedTiles = new HashSet<MapInfo>();
     private readonly Dictionary<MapInfo, PendingReward> pendingRewards = new Dictionary<MapInfo, PendingReward>();
-    private BattleCardDatabase battleCardDatabase;
-    private CardDatabase originalCardDatabase;
+    [Header("카드 데이터")]
+    [SerializeField] private BattleCardDatabase battleCardDatabase;
+    [SerializeField] private CardDatabase originalCardDatabase;
     private EquipDatabase equipmentDatabase;
     private BattleShopConfig shopConfig;
     private Canvas canvas;
@@ -45,12 +46,17 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     private bool holdsModalLock;
     private bool rewardReady;
 
+    private void Awake()
+    {
+        equipmentDatabase = BattleEquipmentDatabaseReference.Load()?.Database;
+        shopConfig = BattleShopConfig.Load();
+    }
+
+    /// <summary>기존 호출부 호환용으로 카드 Database 참조를 명시적으로 교체한다.</summary>
     public void Configure(BattleCardDatabase battleCards, CardDatabase originalCards)
     {
         battleCardDatabase = battleCards;
         originalCardDatabase = originalCards;
-        equipmentDatabase = BattleEquipmentDatabaseReference.Load()?.Database;
-        shopConfig = BattleShopConfig.Load();
     }
 
     public bool TryOpen(MapInfo tile)
@@ -308,7 +314,7 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     private void AcquireModalLock()
     {
         if (holdsModalLock) return;
-        BattleGameManager.Instance?.BeginModalInteraction();
+        BattleGameManager.Instance?.LockBattleInputForOverlay();
         holdsModalLock = true;
     }
 
@@ -316,7 +322,7 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     {
         if (!holdsModalLock) return;
         holdsModalLock = false;
-        BattleGameManager.Instance?.EndModalInteraction();
+        BattleGameManager.Instance?.UnlockBattleInputAfterOverlay();
     }
 
     private void OnDisable()

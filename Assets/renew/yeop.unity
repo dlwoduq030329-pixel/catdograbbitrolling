@@ -3315,11 +3315,6 @@ MonoBehaviour:
   turnEndButtonSprite: {fileID: 1195909257, guid: aa3ffc90dcf99674ca55d97b10b981b7,
     type: 3}
   turnButtonController: {fileID: 0}
-  turnDebugText: {fileID: 858131484}
-  diceDebugText: {fileID: 1265522236}
-  turnDebugView: {fileID: 0}
-  playerHpDebugText: {fileID: 1200953669}
-  playerShieldDebugText: {fileID: 1610151307}
   playerBody: {fileID: 530456153}
   playerMPUI: {fileID: 488680105}
   playerActionController: {fileID: 867191721}
@@ -4570,8 +4565,6 @@ MonoBehaviour:
   enemyDatabase: {fileID: 11400000, guid: ce0f2132c8fa5264d8c778e5f2bd3565, type: 2}
   useRandomDatabaseEntry: 1
   databaseIndex: 0
-  enemyPrefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3,
-    type: 3}
   enemyCount: 5
   sanctuarySize: {x: 5, y: 5}
   defaultSpawnHeight: 0.5

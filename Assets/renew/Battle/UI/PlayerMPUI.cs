@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>CharacterMP 변경 이벤트를 Filled Image와 선택적 수치 Text에 표시한다.</summary>
+/// <summary>BattleUnitMP 변경 이벤트를 Filled Image와 선택적 수치 Text에 표시한다.</summary>
 public class PlayerMPUI : MonoBehaviour
 {
     [Header("플레이어 행동력 화면 참조")]
@@ -11,7 +11,7 @@ public class PlayerMPUI : MonoBehaviour
     [InspectorName("행동력 수치 텍스트(선택 사항)")]
     [SerializeField] private TMP_Text manaText;
 
-    private CharacterMP boundMP;
+    private BattleUnitMP boundMP;
 
     /// <summary>화면 오브젝트 파괴 시 행동력 변경 이벤트 구독을 안전하게 해제한다.</summary>
     private void OnDestroy()
@@ -19,8 +19,8 @@ public class PlayerMPUI : MonoBehaviour
         Unbind();
     }
 
-    /// <summary>표시할 CharacterMP를 교체하고 이벤트 구독을 안전하게 갱신한다.</summary>
-    public void Bind(CharacterMP characterMP)
+    /// <summary>표시할 BattleUnitMP를 교체하고 이벤트 구독을 안전하게 갱신한다.</summary>
+    public void Bind(BattleUnitMP characterMP)
     {
         if (boundMP == characterMP)
         {

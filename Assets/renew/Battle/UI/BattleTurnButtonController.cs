@@ -11,12 +11,17 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class BattleTurnButtonController : MonoBehaviour
 {
+    [Header("턴 화면 참조")]
+    [SerializeField] private Button turnEndButton;
+    [SerializeField] private Button diceButton;
+    [SerializeField] private BattleCardPanelToggle cardPanel;
+
     [Header("입력")]
     [InspectorName("턴 종료 단축키")]
     [SerializeField] private KeyCode endTurnKey = KeyCode.E;
 
-    private Button turnEndButton;
     private UnityAction endTurnAction;
+    private UnityAction rollDiceAction;
 
     private void OnEnable()
     {
@@ -45,30 +50,55 @@ public sealed class BattleTurnButtonController : MonoBehaviour
     }
 
     /// <summary>턴 종료 버튼에 실행 콜백을 연결한다.</summary>
-    public void Bind(Button targetTurnEndButton, UnityAction onEndTurn)
+    public void Bind(UnityAction onEndTurn, UnityAction onRollDice)
     {
         RemoveRuntimeListeners();
 
-        turnEndButton = targetTurnEndButton;
         endTurnAction = onEndTurn;
+        rollDiceAction = onRollDice;
 
         if (turnEndButton != null)
         {
             BattlePointerSelectionClearer.Ensure(turnEndButton.gameObject);
-            RegisterRuntimeListener();
+        }
+
+        if (diceButton != null)
+        {
+            BattlePointerSelectionClearer.Ensure(diceButton.gameObject);
+        }
+
+        RegisterRuntimeListener();
+    }
+
+    /// <summary>Manager가 전달한 턴 상태에 맞춰 턴 종료·주사위 버튼을 갱신한다.</summary>
+    public void ApplyTurnState(
+        bool isPlayerTurn,
+        bool hasRolledDice,
+        bool battleStopped,
+        bool overlayOpen)
+    {
+        if (turnEndButton != null)
+        {
+            turnEndButton.gameObject.SetActive(isPlayerTurn);
+            turnEndButton.interactable = isPlayerTurn && !battleStopped && !overlayOpen;
+        }
+
+        if (diceButton != null && diceButton != turnEndButton)
+        {
+            bool canRoll = isPlayerTurn && !hasRolledDice && !battleStopped;
+            diceButton.gameObject.SetActive(canRoll);
+            diceButton.interactable = canRoll && !overlayOpen;
         }
     }
 
-    /// <summary>현재 플레이어 턴 여부에 맞춰 턴 종료 버튼의 활성·사용 가능 상태를 갱신한다.</summary>
-    public void ApplyTurnState(bool isPlayerTurn)
-    {
-        if (turnEndButton == null)
-        {
-            return;
-        }
+    public void ShowCardPanel() => cardPanel?.Show();
+    public void HideCardPanel() => cardPanel?.Hide();
 
-        turnEndButton.gameObject.SetActive(isPlayerTurn);
-        turnEndButton.interactable = isPlayerTurn;
+    /// <summary>Player 사망 등으로 전투가 중지됐을 때 모든 턴 입력을 즉시 비활성화한다.</summary>
+    public void DisableAllInput()
+    {
+        if (turnEndButton != null) turnEndButton.interactable = false;
+        if (diceButton != null) diceButton.interactable = false;
     }
 
     private void ExecuteEndTurn()
@@ -78,14 +108,23 @@ public sealed class BattleTurnButtonController : MonoBehaviour
 
     private void RegisterRuntimeListener()
     {
-        if (turnEndButton == null)
+        if (turnEndButton != null)
         {
-            return;
+            turnEndButton.onClick.RemoveListener(ExecuteEndTurn);
+            turnEndButton.onClick.AddListener(ExecuteEndTurn);
         }
 
-        // Canvas 활성화 순서가 바뀌어도 중복 없이 버튼 동작을 복구한다.
-        turnEndButton.onClick.RemoveListener(ExecuteEndTurn);
-        turnEndButton.onClick.AddListener(ExecuteEndTurn);
+        if (diceButton != null && diceButton != turnEndButton &&
+            diceButton.GetComponent<BattleDiceRollButton>() == null)
+        {
+            diceButton.onClick.RemoveListener(ExecuteRollDice);
+            diceButton.onClick.AddListener(ExecuteRollDice);
+        }
+    }
+
+    private void ExecuteRollDice()
+    {
+        rollDiceAction?.Invoke();
     }
 
     private void OnDestroy()
@@ -98,6 +137,12 @@ public sealed class BattleTurnButtonController : MonoBehaviour
         if (turnEndButton != null)
         {
             turnEndButton.onClick.RemoveListener(ExecuteEndTurn);
+        }
+
+
+        if (diceButton != null)
+        {
+            diceButton.onClick.RemoveListener(ExecuteRollDice);
         }
     }
 }

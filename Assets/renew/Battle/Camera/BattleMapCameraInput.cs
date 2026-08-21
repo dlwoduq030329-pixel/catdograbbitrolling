@@ -39,7 +39,10 @@ public class BattleMapCameraInput : MonoBehaviour
     private Vector3 previousMousePosition;
     private bool inputEnabled;
 
-    /// <summary>씬 참조가 비어 있으면 주 카메라와 추적 컴포넌트를 자동으로 찾는다.</summary>
+    /// <summary>
+    /// 같은 Camera GameObject의 BattleCameraRig를 확보한다.
+    /// 현재 누락 시 런타임 생성하지만 최종 Scene에서는 Inspector에 미리 연결해 숨은 컴포넌트 생성을 제거한다.
+    /// </summary>
     private void Awake()
     {
         cameraRig = GetComponent<BattleCameraRig>();
@@ -72,12 +75,17 @@ public class BattleMapCameraInput : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Home))
         {
+            // Home은 수동 이동과 카메라 각도를 모두 초기값으로 되돌리는 숨은 편의 기능이다.
+            // 키 설정을 Inspector로 노출하거나 실제 사용 요구가 없으면 제거할 예정이다.
             cameraRig.ResetManualView();
             cameraRig.ResetTilt();
         }
     }
 
-    /// <summary>Battle Canvas 전환 상태에 맞춰 카메라 수동 입력을 켜거나 끈다.</summary>
+    /// <summary>
+    /// 상점·캐릭터 정보·배너 같은 모달 UI가 열릴 때 카메라 수동 입력을 켜거나 끈다.
+    /// 재활성화 순간 이전 드래그 좌표가 남아 카메라가 튀지 않도록 현재 마우스 위치도 다시 저장한다.
+    /// </summary>
     public void SetInputEnabled(bool enabled)
     {
         inputEnabled = enabled;
@@ -102,7 +110,7 @@ public class BattleMapCameraInput : MonoBehaviour
         cameraInput.SetInputEnabled(enabled);
     }
 
-    /// <summary>마우스 휠 입력으로 직교 카메라 크기를 제한 범위 안에서 변경한다.</summary>
+    /// <summary>Pointer가 조작 가능한 UI 위에 없을 때 마우스 휠을 카메라-대상 거리 변화로 전달한다.</summary>
     private void HandleZoom()
     {
         if (BattlePlayerInputReader.IsPointerOverInteractiveUI(Input.mousePosition))

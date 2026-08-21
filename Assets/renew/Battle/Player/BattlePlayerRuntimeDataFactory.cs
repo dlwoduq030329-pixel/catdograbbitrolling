@@ -9,10 +9,10 @@ public static class BattlePlayerRuntimeDataFactory
     /// <summary>디버그 단계에서 레거시 HP 값을 찾지 못했을 때 사용하는 기본 최대 체력이다.</summary>
     private const float DefaultMaxHealth = 15f;
 
-    /// <summary>CharacterMP, PlayerCombatData, BattleHealth를 보장하고 현재 Player 데이터로 초기화한다.</summary>
+    /// <summary>BattleUnitMP, PlayerCombatData, BattleHealth를 보장하고 현재 Player 데이터로 초기화한다.</summary>
     public static bool TryCreate(
         GameObject player,
-        out CharacterMP characterMP,
+        out BattleUnitMP characterMP,
         out PlayerCombatData combatData,
         out BattleHealth battleHealth)
     {
@@ -24,10 +24,10 @@ public static class BattlePlayerRuntimeDataFactory
             return false;
         }
 
-        characterMP = player.GetComponent<CharacterMP>();
+        characterMP = player.GetComponent<BattleUnitMP>();
         if (characterMP == null)
         {
-            characterMP = player.AddComponent<CharacterMP>();
+            characterMP = player.AddComponent<BattleUnitMP>();
         }
 
         combatData = player.GetComponent<PlayerCombatData>();

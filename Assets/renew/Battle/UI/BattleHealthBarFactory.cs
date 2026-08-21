@@ -24,7 +24,7 @@ public static class BattleHealthBarFactory
     public static BattleHealthBarView AttachEnemyBar(
         GameObject enemy,
         BattleHealth health,
-        CharacterMP mp = null,
+        BattleUnitMP mp = null,
         Sprite typeIcon = null)
     {
         if (enemy == null || health == null)

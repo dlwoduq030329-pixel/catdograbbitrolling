@@ -4486,8 +4486,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   turnEndButton: {fileID: 1183061747}
   diceButton: {fileID: 135291263}
-  turnDebugText: {fileID: 565509584}
-  diceDebugText: {fileID: 2039706002}
   totalTurn: 1
   isPlayerTurn: 1
   diceRolledThisTurn: 0

@@ -67,7 +67,7 @@ public sealed class BattleCardActionController : MonoBehaviour
             return false;
         }
 
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int cardCost = GetModifiedCardCost(cardUse.ActionRequest.MPCost, cardUse.CardData);
         if (playerMP == null || !playerMP.CanSpend(cardCost))
         {
@@ -142,7 +142,7 @@ public sealed class BattleCardActionController : MonoBehaviour
             return;
         }
 
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
+        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int cardCost = GetModifiedCardCost(pendingUse.ActionRequest.MPCost, pendingUse.CardData);
         if (playerMP == null || !playerMP.CanSpend(cardCost))
         {
@@ -204,209 +204,6 @@ public sealed class BattleCardActionController : MonoBehaviour
         BattleCardEffectPipeline.Execute(context, prepared);
         BattleActionResult result = new BattleActionResult(
             resultRequest, player, resultTarget, Array.Empty<MapInfo>(), 0, cardCost);
-        ClearStateAndRange();
-        Confirmed?.Invoke(result);
-    }
-
-    // 이전 카드별 실행 경로. 공용 파이프라인 전환 비교용으로만 남겨 두며 호출하지 않는다.
-    private void ConfirmLegacy()
-    {
-        if (!IsAwaitingConfirmation || pendingUse == null || drawSystem == null || player == null)
-        {
-            return;
-        }
-
-        bool isWhirlwind = IsWhirlwindCard();
-        bool usesAutomaticTeleportTarget = BattleCardEffectExecutor.HasEffect(
-            pendingUse.CardData,
-            BattleCardEffectType.Teleport);
-        if (RequiresExternalTarget() && !usesAutomaticTeleportTarget && !isWhirlwind &&
-            (selectedTarget == null || selectedTargetTile == null ||
-             !selectedTarget.activeInHierarchy || !rangeTiles.Contains(selectedTargetTile)))
-        {
-            ReturnToTargetSelection();
-            return;
-        }
-
-        CharacterMP playerMP = player.GetComponent<CharacterMP>();
-        int cardCost = GetModifiedCardCost(pendingUse.ActionRequest.MPCost, pendingUse.CardData);
-        bool isDamageCard = IsDamageCardAgainstSelectedTarget() && !isWhirlwind;
-        bool hasHealingEffect = BattleCardEffectExecutor.HasEffect(
-            pendingUse.CardData,
-            BattleCardEffectType.Heal);
-        bool hasShieldEffect = BattleCardEffectExecutor.HasEffect(
-            pendingUse.CardData,
-            BattleCardEffectType.Shield);
-        bool hasDashEffect = BattleCardEffectExecutor.HasEffect(
-            pendingUse.CardData,
-            BattleCardEffectType.Dash);
-        bool hasTeleportEffect = BattleCardEffectExecutor.HasEffect(
-            pendingUse.CardData,
-            BattleCardEffectType.Teleport);
-        if (usesAutomaticTeleportTarget &&
-            (selectedTarget == null || selectedTargetTile == null || !selectedTarget.activeInHierarchy))
-        {
-            Debug.LogWarning("자동 선택된 순간이동 대상이 더 이상 유효하지 않습니다.", this);
-            CancelAll();
-            return;
-        }
-        float cardDamage = BattleCardEffectExecutor.GetTotalAmount(
-            pendingUse.CardData,
-            BattleCardEffectType.Damage);
-        if (cardDamage <= 0f)
-        {
-            cardDamage = pendingUse.ActionRequest.Power;
-        }
-        BattleCardMovementService.MovementPlan movementPlan = null;
-        if (hasDashEffect && !BattleCardMovementService.TryCreateDashPlan(
-                player,
-                selectedTarget,
-                BattleCardEffectExecutor.GetMaximumDistance(pendingUse.CardData, BattleCardEffectType.Dash),
-                out movementPlan,
-                out string dashFailureReason))
-        {
-            Debug.LogWarning($"카드 돌진 사용 불가: {dashFailureReason}", this);
-            return;
-        }
-
-        if (hasTeleportEffect && !BattleCardMovementService.TryCreateTeleportPlan(
-                player,
-                selectedTarget,
-                out movementPlan,
-                out string teleportFailureReason))
-        {
-            Debug.LogWarning($"카드 순간이동 사용 불가: {teleportFailureReason}", this);
-            return;
-        }
-        BattleHealth targetHealth = isDamageCard && selectedTarget != null
-            ? selectedTarget.GetComponent<BattleHealth>()
-            : null;
-        if (isDamageCard &&
-             (targetHealth == null || targetHealth.IsDead || cardDamage <= 0f))
-        {
-            Debug.LogWarning("카드 피해 대상의 체력 또는 카드 위력이 올바르지 않습니다.", this);
-            ReturnToTargetSelection();
-            return;
-        }
-
-        if (hasHealingEffect && !BattleCardEffectExecutor.CanApplyHealing(
-                pendingUse.CardData,
-                selectedTarget,
-                out string healingFailureReason))
-        {
-            Debug.LogWarning($"카드 회복 사용 불가: {healingFailureReason}", this);
-            return;
-        }
-
-        if (hasShieldEffect && !BattleCardEffectExecutor.CanApplyShield(
-                pendingUse.CardData,
-                selectedTarget,
-                out string shieldFailureReason))
-        {
-            Debug.LogWarning($"카드 보호막 사용 불가: {shieldFailureReason}", this);
-            return;
-        }
-
-        if (playerMP == null || !playerMP.CanSpend(cardCost) || !drawSystem.ConfirmCardUse(pendingUse))
-        {
-            CancelAll();
-            return;
-        }
-
-        if (!playerMP.TrySpend(cardCost))
-        {
-            CancelAll();
-            return;
-        }
-
-        if (movementPlan != null)
-        {
-            BattleCardMovementService.ApplyMovement(player, movementPlan);
-        }
-
-        if (isWhirlwind)
-        {
-            ExecuteWhirlwind(cardDamage);
-        }
-
-        if (isDamageCard)
-        {
-            BattleDamageType damageType = pendingUse.CardData.cardType == BattleCardType.MagicDamage
-                ? BattleDamageType.Magic
-                : BattleDamageType.Physical;
-            if (!BattleDamageService.TryApplyDamage(
-                    player,
-                    selectedTarget,
-                    cardDamage,
-                    damageType,
-                    out BattleDamageResult damageResult))
-            {
-                Debug.LogError("카드 사용은 확정됐지만 Enemy 피해 적용에 실패했습니다.", this);
-            }
-            else
-            {
-                BattleTransformMovement.FaceTowards(player.transform, selectedTarget.transform.position);
-                BattleCharacterAnimationBridge.PlayAttack(player);
-                Debug.Log(
-                    $"{pendingUse.ActionRequest.DisplayName}: {damageResult.AppliedDamage:0.##} 피해, " +
-                    $"남은 HP {damageResult.RemainingHealth:0.##}",
-                    selectedTarget);
-            }
-        }
-
-
-        if (BattleCardEffectExecutor.HasEffect(pendingUse.CardData, BattleCardEffectType.Push) &&
-            selectedTarget != null && selectedTarget.activeInHierarchy)
-        {
-            int pushDistance = BattleCardEffectExecutor.GetMaximumDistance(
-                pendingUse.CardData,
-                BattleCardEffectType.Push);
-            int pushForce = BattleCardEffectExecutor.GetMaximumPushForce(pendingUse.CardData);
-            BattleCardMovementService.PushResult pushResult = BattleCardMovementService.TryPush(
-                player,
-                selectedTarget,
-                pushDistance,
-                pushForce,
-                out int pushedTiles);
-            Debug.Log(
-                $"{pendingUse.ActionRequest.DisplayName}: 밀치기 결과 {pushResult}, 이동 {pushedTiles}칸.",
-                selectedTarget);
-        }
-
-        ApplyCardStatusEffects();
-
-
-        if (hasHealingEffect && BattleCardEffectExecutor.TryApplyHealing(
-                pendingUse.CardData,
-                selectedTarget,
-                out float appliedHealing))
-        {
-            BattleHealth healedHealth = selectedTarget.GetComponent<BattleHealth>();
-            Debug.Log(
-                $"{pendingUse.ActionRequest.DisplayName}: 체력 {appliedHealing:0.##} 회복, " +
-                $"현재 HP {healedHealth.CurrentHealth:0.##}/{healedHealth.MaxHealth:0.##}",
-                selectedTarget);
-        }
-
-        if (hasShieldEffect && BattleCardEffectExecutor.TryApplyShield(
-                pendingUse.CardData,
-                selectedTarget,
-                out float appliedShield))
-        {
-            BattleHealth shieldHealth = selectedTarget.GetComponent<BattleHealth>();
-            Debug.Log(
-                $"{pendingUse.ActionRequest.DisplayName}: 보호막 {appliedShield:0.##} 획득, " +
-                $"현재 보호막 {shieldHealth.CurrentShield:0.##}",
-                selectedTarget);
-        }
-
-        BattleActionResult result = new BattleActionResult(
-            pendingUse.ActionRequest,
-            player,
-            selectedTarget,
-            Array.Empty<MapInfo>(),
-            0,
-            cardCost);
         ClearStateAndRange();
         Confirmed?.Invoke(result);
     }
@@ -574,21 +371,6 @@ public sealed class BattleCardActionController : MonoBehaviour
                targetType == BattleCardTargetType.Tile;
     }
 
-    private bool IsDamageCardAgainstSelectedTarget()
-    {
-        if (pendingUse == null || pendingUse.CardData == null)
-        {
-            return false;
-        }
-
-        BattleCardData card = pendingUse.CardData;
-        bool targetsEnemy = card.targetType == BattleCardTargetType.Enemy ||
-                            card.targetType == BattleCardTargetType.Character;
-        bool hasDamageType = card.cardType == BattleCardType.PhysicalDamage ||
-                             card.cardType == BattleCardType.MagicDamage;
-        return card.category == BattleCardCategory.Attack && targetsEnemy && hasDamageType;
-    }
-
     private bool IsWhirlwindCard()
     {
         return pendingUse != null && pendingUse.CardData != null &&
@@ -606,43 +388,6 @@ public sealed class BattleCardActionController : MonoBehaviour
             : baseCost;
     }
 
-    private void ApplyCardStatusEffects()
-    {
-        if (pendingUse == null || pendingUse.CardData == null || pendingUse.CardData.effects == null)
-        {
-            return;
-        }
-
-        foreach (BattleCardEffectData effect in pendingUse.CardData.effects)
-        {
-            if (effect == null || effect.effectType != BattleCardEffectType.ApplyStatus ||
-                !BattleStatusEffectCodes.TryParse(effect.effectCode, out BattleStatusType statusType))
-            {
-                continue;
-            }
-
-            int turns = Mathf.Max(1, effect.durationTurns);
-            if (effect.effectTarget == BattleCardEffectTarget.Self)
-            {
-                ApplyStatusToUnit(player, statusType, turns);
-            }
-            else if (effect.effectTarget == BattleCardEffectTarget.AllEnemies)
-            {
-                foreach (EnemyTurnActor enemy in FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None))
-                {
-                    if (enemy != null && enemy.gameObject.activeInHierarchy)
-                    {
-                        ApplyStatusToUnit(enemy.gameObject, statusType, turns);
-                    }
-                }
-            }
-            else if (selectedTarget != null && selectedTarget != player)
-            {
-                ApplyStatusToUnit(selectedTarget, statusType, turns);
-            }
-        }
-    }
-
     private void ApplyStatusToUnit(GameObject unit, BattleStatusType type, int turns)
     {
         if (unit == null) return;
@@ -658,67 +403,6 @@ public sealed class BattleCardActionController : MonoBehaviour
                 else control.ApplyRoot(turns);
             }
         }
-    }
-
-    /// <summary>플레이어 주변 1칸의 적을 북쪽부터 시계 방향으로 피해 후 밀치기 처리한다.</summary>
-    private void ExecuteWhirlwind(float damage)
-    {
-        MapInfo playerTile = findClosestTile != null ? findClosestTile(player.transform.position) : null;
-        if (playerTile == null)
-        {
-            return;
-        }
-
-        List<GameObject> targets = CollectWhirlwindTargets(playerTile);
-        if (targets.Count == 0)
-        {
-            return;
-        }
-
-        BattleDamageType damageType = pendingUse.CardData.cardType == BattleCardType.MagicDamage
-            ? BattleDamageType.Magic
-            : BattleDamageType.Physical;
-        foreach (GameObject target in targets)
-        {
-            if (target == null || !target.activeInHierarchy)
-            {
-                continue;
-            }
-
-            BattleDamageService.TryApplyDamage(
-                player,
-                target,
-                damage,
-                damageType,
-                out _);
-        }
-
-        int pushDistance = BattleCardEffectExecutor.GetMaximumDistance(
-            pendingUse.CardData,
-            BattleCardEffectType.Push);
-        int pushForce = BattleCardEffectExecutor.GetMaximumPushForce(pendingUse.CardData);
-        foreach (GameObject target in targets)
-        {
-            if (target == null || !target.activeInHierarchy)
-            {
-                continue;
-            }
-
-            BattleHealth health = target.GetComponent<BattleHealth>();
-            if (health == null || health.IsDead || !target.activeInHierarchy)
-            {
-                continue;
-            }
-
-            BattleCardMovementService.TryPush(
-                player,
-                target,
-                pushDistance,
-                pushForce,
-                out _);
-        }
-
-        BattleCharacterAnimationBridge.PlayAttack(player);
     }
 
     private List<GameObject> CollectWhirlwindTargets(MapInfo playerTile)
