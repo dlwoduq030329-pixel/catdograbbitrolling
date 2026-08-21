@@ -2,6 +2,7 @@ using NUnit.Framework;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 public enum TileType
 {
@@ -17,6 +18,11 @@ public enum TileType
 
 public class MapGenerator : MonoBehaviour
 {
+    [Tooltip("맵 생성기")]
+    [Header("코드 설명용 변수. 마우스를 올려 확인.")]
+    [SerializeField]
+    bool CODE_EXPLAIN;
+
     [Header("블록간의 거리")]
     [SerializeField]
     float blockDistance;
@@ -98,6 +104,16 @@ public class MapGenerator : MonoBehaviour
         generatorEnd = false;
         while (!success)
         {
+            GenerateRoad();
+
+            GenerateStart();
+            GenerateExit();
+
+            GenerateRiver();
+            GenerateDisMoveable();
+            GenerateStore();
+            GenerateBox();
+            /*
             ClearMap(); //맵 초기화. 새로운 맵 생성시 간섭 안되게.
 
             GenerateStart();    // 시작점 지정.
@@ -113,6 +129,7 @@ public class MapGenerator : MonoBehaviour
             GenerateBox();  //상자 생성
 
             GenerateExit(); //탈출구 생성. dismoveable Object에 의해 막히는걸 막기 위해 마지막에 생성.
+            */
 
             success = CheckPath();
         }
@@ -123,6 +140,11 @@ public class MapGenerator : MonoBehaviour
 
     private bool CheckPath()
     {
+        if (!IsWalkable(mapblueprint[startPos.x, startPos.y]))
+            return false;
+
+        if (!IsWalkable(mapblueprint[exitPos.x, exitPos.y]))
+            return false;
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
         bool[,] visited = new bool[blockCountX, blockCountZ];
 
@@ -361,11 +383,15 @@ public class MapGenerator : MonoBehaviour
                 int px = center.x + x;
                 int pz = center.y + z;
 
-                if (!IsInsideMap(new Vector2Int(px, pz)))
+                Vector2Int pos = new Vector2Int(px, pz);
+                if (!IsInsideMap(pos))
                     continue;
 
                 // 원형 느낌으로 생성
                 if (x * x + z * z > width * width)
+                    continue;
+
+                if (pos == startPos || pos == exitPos)
                     continue;
 
                 mapblueprint[px, pz] = TileType.River;
@@ -424,7 +450,7 @@ public class MapGenerator : MonoBehaviour
                     case TileType.Start:
                         {
                             prefab = roadPrefab;
-                            playerBody.transform.position = pos + new Vector3(0, 10, 0);
+                            playerBody.transform.position = pos + new Vector3(0, 0.5f, 0);
                         }
                         break;
                     case TileType.Road:

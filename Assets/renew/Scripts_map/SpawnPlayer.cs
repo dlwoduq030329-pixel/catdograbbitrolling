@@ -4,12 +4,19 @@ using UnityEngine;
 
 public class SpawnPlayer : MonoBehaviour
 {
+    [Tooltip("캐릭터 선택이 완료된 후 캐릭터를 소환 담당")]
+    [Header("코드 설명용 변수. 마우스를 올려 확인.")]
+    [SerializeField]
+    bool CODE_EXPLAIN;
+
     [SerializeField]
     GameObject[] playerPrefab;
     [SerializeField]
     GameObject playerBody;
     [SerializeField]
     MapGenerator mapGenerator;
+    [SerializeField]
+    NewMapGenerator newMapGenerator;
 
     [SerializeField]
     GameObject charactorStatus;
@@ -19,6 +26,9 @@ public class SpawnPlayer : MonoBehaviour
     Canvas hudCanvas;
     [SerializeField]
     float defaultSpawnHeight = 0.5f;
+
+    [SerializeField]
+    bool isNew;
 
     private GameObject player;
 
@@ -44,7 +54,13 @@ public class SpawnPlayer : MonoBehaviour
         // 동안에도 맵이 비쳐 보였기 때문에(느린 페이드=화면이 서서히 불투명해짐), 게임 시작
         // 페이드 아웃만 0.15초로 훨씬 빠르게 해서 거의 즉시 화면을 덮는다.
         loading.FadeOut(0.15f);
-        mapGenerator.StartGenerator();
+        if(isNew)
+        {
+            newMapGenerator.StartGenerator();
+        }else
+        {
+            mapGenerator.StartGenerator();
+        }
         player = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
         Vector3 spawnLocalPosition = player.transform.localPosition;
         spawnLocalPosition.y = defaultSpawnHeight;
@@ -75,10 +91,23 @@ public class SpawnPlayer : MonoBehaviour
     public IEnumerator waitUnitMApGen()
     {
 
-        while (!mapGenerator.IsGenerateEnd())
+        if(isNew)
         {
-            yield return null;
+            while (!newMapGenerator.IsGenerateEnd())
+            {
+                yield return null;
+            }
+
         }
+        else
+        {
+
+            while (!mapGenerator.IsGenerateEnd())
+            {
+                yield return null;
+            }
+        }
+
         //���̵� �ƿ� �ڵ� �߰�
         //PlayerInfoInit();
 

@@ -6,10 +6,18 @@ using UnityEngine.UI;
 
 public class StatusUI : MonoBehaviour
 {
+    [Tooltip("캐릭터 선택 후 스텟 부여 UI 전반 담당.")]
+    [Header("코드 설명용 변수. 마우스를 올려 확인.")]
+    [SerializeField]
+    bool CODE_EXPLAIN;
+
+    [Tooltip("캐릭터별 설명.")]
     [SerializeField]
     string[] charactorText;
+    [Tooltip("캐릭터별 기본 칭호")]
     [SerializeField]
     string[] charactorTitleText;
+    [Tooltip("캐릭터별 이름")]
     [SerializeField]
     string[] charactornameText;
     [SerializeField]
@@ -99,7 +107,7 @@ public class StatusUI : MonoBehaviour
         }
     }
 
-    public void UpPoint(int statusIndex)
+    public void UpPoint(int statusIndex) //+버튼에 할당 인자는 스텟별 index
     {
         if (leastpoint <= 0) return;
         leastpoint--;
@@ -108,7 +116,7 @@ public class StatusUI : MonoBehaviour
         setPoint();
     }
 
-    public void DownPoint(int statusIndex)
+    public void DownPoint(int statusIndex)//-버튼에 할당 인자는 스텟별 index
     {
         if (temporaryStatus[statusIndex] <= 0) return;
 
@@ -131,7 +139,7 @@ public class StatusUI : MonoBehaviour
 
     }
 
-    public void setPoint()
+    public void setPoint() //스텟 slider 적용
     {
         for(int i =0;i<temporaryStatus.Length;i++)
         {
@@ -140,7 +148,7 @@ public class StatusUI : MonoBehaviour
         }
     }
 
-    public void summonPlayer()
+    public void summonPlayer() //플레이어 소환 및 플레이어 기본 정보
     {
         if (playerIndex == -1) return;
         summon.PlayerInfoInit(temporaryStatus);

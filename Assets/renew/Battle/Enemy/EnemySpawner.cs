@@ -65,6 +65,7 @@ public class EnemySpawner : MonoBehaviour
         }
 
         MapInfo[] allTiles = FindObjectsByType<MapInfo>(FindObjectsSortMode.None);
+        Debug.Log("모든 타일 찾기 갯수는 " + allTiles.Length);
         List<MapInfo> candidates = new List<MapInfo>();
         MapInfo playerTile = FindClosestTile(allTiles, player.position);
         if (playerTile == null)

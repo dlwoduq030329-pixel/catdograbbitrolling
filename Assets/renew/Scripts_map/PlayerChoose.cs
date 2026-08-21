@@ -8,6 +8,12 @@ using UnityEngine.EventSystems;
 
 public class PlayerChoose : MonoBehaviour
 {
+
+    [Tooltip("카메라 연출 및 캐릭터 선택 Raycast.")]
+    [Header("코드 설명용 변수. 마우스를 올려 확인.")]
+    [SerializeField]
+    bool CODE_EXPLAIN;
+
     [SerializeField]
     private Animator[] charactorAnimator;
     [SerializeField]
