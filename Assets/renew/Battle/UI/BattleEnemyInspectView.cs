@@ -1,94 +1,12 @@
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
+/// <summary>
+/// 적 상세 정보 UI를 다시 연결할 때 사용할 자리만 보존한 비활성 컴포넌트다.
+/// 이전 구현은 Q+좌클릭 입력 감지, Raycast, Canvas·Panel·TMP Text 런타임 생성을
+/// 한 클래스에서 모두 수행해 Inspector에서 UI 구조와 실행 흐름을 추적할 수 없었으므로 제거했다.
+/// 추후 직접 제작한 적 정보 프리팹과 명시적 참조 구조가 준비되면 표시 전용 View로 다시 구현한다.
+/// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyInspectView : MonoBehaviour
 {
-    [SerializeField] private KeyCode inspectKey = KeyCode.Q;
-    private Canvas canvas;
-    private TMP_Text text;
-
-    private void Awake()
-    {
-        EnsureView();
-        Hide();
-    }
-
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Escape)) Hide();
-        if (!Input.GetKey(inspectKey) || !Input.GetMouseButtonDown(0)) return;
-        if (BattleGameManager.Instance != null && BattleGameManager.Instance.IsModalInteractionOpen) return;
-        if (BattlePlayerInputReader.IsPointerOverInteractiveUI(Input.mousePosition)) return;
-
-        Camera camera = Camera.main;
-        if (camera == null) return;
-        Ray ray = camera.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 1000f))
-        {
-            Hide();
-            return;
-        }
-
-        BattleEnemyRuntimeData runtime = hit.collider.GetComponentInParent<BattleEnemyRuntimeData>();
-        if (runtime == null || runtime.Data == null)
-        {
-            Hide();
-            return;
-        }
-        Show(runtime);
-    }
-
-    private void Show(BattleEnemyRuntimeData runtime)
-    {
-        EnsureView();
-        BattleEnemyData data = runtime.Data;
-        BattleUnitMP mp = runtime.GetComponent<BattleUnitMP>();
-        int moveTiles = data.moveMPCostPerTile > 0 ? data.maxTurnMP / data.moveMPCostPerTile : 0;
-        text.text =
-            $"<b>{data.displayName}</b>\n" +
-            $"MP : {(mp != null ? mp.CurrentMP.ToString() : "-")} ({data.minTurnMP}-{data.maxTurnMP})\n" +
-            $"Max Move : {moveTiles} tiles\n" +
-            $"Attack Range : {data.attackRangeTiles} tiles\n" +
-            $"Attack : {data.attackDamage:0.##}";
-        canvas.gameObject.SetActive(true);
-    }
-
-    private void Hide()
-    {
-        if (canvas != null) canvas.gameObject.SetActive(false);
-    }
-
-    private void EnsureView()
-    {
-        if (canvas != null) return;
-        GameObject root = new GameObject("Enemy Inspect View", typeof(RectTransform), typeof(Canvas),
-            typeof(CanvasScaler), typeof(GraphicRaycaster));
-        root.transform.SetParent(transform, false);
-        canvas = root.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 300;
-
-        RectTransform panel = new GameObject("Panel", typeof(RectTransform),
-            typeof(CanvasRenderer), typeof(Image)).GetComponent<RectTransform>();
-        panel.SetParent(root.transform, false);
-        panel.anchorMin = panel.anchorMax = new Vector2(1f, 1f);
-        panel.pivot = new Vector2(1f, 1f);
-        panel.anchoredPosition = new Vector2(-24f, -24f);
-        panel.sizeDelta = new Vector2(320f, 210f);
-        panel.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.08f, 0.92f);
-
-        RectTransform label = new GameObject("Info", typeof(RectTransform),
-            typeof(CanvasRenderer), typeof(TextMeshProUGUI)).GetComponent<RectTransform>();
-        label.SetParent(panel, false);
-        label.anchorMin = Vector2.zero;
-        label.anchorMax = Vector2.one;
-        label.offsetMin = new Vector2(18f, 14f);
-        label.offsetMax = new Vector2(-18f, -14f);
-        text = label.GetComponent<TextMeshProUGUI>();
-        text.fontSize = 25f;
-        text.alignment = TextAlignmentOptions.TopLeft;
-        text.raycastTarget = false;
-    }
 }

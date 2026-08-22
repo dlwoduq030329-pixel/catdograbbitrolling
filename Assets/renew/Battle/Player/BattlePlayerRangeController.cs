@@ -5,17 +5,30 @@ using UnityEngine;
 /// <summary>
 /// Player 이동·공격 범위 집합을 생성하고 우선순위에 따라 타일 색상을 표시한다.
 /// 입력 처리와 행동 확정은 담당하지 않는다.
+///
+/// 두 가지 독립된 표시 모드를 갖는다: (1) `BuildAndShow` — Player 자신의 이동/공격 범위를
+/// 우선순위 색상(점유 차단 > 이동가능 > 공격가능 > Enemy 탐지권)으로 표시, (2) `BuildAndShowEnemyThreatRange`
+/// — R 단축키 전용으로 활성 Enemy 전체가 이번 턴에 위협 가능한 타일을 한 가지 색으로 따로 표시.
+/// 두 결과는 서로 다른 필드(reachableTiles/attackableTiles vs enemyThreatTiles)에 저장되고 섞이지 않는다.
+/// "Enemy가 어느 타일에 서 있는가"는 두 모드 모두 occupiedEnemyTiles(RefreshOccupiedEnemyTiles가 채움) 하나만
+/// 참조하도록 통일했다 — 예전에는 BuildAndShowEnemyThreatRange가 findClosestTile로 매번 따로 계산해서
+/// 두 표시가 서로 다른 소스를 참조했었다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattlePlayerRangeController : MonoBehaviour
 {
+    // BuildAndShow()가 계산하는 "Player 자신의" 이동/공격 범위 결과.
     private readonly HashSet<MapInfo> reachableTiles = new HashSet<MapInfo>();
     private readonly HashSet<MapInfo> attackableTiles = new HashSet<MapInfo>();
-    private readonly HashSet<MapInfo> occupiedEnemyTiles = new HashSet<MapInfo>();
     private readonly Dictionary<MapInfo, int> reachableDistances = new Dictionary<MapInfo, int>();
+
+    // RefreshOccupiedEnemyTiles()가 채우는, 현재 Enemy들이 서 있는 타일 집합(이동 계산 시 통행 차단용).
+    private readonly HashSet<MapInfo> occupiedEnemyTiles = new HashSet<MapInfo>();
+
+    // BuildAndShowEnemyThreatRange()가 계산하는, 모든 활성 Enemy의 위협 범위 합집합(R 단축키 표시 전용).
     private readonly HashSet<MapInfo> enemyThreatTiles = new HashSet<MapInfo>();
 
-    private BattleRangeVisualizer visualizer;
+    private BattleRangeVisualizer rangeVisualizer;
 
     public IEnumerable<MapInfo> ReachableTiles => reachableTiles;
     public ISet<MapInfo> OccupiedEnemyTiles => occupiedEnemyTiles;
@@ -23,12 +36,24 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
     public bool IsReachable(MapInfo tile) => tile != null && reachableTiles.Contains(tile);
 
     /// <summary>계산 결과를 화면에 칠할 전용 시각화 모듈을 연결한다.</summary>
-    public void Configure(BattleRangeVisualizer rangeVisualizer)
+    public void AttachVisualizer(BattleRangeVisualizer visualizer)
     {
-        visualizer = rangeVisualizer;
+        rangeVisualizer = visualizer;
     }
 
-    /// <summary>현재 MP와 점유 정보를 기준으로 이동·공격 범위를 다시 계산하고 우선순위 색상으로 표시한다.</summary>
+    /// <summary>
+    /// 이동·공격 범위 색칠을 담당하는 메인 메서드. 호출부(BattlePlayerActionController.ShowMoveRange)에서
+    /// moveRange로 "주사위 이동력과 현재 MP 중 작은 값"을 넘겨주므로, 결과적으로 화면에 보이는 이동 범위는
+    /// 항상 현재 MP로 실제 갈 수 있는 만큼만 표시된다(MP가 부족하면 주사위 값보다 좁게 표시).
+    /// 호출 전에 RefreshOccupiedEnemyTiles()로 occupiedEnemyTiles를 먼저 채워둬야 한다(이 메서드는 채우지 않음).
+    ///
+    /// 한 타일에 표시되는 색은 아래 우선순위로 정확히 하나만 선택된다(위에서부터 먼저 만족하는 조건 사용):
+    /// 1. blockedColor      — Enemy가 점유해서 이동 불가능한 타일(occupiedEnemyTiles)
+    /// 2. movableColor      — 이번 턴에 이동 가능한 타일(reachableTiles, BFS 결과)
+    /// 3. attackableColor   — 이동은 안 되지만 기본 공격은 닿는 타일(attackableTiles)
+    /// 4. enemyDetectColor  — 위 셋 다 아니지만 Enemy의 탐지 범위(EnemyDetector.DetectRange) 안에 들어오는 타일(경고용)
+    /// 위 네 조건에 전부 해당 없으면 색을 칠하지 않는다(원래 타일 색 유지).
+    /// </summary>
     public bool BuildAndShow(
         IEnumerable<MapInfo> mapTiles,
         MapInfo currentTile,
@@ -42,7 +67,7 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         Color enemyDetectColor)
     {
         ClearCalculatedRanges();
-        if (currentTile == null || visualizer == null || isWalkable == null)
+        if (currentTile == null || rangeVisualizer == null || isWalkable == null)
         {
             return false;
         }
@@ -58,7 +83,9 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
             currentTile,
             Mathf.Max(0, attackRange),
             reachableTiles,
-            attackableTiles);
+            attackableTiles,
+            isWalkable,
+            occupiedEnemyTiles);
 
         List<EnemyDetector> detectors = CollectEnemyDetectors(enemyObjects);
         foreach (MapInfo tile in mapTiles)
@@ -77,19 +104,19 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
             // Enemy가 점유한 통행 가능 타일만 차단 색으로 표시한다.
             if (occupiedEnemyTiles.Contains(tile))
             {
-                visualizer.ShowRangeTile(tile, blockedColor);
+                rangeVisualizer.ShowRangeTile(tile, blockedColor);
             }
             else if (reachableTiles.Contains(tile))
             {
-                visualizer.ShowRangeTile(tile, movableColor);
+                rangeVisualizer.ShowRangeTile(tile, movableColor);
             }
             else if (attackableTiles.Contains(tile))
             {
-                visualizer.ShowRangeTile(tile, attackableColor);
+                rangeVisualizer.ShowRangeTile(tile, attackableColor);
             }
             else if (IsInEnemyDetectRange(tile.transform.position, detectors))
             {
-                visualizer.ShowRangeTile(tile, enemyDetectColor);
+                rangeVisualizer.ShowRangeTile(tile, enemyDetectColor);
             }
         }
 
@@ -97,8 +124,22 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
     }
 
     /// <summary>
-    /// R 단축키 전용 표시. Player 자신의 이동·공격 범위 대신, 활성 Enemy들이 이번 턴에
-    /// 이동+공격으로 실제 위협할 수 있는 타일 전체를 BFS로 계산해 한 가지 색으로 표시한다.
+    /// R 단축키 전용 표시. Player 자신의 이동·공격 범위 대신, 활성 Enemy 각각이 "자기 턴이 온다면"
+    /// 이번 상태 그대로 이동+기본공격으로 위협할 수 있는 타일 전체를 Enemy별로 BFS 계산해서 합집합으로 한 번에 표시한다.
+    ///
+    /// 처리 순서:
+    /// 1. 활성(activeInHierarchy) Enemy만 골라낸다.
+    /// 2. 모든 활성 Enemy가 서 있는 타일을 allEnemyTiles에 모은다 — 단, 이미 reachableTiles/attackableTiles(Player
+    ///    자신의 범위)에 포함된 타일은 애초에 제외한다("R 위협 범위는 최하단 정보라 이동·공격 가능 타일 색을 덮지 않는다").
+    /// 3. Enemy 한 명씩 순서대로: 그 Enemy 자신의 이동력(maxTurnMP / moveMPCostPerTile)만큼 BFS로 도달 가능한
+    ///    타일을 계산한다. 이때 "다른 Enemy가 서 있는 타일"은 막되(allEnemyTiles에서 자기 타일만 제외한 집합을
+    ///    점유 정보로 사용), 계산 대상 Enemy 자신이 서 있는 타일은 막지 않는다(자기 자신이 자기 위치를 막으면 안 되므로).
+    /// 4. 그 도달 범위에서 다시 기본 공격 사거리(actor.AttackRangeTiles)만큼 공격 가능 타일을 뽑는다.
+    /// 5. Enemy 본인 타일 + 도달 타일 + 공격 타일을 전부 enemyThreatTiles에 합쳐서, 마지막에 한 번에 threatColor로 칠한다.
+    ///
+    /// (2026-08-22 통일 완료) "Enemy가 서 있는 타일"은 occupiedEnemyTiles(RefreshOccupiedEnemyTiles가 채운,
+    /// BuildAndShow와 동일한 Registry 우선 소스) 하나만 참조한다. 호출부(ActionController.ShowEnemyThreatRange)가
+    /// 이 메서드를 부르기 전에 RefreshOccupiedEnemyTiles()를 먼저 호출해서 채워둬야 한다(BuildAndShow와 동일한 계약).
     /// </summary>
     public bool BuildAndShowEnemyThreatRange(
         Func<MapInfo, bool> isWalkable,
@@ -107,7 +148,7 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         Color threatColor)
     {
         enemyThreatTiles.Clear();
-        if (visualizer == null || isWalkable == null || findClosestTile == null || enemyObjects == null)
+        if (rangeVisualizer == null || isWalkable == null || findClosestTile == null || enemyObjects == null)
         {
             return false;
         }
@@ -127,10 +168,13 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         }
 
         // 다른 Enemy가 서 있는 타일은 이동 계산에서 막되, 계산 대상 본인의 타일은 막지 않는다.
+        // occupiedEnemyTiles(RefreshOccupiedEnemyTiles가 채운, BuildAndShow와 동일한 소스)를 그대로 써서
+        // "Enemy가 어느 타일에 서 있는가"를 두 표시 모드가 서로 다르게 계산하지 않도록 했다
+        // (호출부인 BattlePlayerActionController.ShowEnemyThreatRange가 이 메서드를 부르기 전에
+        // RefreshOccupiedEnemyTiles를 먼저 호출해서 채워둔다).
         HashSet<MapInfo> allEnemyTiles = new HashSet<MapInfo>();
-        foreach (GameObject enemyObject in activeEnemies)
+        foreach (MapInfo tile in occupiedEnemyTiles)
         {
-            MapInfo tile = findClosestTile(enemyObject.transform.position);
             // R 위협 범위는 최하단 정보다. 이동·공격 가능 타일의 색을 덮지 않는다.
             if (tile != null && !reachableTiles.Contains(tile) && !attackableTiles.Contains(tile))
             {
@@ -174,7 +218,9 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
                 enemyTile,
                 actor.AttackRangeTiles,
                 reachable,
-                attackable);
+                attackable,
+                isWalkable,
+                occupiedForThisEnemy);
 
             enemyThreatTiles.Add(enemyTile);
             enemyThreatTiles.UnionWith(reachable);
@@ -185,14 +231,18 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         {
             if (tile != null)
             {
-                visualizer.ShowRangeTile(tile, threatColor);
+                rangeVisualizer.ShowRangeTile(tile, threatColor);
             }
         }
 
         return enemyThreatTiles.Count > 0;
     }
 
-    /// <summary>계산된 범위와 거리 캐시를 비우고 변경했던 모든 타일 색상을 복구한다.</summary>
+    /// <summary>
+    /// R 단축키 토글 등으로 이전 표시를 지울 때 쓰는 초기화. 실제 타일 색 복구(RestoreAllTileColors)는
+    /// 호출부(BattlePlayerActionController)가 별도로 하고, 여기서는 이 클래스가 들고 있는 3가지 계산
+    /// 결과(이동/공격 범위, Enemy 점유 정보, R 위협 범위)를 전부 비우기만 한다.
+    /// </summary>
     public void ClearState()
     {
         ClearCalculatedRanges();
@@ -208,7 +258,13 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         reachableDistances.Clear();
     }
 
-    /// <summary>Registry를 우선 사용해 현재 활성 Enemy의 점유 타일 집합을 갱신한다.</summary>
+    /// <summary>
+    /// occupiedEnemyTiles(Player 자신의 이동 범위 계산에서 "막힌 타일"로 취급할 Enemy 점유 타일 집합)를
+    /// 다시 채운다. BattleDataPool.Map(Registry)에 Enemy가 등록돼 있으면 Registry의 FillOccupiedTiles를
+    /// 그대로 쓰고, 없을 때만(구형/Registry 미등록 Scene 대비) 씬을 훑어 활성 EnemyTurnActor 전체의
+    /// 최근접 타일을 직접 계산해서 채운다. BuildAndShow() 호출 전에 반드시 먼저 호출해야 한다(그렇지 않으면
+    /// occupiedEnemyTiles가 비어 있어 Enemy 점유 차단 표시가 전부 빠진다).
+    /// </summary>
     public void RefreshOccupiedEnemyTiles(
         BattleDataPool battleDataPool,
         Func<Vector3, MapInfo> findClosestTile)
@@ -247,6 +303,11 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// enemyDetectColor(4번째 우선순위 경고색) 판정에 쓸 EnemyDetector 컴포넌트 목록을 모은다.
+    /// enemyObjects가 주어지면 그 활성 Enemy들의 자식에서만 찾고(정상 경로), enemyObjects가 null이면
+    /// 씬 전체에서 EnemyDetector를 전부 찾는다(호출부가 항상 enemyObjects를 넘겨주므로 사실상 안 쓰이는 fallback).
+    /// </summary>
     private static List<EnemyDetector> CollectEnemyDetectors(IEnumerable<GameObject> enemyObjects)
     {
         List<EnemyDetector> detectors = new List<EnemyDetector>();
@@ -273,6 +334,11 @@ public sealed class BattlePlayerRangeController : MonoBehaviour
         return detectors;
     }
 
+    /// <summary>
+    /// tilePosition이 detectors 중 하나라도의 탐지 범위(EnemyDetector.DetectRange, Enemy 종류별 Inspector 값) 안에
+    /// 들어오면 true. BuildAndShow()에서 "이동도 공격도 안 되지만 이 타일로 가면 Enemy에게 들킬 수 있다"는
+    /// 경고 표시(enemyDetectColor)에만 쓰인다 — 실제 이동/공격 가능 여부와는 무관한 순수 시각적 경고.
+    /// </summary>
     private static bool IsInEnemyDetectRange(Vector3 tilePosition, IEnumerable<EnemyDetector> detectors)
     {
         foreach (EnemyDetector detector in detectors)

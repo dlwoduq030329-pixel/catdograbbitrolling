@@ -52,12 +52,16 @@ public static class BattleTileRangeCalculator
         }
     }
 
-    /// <summary>이동 가능 지점들의 가장자리에서 공격 사거리 안에 포함되는 타일을 수집한다.</summary>
+    /// <summary>이동 가능 지점들의 가장자리에서 공격 사거리 안에 포함되는 타일을 수집한다.
+    /// isWalkable/occupiedTiles를 넘기면 벽이나 다른 유닛이 막고 있는 타일 너머로는 사거리가
+    /// 확장되지 않는다(둘 다 생략하면 기존과 동일하게 장애물을 무시하고 순수 칸수로만 계산한다).</summary>
     public static void BuildAttackableTiles(
         MapInfo currentTile,
         int attackRange,
         IEnumerable<MapInfo> reachableTiles,
-        ISet<MapInfo> attackableTiles)
+        ISet<MapInfo> attackableTiles,
+        Func<MapInfo, bool> isWalkable = null,
+        ISet<MapInfo> occupiedTiles = null)
     {
         HashSet<MapInfo> origins = new HashSet<MapInfo>(reachableTiles) { currentTile };
         foreach (MapInfo origin in origins)
@@ -88,6 +92,16 @@ public static class BattleTileRangeCalculator
                         continue;
                     }
 
+                    // 공격 사거리도 이동 범위와 마찬가지로 벽/점유 타일 너머로는 뻗어나가지 않는다.
+                    if (isWalkable != null && !isWalkable(neighbour))
+                    {
+                        continue;
+                    }
+                    if (occupiedTiles != null && occupiedTiles.Contains(neighbour))
+                    {
+                        continue;
+                    }
+
                     distances[neighbour] = distance + 1;
                     queue.Enqueue(neighbour);
                 }
@@ -98,8 +112,17 @@ public static class BattleTileRangeCalculator
         attackableTiles.Remove(currentTile);
     }
 
-    /// <summary>상하좌우 연결 기준 최단 칸 거리를 반환하며 제한 거리 안에 없으면 음수를 반환한다.</summary>
-    public static int GetDistance(MapInfo startTile, MapInfo targetTile, int maxDistance)
+    /// <summary>상하좌우 연결 기준 최단 칸 거리를 반환하며 제한 거리 안에 없으면 음수를 반환한다.
+    /// isWalkable/occupiedTiles를 넘기면 벽이나 다른 유닛이 가로막아 실제로 돌아갈 수 없는 경로는
+    /// 최단 거리 계산에서 제외한다(둘 다 생략하면 기존과 동일하게 장애물을 무시한 순수 칸수 거리).
+    /// 단, targetTile 자신은 점유 여부와 무관하게 항상 도달 지점으로 인정한다 — 공격 대상 Enemy가
+    /// 서 있는 바로 그 타일이 "점유된 타일"이라는 이유로 거리 계산에서 제외되면 안 되기 때문이다.</summary>
+    public static int GetDistance(
+        MapInfo startTile,
+        MapInfo targetTile,
+        int maxDistance,
+        Func<MapInfo, bool> isWalkable = null,
+        ISet<MapInfo> occupiedTiles = null)
     {
         if (startTile == null || targetTile == null)
         {
@@ -136,6 +159,15 @@ public static class BattleTileRangeCalculator
                 if (neighbour == targetTile)
                 {
                     return nextDistance;
+                }
+
+                if (isWalkable != null && !isWalkable(neighbour))
+                {
+                    continue;
+                }
+                if (occupiedTiles != null && occupiedTiles.Contains(neighbour))
+                {
+                    continue;
                 }
 
                 distances[neighbour] = nextDistance;

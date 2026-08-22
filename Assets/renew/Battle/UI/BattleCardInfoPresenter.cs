@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// CardPanel이 소유한 카드 정보 UI에 전투 카드 데이터를 표시한다.
-/// 친구 CardInfo 함수와 DataPool을 사용하지 않는다.
+/// 원본 CardInfo 함수와 DataPool을 사용하지 않는다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleCardInfoPresenter : MonoBehaviour

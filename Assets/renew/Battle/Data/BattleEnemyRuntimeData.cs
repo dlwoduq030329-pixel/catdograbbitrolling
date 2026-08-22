@@ -4,8 +4,8 @@ using UnityEngine;
 /// 생성된 Enemy 인스턴스가 자신을 만든 원본 DB 데이터(BattleEnemyData)를 참조하도록 보관하는 핵심 브릿지다.
 /// EnemySpawner가 스폰 시점에 Initialize()로 한 번 채운 뒤, BattleCardEffectPipeline(rank 보호 판정),
 /// BattleCardMovementService(pushWeight), EnemyTurnActor(attackDamage·moveMPCostPerTile·basicAttackMPCost),
-/// BattlePlayerRangeController·BattleMoveThreatPreview(이동 범위·위협 프리뷰), BattleEnemyInspectView(UI 표시)
-/// 등 최소 7개 파일이 GetComponent 후 Data를 직접 읽는다. 파일 크기는 작지만 참조 범위가 넓어
+/// BattlePlayerRangeController·BattleMoveThreatPreview(이동 범위·위협 프리뷰)
+/// 등 여러 파일이 GetComponent 후 Data를 직접 읽는다. 파일 크기는 작지만 참조 범위가 넓어
 /// 변경 시 회귀 확인 범위가 크다(2026-08-21 2차 검증 확인).
 /// </summary>
 public class BattleEnemyRuntimeData : MonoBehaviour

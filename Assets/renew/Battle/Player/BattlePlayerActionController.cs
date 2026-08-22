@@ -11,8 +11,6 @@ using TMPro;
 /// </summary>
 public class BattlePlayerActionController : MonoBehaviour
 {
-    public static bool IsMoveRangeVisible { get; private set; }
-    public static event System.Action<bool> MoveRangeVisibilityChanged;
 
     [Header("필수 참조")]
     [InspectorName("메인 카메라")]
@@ -40,21 +38,13 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("타일 레이어 마스크")]
     public LayerMask tileLayerMask = ~0;
     [InspectorName("전투 레이캐스트 모듈")]
-    [SerializeField] private BattleRaycaster battleRaycaster;
+    [SerializeField] internal BattleRaycaster battleRaycaster;
     [InspectorName("전투 범위 표시 모듈")]
-    [SerializeField] private BattleRangeVisualizer battleRangeVisualizer;
+    [SerializeField] internal BattleRangeVisualizer battleRangeVisualizer;
     [InspectorName("플레이어 범위 제어 모듈")]
-    [SerializeField] private BattlePlayerRangeController battlePlayerRangeController;
+    [SerializeField] internal BattlePlayerRangeController battlePlayerRangeController;
     [InspectorName("플레이어 이동 실행 모듈")]
-    [SerializeField] private BattlePlayerMover battlePlayerMover;
-    [InspectorName("일반 이동 기능 모듈")]
-    [SerializeField] private BattleMovementController battleMovementController;
-    [InspectorName("기본 공격 기능 모듈")]
-    [SerializeField] private BattleBasicAttackController battleBasicAttackController;
-    [InspectorName("카드 행동 기능 모듈")]
-    [SerializeField] private BattleCardActionController battleCardActionController;
-    [InspectorName("이동 목적지 프리뷰 모듈")]
-    [SerializeField] private BattleMovePreview battleMovePreview;
+    [SerializeField] internal BattlePlayerMover battlePlayerMover;
     [InspectorName("행동 확인 화면 모듈")]
     [SerializeField] private BattleActionConfirmView battleActionConfirmView;
     [InspectorName("플레이어 입력 감지 모듈")]
@@ -62,11 +52,15 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("캐릭터 마우스 오버 강조 모듈")]
     [SerializeField] private BattleUnitHoverHighlighter battleUnitHoverHighlighter;
     [InspectorName("밀치기 결과 사전 예고 화면")]
-    [SerializeField] private BattlePushPreviewView battlePushPreviewView;
-    [InspectorName("이동 타일 Enemy 위협 연결선")]
-    [SerializeField] private BattleMoveThreatPreview battleMoveThreatPreview;
+    [SerializeField] internal BattlePushPreviewView battlePushPreviewView;
     [InspectorName("전투 데이터 저장소")]
-    [SerializeField] private BattleDataPool battleDataPool;
+    [SerializeField] internal BattleDataPool battleDataPool;
+    [InspectorName("이동 플로우 모듈")]
+    [SerializeField] internal BattleUnitMoveFlow moveFlow;
+    [InspectorName("기본 공격 플로우 모듈")]
+    [SerializeField] private BattleUnitAttackFlow attackFlow;
+    [InspectorName("카드 플로우 모듈")]
+    [SerializeField] private BattleUnitCardFlow cardFlow;
 
     [Header("이동 연출 시간")]
     [InspectorName("타일당 기본 이동 시간")]
@@ -75,24 +69,10 @@ public class BattlePlayerActionController : MonoBehaviour
     public float moveSpeedMultiplier = 4f;
 
     [Header("이동 범위 색상")]
-    [InspectorName("이동 가능 타일 색상")]
-    public Color movableTileColor = new Color(0.25f, 0.9f, 0.25f, 1f);
-    [InspectorName("이동 불가 타일 색상")]
-    public Color blockedTileColor = new Color(0.9f, 0.2f, 0.2f, 1f);
-    [InspectorName("적 감지 범위 타일 색상")]
-    public Color enemyDetectColor = new Color(1f, 0.6f, 0.15f, 1f);
-    [InspectorName("선택 타일 색상")]
-    public Color selectedTileColor = new Color(1f, 0.95f, 0.35f, 1f);
-    [InspectorName("도착 타일 색상")]
-    public Color landedTileColor = new Color(0.55f, 1f, 0.85f, 1f);
-    [InspectorName("이동 후 공격 가능 타일 색상")]
-    public Color attackableTileColor = new Color(0.9f, 0.2f, 0.25f, 1f);
-    [InspectorName("카드 사용 가능 타일 색상")]
-    public Color cardRangeTileColor = new Color(0.35f, 0.45f, 1f, 1f);
-    [InspectorName("카드 실제 효과 범위 색상")]
-    public Color cardEffectAreaTileColor = new Color(0.15f, 0.9f, 0.95f, 1f);
-    [InspectorName("R 토글 - 적 위협 범위 색상")]
-    public Color enemyThreatTileColor = new Color(0.75f, 0.15f, 0.85f, 1f);
+    // 이전엔 색상 9개가 이 컨트롤러 필드로 직접 박혀 있었는데, 다른 컨트롤러/Scene에서도 같은 팔레트를
+    // 재사용할 수 있도록 BattleRangeColorPalette(ScriptableObject) 에셋 하나로 분리했다.
+    [InspectorName("색상 팔레트")]
+    public BattleRangeColorPalette colorPalette;
     [Header("이동 범위 가시성 조절")]
     [InspectorName("범위 색상 혼합 강도")]
     [SerializeField, Range(0f, 1f)] private float rangeColorBlend = 0.3f;
@@ -107,16 +87,12 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("화살표 위치 보정값")]
     public Vector3 arrowOffset = new Vector3(0f, 0.45f, 0f);
 
-    private BattlePlayerMapContext battlePlayerMapContext;
-    private readonly BattlePlayerTurnActionState turnActionState = new BattlePlayerTurnActionState();
+    internal BattlePlayerMapContext battlePlayerMapContext;
+    internal readonly BattlePlayerTurnActionState turnActionState = new BattlePlayerTurnActionState();
     private bool rangeVisible;
     /// <summary>R 단축키로 범위 표시를 켠 상태인지 기억한다. 이동으로 범위가 잠깐 꺼져도 이동 후 자동으로 다시 켠다.</summary>
-    private bool rangeToggleActive;
-    private bool isMoving;
-    private PlayerCombatData playerCombatData;
-
-    /// <summary>확정된 행동 결과를 구독자에게 전달하는 이벤트.</summary>
-    public event System.Action<BattleActionResult> ActionConfirmed;
+    internal bool rangeToggleActive;
+    internal PlayerCombatData playerCombatData;
 
     /// <summary>전투 정지·재개 시 Player의 마우스와 키보드 입력 감지를 함께 켜거나 끕니다.</summary>
     public void SetBattleInputEnabled(bool enabled)
@@ -125,55 +101,15 @@ public class BattlePlayerActionController : MonoBehaviour
         battlePlayerInputReader.enabled = enabled;
     }
 
-    public bool HasValidTargetForCard(BattleCardData card)
-    {
-        if (card == null) return false;
-        bool explicitlyTargetsEnemy = card.targetType == BattleCardTargetType.Enemy ||
-                                      card.targetType == BattleCardTargetType.Character ||
-                                      card.targetType == BattleCardTargetType.AllEnemies;
-        if (card.category != BattleCardCategory.Attack && !explicitlyTargetsEnemy) return true;
+    private bool IsBasicAttackActive => attackFlow != null && attackFlow.IsActive;
 
-        ResolveBattleDataPool();
-        GameObject currentPlayer = player != null ? player : battleDataPool != null ? battleDataPool.CurrentPlayer : null;
-        MapInfo playerTile = currentPlayer != null ? FindClosestMapTile(currentPlayer.transform.position) : null;
-        if (playerTile == null) return false;
+    /// <summary>이동 실행 코루틴 또는 기본 공격 실행이 진행 중인지. BattleUnitCardFlow의 우클릭 대상
+    /// 선택 처리에서도 같은 판단이 필요해 internal로 열어뒀다.</summary>
+    internal bool IsAnyActionMoving =>
+        (moveFlow != null && moveFlow.IsMoving) ||
+        (attackFlow != null && attackFlow.IsExecuting);
 
-        IEnumerable<GameObject> registered = battleDataPool != null && battleDataPool.Units != null
-            ? battleDataPool.Units.Enemies : null;
-        if (registered == null)
-        {
-            List<GameObject> fallback = new List<GameObject>();
-            foreach (EnemyTurnActor enemy in FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None))
-                if (enemy != null) fallback.Add(enemy.gameObject);
-            registered = fallback;
-        }
-
-        int range = card.targetType == BattleCardTargetType.Self
-            ? Mathf.Max(1, card.areaSizeTiles)
-            : Mathf.Max(1, card.rangeTiles);
-        foreach (GameObject enemy in registered)
-        {
-            if (enemy == null || !enemy.activeInHierarchy) continue;
-            BattleHealth health = enemy.GetComponent<BattleHealth>();
-            if (health != null && health.IsDead) continue;
-            if (card.targetType == BattleCardTargetType.AllEnemies) return true;
-            MapInfo enemyTile = FindClosestMapTile(enemy.transform.position);
-            int distance = BattleTileRangeCalculator.GetDistance(playerTile, enemyTile, range);
-            if (distance >= 0 && distance <= range) return true;
-        }
-        return false;
-    }
-
-    private bool IsBasicAttackActive =>
-        battleBasicAttackController != null &&
-        (battleBasicAttackController.IsExecuting || battleBasicAttackController.IsAwaitingConfirmation);
-
-    private bool IsAnyActionMoving =>
-        isMoving || (battleBasicAttackController != null && battleBasicAttackController.IsExecuting);
-
-    private bool IsCardActionActive =>
-        battleCardActionController != null &&
-        (battleCardActionController.IsSelectingTarget || battleCardActionController.IsAwaitingConfirmation);
+    private bool IsCardActionActive => cardFlow != null && cardFlow.IsActive;
 
     /// <summary>카메라와 확인 화면 참조를 보완하고 확인·취소 버튼 이벤트를 연결한다.</summary>
     private void Awake()
@@ -185,23 +121,22 @@ public class BattlePlayerActionController : MonoBehaviour
         EnsureBattlePlayerMapContext();
         EnsureBattlePlayerRangeController();
         EnsureBattlePlayerMover();
-        EnsureBattleMovementController();
-        EnsureBattleBasicAttackController();
+        EnsureMoveFlow();
+        EnsureAttackFlow();
         EnsureBattlePushPreviewView();
-        EnsureBattleCardActionController();
-        EnsureBattleMovePreview();
+        EnsureCardFlow();
         EnsureBattlePlayerInputReader();
         EnsureBattleUnitHoverHighlighter();
-        EnsureBattleMoveThreatPreview();
 
         EnsureBattleActionConfirmView();
 
-        if (confirmMoveButton != null)
-            confirmMoveButton.interactable = false;
-        if (quitMoveButton != null)
-            quitMoveButton.interactable = false;
-
+        SetConfirmButtonsInteractable(false);
         SetMoveButtonGroupVisible(false);
+
+        if (colorPalette == null)
+        {
+            Debug.LogError("색상 팔레트(BattleRangeColorPalette)가 연결되지 않았습니다.", this);
+        }
     }
 
     /// <summary>맵 생성 후 사용할 타일 목록과 원본 표시 상태를 처음 수집한다.</summary>
@@ -220,21 +155,6 @@ public class BattlePlayerActionController : MonoBehaviour
             battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
         }
 
-        if (battleBasicAttackController != null)
-        {
-            battleBasicAttackController.ConfirmationRequested -= HandleBasicAttackConfirmationRequested;
-            battleBasicAttackController.Confirmed -= HandleBasicAttackConfirmed;
-            battleBasicAttackController.Cancelled -= HandleBasicAttackCancelled;
-        }
-
-        if (battleCardActionController != null)
-        {
-            battleCardActionController.TargetSelectionRequested -= HandleCardTargetSelectionRequested;
-            battleCardActionController.ConfirmationRequested -= HandleCardConfirmationRequested;
-            battleCardActionController.Confirmed -= HandleCardConfirmed;
-            battleCardActionController.Cancelled -= HandleCardCancelled;
-            battleCardActionController.RangeVisibilityChanged -= SetRangeVisible;
-        }
     }
 
     /// <summary>BattleGameManager가 생성된 실제 Player 인스턴스를 전달한다.</summary>
@@ -245,10 +165,10 @@ public class BattlePlayerActionController : MonoBehaviour
         battleRaycaster.SetPlayer(targetPlayer);
         EnsureBattleUnitHoverHighlighter();
         EnsureBattlePlayerMover();
-        EnsureBattleMovementController();
+        EnsureMoveFlow();
         playerCombatData = player != null ? player.GetComponent<PlayerCombatData>() : null;
-        EnsureBattleBasicAttackController();
-        EnsureBattleCardActionController();
+        EnsureAttackFlow();
+        EnsureCardFlow();
         if (player != null && playerCombatData == null)
         {
             Debug.LogError("플레이어 전투 데이터가 초기화되지 않았습니다. BattleGameManager를 통해 플레이어를 등록해야 합니다.", player);
@@ -265,7 +185,8 @@ public class BattlePlayerActionController : MonoBehaviour
         currentMoveRange = Mathf.Clamp(moveRange, minMoveRange, maxMoveRange);
         turnActionState.MarkDiceRolled();
         Debug.Log($"이동 범위 설정: {currentMoveRange}칸", this);
-        ShowMoveRange();
+        EnsureMoveFlow();
+        moveFlow.ShowMoveRange();
     }
 
     /// <summary>QA 전투에서 주사위 이동 범위 상한을 빠르게 확장한다.</summary>
@@ -278,28 +199,20 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>현재 선택된 목적지가 유효하면 실제 이동 Coroutine을 시작한다.</summary>
     public void ConfirmMove()
     {
-        if (battleCardActionController != null && battleCardActionController.IsAwaitingConfirmation)
+        if (cardFlow.IsAwaitingConfirmation)
         {
-            battleCardActionController.Confirm();
+            cardFlow.Confirm();
             return;
         }
 
-        if (battleBasicAttackController != null && battleBasicAttackController.IsAwaitingConfirmation)
+        if (attackFlow.IsAwaitingConfirmation)
         {
-            battleBasicAttackController.Confirm();
+            attackFlow.Confirm();
             return;
         }
 
-        EnsureBattleMovementController();
-        if (!battleMovementController.IsAwaitingConfirmation ||
-            battleMovementController.PendingTarget == null ||
-            !turnActionState.DiceRolled || turnActionState.MovementUsed)
-        {
-            return;
-        }
-
-        SetMoveButtonGroupVisible(false);
-        StartCoroutine(MovePlayerToSelectedTile());
+        EnsureMoveFlow();
+        moveFlow.ConfirmSelectedMove();
     }
 
     /// <summary>새 Player 턴에 주사위, 이동 사용, 선택, 표시 상태를 전부 초기화한다.</summary>
@@ -308,26 +221,14 @@ public class BattlePlayerActionController : MonoBehaviour
         // R 토글은 사용자가 직접 끄거나(CancelMoveSelection의 완전 닫힘 분기) 명시적으로 끄기 전까지는
         // 턴이 바뀌어도 유지한다. 여기서는 상태만 초기화하고 필요하면 마지막에 다시 켠다.
         turnActionState.Reset();
-        EnsureBattleMovementController();
-        battleMovementController.ResetTurn();
+        EnsureMoveFlow();
+        moveFlow.ResetTurn();
         EnsureBattlePlayerRangeController();
         battlePlayerRangeController.ClearState();
-        battleBasicAttackController?.ResetTurn();
-        battleCardActionController?.ResetTurn();
-        ClearMoveArrow();
-        ClearMoveRange();
+        attackFlow.ResetTurn();
+        cardFlow.ResetTurn();
 
-        if (confirmMoveButton != null)
-        {
-            confirmMoveButton.interactable = false;
-        }
-
-
-        if (quitMoveButton != null)
-        {
-            quitMoveButton.interactable = false;
-        }
-
+        SetConfirmButtonsInteractable(false);
         SetMoveButtonGroupVisible(false);
 
         // 새 턴에서도 R 토글이 켜져 있던 상태라면 적 위협 범위 표시를 바로 되살린다.
@@ -364,9 +265,9 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (TryRaycastPlayer(pointerPosition, out GameObject clickedPlayer))
         {
-            if (battleMovementController.IsAwaitingConfirmation)
+            if (moveFlow.IsAwaitingConfirmation)
             {
-                Debug.Log($"플레이어 클릭으로 이동 확정: {battleMovementController.PendingTarget?.name}", clickedPlayer);
+                Debug.Log($"플레이어 클릭으로 이동 확정: {moveFlow.PendingTarget?.name}", clickedPlayer);
                 ConfirmMove();
                 return;
             }
@@ -387,11 +288,11 @@ public class BattlePlayerActionController : MonoBehaviour
             if (rangeToggleActive)
             {
                 // R 위협 범위를 유지하면서 이동 가능 집합도 함께 계산해 Player 이동 입력을 연다.
-                ShowMoveRange();
+                moveFlow.ShowMoveRange();
                 ShowEnemyThreatRange(true);
             }
             else
-                ShowMoveRange();
+                moveFlow.ShowMoveRange();
             return;
         }
 
@@ -404,7 +305,7 @@ public class BattlePlayerActionController : MonoBehaviour
             if (clickedReachableTile && !turnActionState.MovementUsed &&
                 !IsBasicAttackActive && !IsCardActionActive)
             {
-                SelectMoveTile(clickedTile);
+                moveFlow.SelectMoveTile(clickedTile);
                 return;
             }
 
@@ -429,7 +330,7 @@ public class BattlePlayerActionController : MonoBehaviour
         }
 
         // 카드 사거리 표시·대상 선택 중에도 R 토글을 쓸 수 있도록 IsCardActionActive는 더 이상 막지 않는다.
-        if (battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive)
+        if (moveFlow.IsAwaitingConfirmation || IsBasicAttackActive)
         {
             return;
         }
@@ -455,14 +356,14 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>우클릭은 카드 대상 및 Enemy 기본 공격 선택에만 사용한다. 일반 이동은 좌클릭 전용이다.</summary>
     private void HandleRightClick(Vector2 pointerPosition)
     {
-        if (battleCardActionController != null && battleCardActionController.IsSelectingTarget)
+        if (cardFlow.IsSelectingTarget)
         {
-            HandleCardTargetRightClick(pointerPosition);
+            cardFlow.HandleTargetRightClick(pointerPosition);
             return;
         }
 
         if (!turnActionState.DiceRolled || !rangeVisible ||
-            IsAnyActionMoving || battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
+            IsAnyActionMoving || moveFlow.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
         {
             return;
         }
@@ -474,46 +375,12 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
         {
-            TryBeginBasicAttack(enemy);
+            attackFlow.TryBegin(enemy);
             return;
         }
 
         // 일반 이동 목적지는 좌클릭으로만 선택한다. 빈 바닥 우클릭은 현재 이동 선택을
         // 변경하거나 범위를 닫지 않는다.
-    }
-
-    /// <summary>카드 대상 유형에 맞는 적 또는 타일을 우클릭으로 선택한다.</summary>
-    private void HandleCardTargetRightClick(Vector2 pointerPosition)
-    {
-        if (IsAnyActionMoving)
-        {
-            return;
-        }
-
-        if (BattlePlayerInputReader.IsPointerOverInteractiveUI(pointerPosition))
-        {
-            return;
-        }
-
-        BattleCardTargetType targetType = battleCardActionController.TargetType;
-        if ((targetType == BattleCardTargetType.Enemy || targetType == BattleCardTargetType.Character) &&
-            TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
-        {
-            MapInfo enemyTile = FindClosestMapTile(enemy.transform.position);
-            if (battleCardActionController.TrySelectTarget(enemy.gameObject, enemyTile))
-            {
-                return;
-            }
-        }
-
-        if (targetType == BattleCardTargetType.Tile &&
-            TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
-            battleCardActionController.TrySelectTarget(tile.gameObject, tile))
-        {
-            return;
-        }
-
-        Debug.Log("카드 사거리 안의 올바른 대상을 선택해야 합니다.", this);
     }
 
     /// <summary>Player 본체 또는 자식 Collider가 클릭됐는지 검사한다.</summary>
@@ -525,7 +392,7 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>마우스 아래 Collider의 부모에서 활성 EnemyTurnActor를 찾는다.</summary>
-    private bool TryRaycastEnemy(Vector2 pointerPosition, out EnemyTurnActor enemy)
+    internal bool TryRaycastEnemy(Vector2 pointerPosition, out EnemyTurnActor enemy)
     {
         RefreshCamera();
         EnsureBattleRaycaster();
@@ -533,7 +400,7 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>마우스 아래 충돌체의 부모에서 MapInfo를 찾는다.</summary>
-    private bool TryRaycastMapTile(Vector2 pointerPosition, out MapInfo tile)
+    internal bool TryRaycastMapTile(Vector2 pointerPosition, out MapInfo tile)
     {
         RefreshCamera();
         EnsureBattleRaycaster();
@@ -541,53 +408,10 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// 주사위 범위와 현재 MP 중 작은 값으로 BFS 범위를 계산하고 타일 색상을 표시한다.
-    /// </summary>
-    private void ShowMoveRange()
-    {
-        RefreshMapTiles();
-        RestoreAllTileColors();
-        EnsureBattlePlayerRangeController();
-        battlePlayerRangeController.ClearState();
-        ResolveBattleDataPool();
-        battlePlayerRangeController.RefreshOccupiedEnemyTiles(
-            battleDataPool,
-            FindClosestMapTile);
-
-        MapInfo currentTile = FindClosestMapTile(player != null ? player.transform.position : Vector3.zero);
-        if (currentTile == null)
-        {
-            Debug.LogWarning("플레이어가 서 있는 맵 타일을 찾지 못했습니다.", this);
-            SetRangeVisible(false);
-            return;
-        }
-
-        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
-        int mpLimitedRange = playerMP != null && !turnActionState.MovementUsed
-            ? Mathf.Min(currentMoveRange, playerMP.CurrentMP)
-            : 0;
-        IEnumerable<GameObject> enemies = battleDataPool != null && battleDataPool.Units != null
-            ? battleDataPool.Units.Enemies
-            : null;
-        bool shown = battlePlayerRangeController.BuildAndShow(
-            battlePlayerMapContext.Tiles,
-            currentTile,
-            mpLimitedRange,
-            GetPlayerAttackRange(),
-            BattleMapTraversalService.IsWalkable,
-            enemies,
-            movableTileColor,
-            blockedTileColor,
-            attackableTileColor,
-            enemyDetectColor);
-        SetRangeVisible(shown);
-    }
-
-    /// <summary>
     /// R 단축키 전용 표시. Player 자신의 이동·공격 범위 대신
     /// 활성 Enemy들이 이번 턴에 실제로 위협할 수 있는 타일을 계산해 보여준다.
     /// </summary>
-    private void ShowEnemyThreatRange(bool preserveMoveRange = false)
+    internal void ShowEnemyThreatRange(bool preserveMoveRange = false)
     {
         RefreshMapTiles();
         EnsureBattlePlayerRangeController();
@@ -597,6 +421,9 @@ public class BattlePlayerActionController : MonoBehaviour
             battlePlayerRangeController.ClearState();
         }
         ResolveBattleDataPool();
+        // BuildAndShow와 동일하게, R 위협 범위 표시도 occupiedEnemyTiles를 먼저 갱신해둬야 두 표시 모드가
+        // 같은 소스로 "Enemy가 어느 타일에 서 있는가"를 판단한다(BattlePlayerRangeController 쪽 통일 작업과 짝).
+        battlePlayerRangeController.RefreshOccupiedEnemyTiles(battleDataPool, FindClosestMapTile);
 
         IEnumerable<GameObject> enemies = battleDataPool != null && battleDataPool.Units != null
             ? battleDataPool.Units.Enemies
@@ -605,12 +432,12 @@ public class BattlePlayerActionController : MonoBehaviour
             BattleMapTraversalService.IsWalkable,
             enemies,
             FindClosestMapTile,
-            enemyThreatTileColor);
+            colorPalette.EnemyThreatTileColor);
         SetRangeVisible(preserveMoveRange ? rangeVisible || shown : shown);
     }
 
     /// <summary>월드 좌표와 XZ 평면상 가장 가까운 MapInfo 타일을 찾는다.</summary>
-    private MapInfo FindClosestMapTile(Vector3 worldPosition)
+    internal MapInfo FindClosestMapTile(Vector3 worldPosition)
     {
         ResolveBattleDataPool();
         EnsureBattlePlayerMapContext();
@@ -623,7 +450,7 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>현재 PlayerCombatData의 기본 공격 사거리를 반환한다.</summary>
-    private int GetPlayerAttackRange()
+    internal int GetPlayerAttackRange()
     {
         if (playerCombatData == null && player != null)
         {
@@ -633,149 +460,24 @@ public class BattlePlayerActionController : MonoBehaviour
         return playerCombatData != null ? playerCombatData.BasicAttackRangeTiles : 1;
     }
 
-    /// <summary>
-    /// 우클릭한 Enemy를 공격할 수 있는 후보 타일 중 이동 경로가 가장 짧은 타일을 선택한다.
-    /// </summary>
-    private void TryBeginBasicAttack(EnemyTurnActor enemy)
-    {
-        EnsureBattleBasicAttackController();
-        EnsureBattlePlayerRangeController();
-        battleBasicAttackController.Begin(
-            enemy,
-            battlePlayerRangeController.ReachableTiles,
-            battlePlayerRangeController.OccupiedEnemyTiles);
-    }
-
-    /// <summary>이전 선택 색상을 복구한 뒤 새 목적지 강조와 화살표를 표시한다.
-    /// 이동 확정은 별도 UI가 아니라 Player 본체 좌클릭으로 수행한다.</summary>
-    private void SelectMoveTile(MapInfo targetTile)
-    {
-        // 다른 타일을 다시 선택할 때 이전 선택 강조를 먼저 제거한다.
-        ShowMoveRange();
-        EnsureBattleMovementController();
-        if (!battleMovementController.SelectTarget(targetTile))
-        {
-            return;
-        }
-
-        SetTileColor(targetTile, selectedTileColor, selectedColorBlend);
-        ShowMoveArrow(targetTile);
-        SetActionConfirmText(string.Empty);
-        if (confirmMoveButton != null) confirmMoveButton.interactable = false;
-        if (quitMoveButton != null) quitMoveButton.interactable = false;
-        SetMoveButtonGroupVisible(false);
-    }
-
-    /// <summary>
-    /// 목적지까지 최단 경로를 따라 이동하고 완료 후 경로 칸 수만큼 MP를 차감한다.
-    /// 취소나 경로 실패에는 MP를 차감하지 않는다.
-    /// </summary>
-    private IEnumerator MovePlayerToSelectedTile()
-    {
-        EnsureBattleMovementController();
-        MapInfo targetTile = battleMovementController.PendingTarget;
-        if (player == null || targetTile == null || turnActionState.MovementUsed || !turnActionState.DiceRolled)
-        {
-            yield break;
-        }
-
-        // 목적지 선택 뒤 Enemy 등록 또는 위치가 바뀌었을 수 있으므로 실제 이동 직전에 다시 검증한다.
-        ResolveBattleDataPool();
-        EnsureBattlePlayerRangeController();
-        battlePlayerRangeController.RefreshOccupiedEnemyTiles(
-            battleDataPool,
-            FindClosestMapTile);
-
-        MapInfo startTile = FindClosestMapTile(player.transform.position);
-        BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
-        int maxMovementTiles = playerMP != null
-            ? Mathf.Min(currentMoveRange, playerMP.CurrentMP)
-            : 0;
-        isMoving = true;
-        EnsureBattleMovementController();
-        BattleMovementResult movementResult = null;
-        yield return battleMovementController.ExecutePending(
-            startTile,
-            BattleMapTraversalService.IsWalkable,
-            battlePlayerRangeController.OccupiedEnemyTiles,
-            maxMovementTiles,
-            result => movementResult = result);
-        isMoving = false;
-
-        if (movementResult == null || !movementResult.Success)
-        {
-            Debug.LogWarning(
-                movementResult != null ? movementResult.FailureReason : "이동 결과를 받지 못했습니다.",
-                this);
-            CancelMoveSelection();
-            yield break;
-        }
-
-        turnActionState.MarkMovementUsed();
-
-        BattleGameManager.Instance?.ChestRewardSystem?.TryOpen(targetTile);
-        BattleGameManager.Instance?.CardShopSystem?.TryEnter(targetTile);
-
-        ClearMoveRange();
-        ClearMoveArrow();
-
-        if (BattleGameManager.Instance != null)
-        {
-            BattleGameManager.Instance.ResetDiceOnMove();
-        }
-
-        if (confirmMoveButton != null)
-        {
-            confirmMoveButton.interactable = false;
-        }
-
-        if (quitMoveButton != null)
-        {
-            quitMoveButton.interactable = false;
-        }
-
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-
-        // R 단축키로 범위를 켠 상태였다면 이동으로 범위가 꺼진 뒤에도 자동으로 다시 켠다.
-        if (rangeToggleActive)
-        {
-            ShowEnemyThreatRange();
-        }
-
-        // 최신 범위를 먼저 그린 다음 착지 강조를 올려야 강조 종료 시 현재 범위 색으로 복원된다.
-        EnsureBattleRangeVisualizer();
-        battleRangeVisualizer.ShowLandedTileForDuration(
-            targetTile,
-            landedTileColor,
-            landedHighlightDuration);
-    }
-
-    /// <summary>카드 사용 확인 단계를 열고 공용 확인·취소 버튼을 표시한다.</summary>
+    /// <summary>카드 사용 확인 단계를 열고 공용 확인·취소 버튼을 표시한다. 다른 행동이 진행
+    /// 중인지 라우팅 판단만 여기서 하고, 실제 시작 처리는 BattleUnitCardFlow에 위임한다.</summary>
     public bool BeginCardUseConfirmation(
         PendingBattleCardUse cardUse,
         BattleCardDrawSystem cardDrawSystem)
     {
         if (cardUse == null || cardDrawSystem == null || player == null ||
-            IsAnyActionMoving || battleMovementController.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
+            IsAnyActionMoving || moveFlow.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
         {
             return false;
         }
 
-        if (!HasValidTargetForCard(cardUse.CardData))
-        {
-            Debug.Log("Card use blocked: no valid enemy is within this card's range.", this);
-            return false;
-        }
-
-        ClearMoveRange();
-        EnsureBattleCardActionController();
-        bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;
-        return battleCardActionController.Begin(cardUse, cardDrawSystem, canUseCards);
+        EnsureCardFlow();
+        return cardFlow.BeginUseConfirmation(cardUse, cardDrawSystem);
     }
 
     /// <summary>이동 또는 공격 확정 단계의 안내 문구를 전투 확인 텍스트에 표시한다.</summary>
-    private void SetActionConfirmText(string message)
+    internal void SetActionConfirmText(string message)
     {
         EnsureBattleActionConfirmView();
         battleActionConfirmView.SetMessage(message);
@@ -788,42 +490,18 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         if (IsCardActionActive)
         {
-            battleCardActionController.Cancel();
+            cardFlow.Cancel();
             return;
         }
 
-        if (battleBasicAttackController != null && battleBasicAttackController.IsAwaitingConfirmation)
+        if (attackFlow.IsAwaitingConfirmation)
         {
-            battleBasicAttackController.Cancel();
+            attackFlow.Cancel();
             return;
         }
 
-        EnsureBattleMovementController();
-        bool returnToMoveRange = battleMovementController.CancelSelection();
-        ClearMoveArrow();
-
-        if (confirmMoveButton != null)
-        {
-            confirmMoveButton.interactable = false;
-        }
-
-        if (quitMoveButton != null)
-        {
-            quitMoveButton.interactable = false;
-        }
-
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-
-        if (returnToMoveRange)
-        {
-            ShowMoveRange();
-        }
-        else
-        {
-            rangeToggleActive = false;
-            ClearMoveRange();
-        }
+        EnsureMoveFlow();
+        moveFlow.CancelSelectedMove();
     }
 
     /// <summary>참조 Camera가 없거나 비활성화됐으면 현재 Main Camera를 다시 찾는다.</summary>
@@ -836,169 +514,53 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>Raycast 전용 컴포넌트를 확보하고 현재 참조를 전달한다.</summary>
-    private void EnsureBattleRaycaster()
+    internal void EnsureBattleRaycaster()
     {
         battleRaycaster = BattleComponentResolver.GetOrAdd(gameObject, battleRaycaster);
-        battleRaycaster.Configure(mainCamera, player, tileLayerMask);
+        battleRaycaster.AttachReferences(mainCamera, player, tileLayerMask);
     }
 
     /// <summary>범위 표시 전용 컴포넌트를 확보하고 현재 색상 혼합 설정을 전달한다.</summary>
-    private void EnsureBattleRangeVisualizer()
+    internal void EnsureBattleRangeVisualizer()
     {
         battleRangeVisualizer = BattleComponentResolver.GetOrAdd(gameObject, battleRangeVisualizer);
-        battleRangeVisualizer.Configure(rangeColorBlend, selectedColorBlend, landedColorBlend);
+        battleRangeVisualizer.SetBlendStrengths(rangeColorBlend, selectedColorBlend, landedColorBlend);
     }
 
     /// <summary>Player 이동·공격 범위 생성과 표시를 담당하는 모듈을 확보한다.</summary>
-    private void EnsureBattlePlayerRangeController()
+    internal void EnsureBattlePlayerRangeController()
     {
         battlePlayerRangeController = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerRangeController);
         EnsureBattleRangeVisualizer();
-        battlePlayerRangeController.Configure(battleRangeVisualizer);
+        battlePlayerRangeController.AttachVisualizer(battleRangeVisualizer);
     }
 
     /// <summary>Player 이동 연출 컴포넌트를 확보하고 현재 이동 속도 설정을 전달한다.</summary>
-    private void EnsureBattlePlayerMover()
+    internal void EnsureBattlePlayerMover()
     {
         battlePlayerMover = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerMover);
         battlePlayerMover.Configure(player, secondsPerTile, moveSpeedMultiplier);
     }
 
-    /// <summary>일반 이동 경로 검증, 이동 연출과 MP 차감을 담당하는 기능 컴포넌트를 확보한다.</summary>
-    private void EnsureBattleMovementController()
+    /// <summary>이동 플로우 전담 컴포넌트(BattleUnitMoveFlow)를 확보하고 소유자 참조를 연결한다.</summary>
+    private void EnsureMoveFlow()
     {
-        EnsureBattlePlayerMover();
-
-        battleMovementController = BattleComponentResolver.GetOrAdd(gameObject, battleMovementController);
-        battleMovementController.Configure(player, battlePlayerMover);
+        moveFlow = BattleComponentResolver.GetOrAdd(gameObject, moveFlow);
+        moveFlow.Attach(this);
     }
 
-    /// <summary>기본 공격의 계획, 임시 이동과 MP 확정을 담당하는 기능 컴포넌트를 확보한다.</summary>
-    private void EnsureBattleBasicAttackController()
+    /// <summary>기본 공격 플로우 전담 컴포넌트(BattleUnitAttackFlow)를 확보하고 소유자 참조를 연결한다.</summary>
+    private void EnsureAttackFlow()
     {
-        EnsureBattlePlayerMover();
-
-        battleBasicAttackController = BattleComponentResolver.GetOrAdd(gameObject, battleBasicAttackController);
-        battleBasicAttackController.Configure(
-            player,
-            playerCombatData,
-            battlePlayerMover,
-            FindClosestMapTile,
-            BattleMapTraversalService.IsWalkable);
-        battleBasicAttackController.ConfirmationRequested -= HandleBasicAttackConfirmationRequested;
-        battleBasicAttackController.Confirmed -= HandleBasicAttackConfirmed;
-        battleBasicAttackController.Cancelled -= HandleBasicAttackCancelled;
-        battleBasicAttackController.ConfirmationRequested += HandleBasicAttackConfirmationRequested;
-        battleBasicAttackController.Confirmed += HandleBasicAttackConfirmed;
-        battleBasicAttackController.Cancelled += HandleBasicAttackCancelled;
+        attackFlow = BattleComponentResolver.GetOrAdd(gameObject, attackFlow);
+        attackFlow.Attach(this);
     }
 
-    private void HandleBasicAttackConfirmationRequested(string message)
+    /// <summary>카드 플로우 전담 컴포넌트(BattleUnitCardFlow)를 확보하고 소유자 참조를 연결한다.</summary>
+    private void EnsureCardFlow()
     {
-        if (confirmMoveButton != null)
-            confirmMoveButton.interactable = true;
-        if (quitMoveButton != null)
-            quitMoveButton.interactable = true;
-
-        SetActionConfirmText(message);
-        SetMoveButtonGroupVisible(true);
-    }
-
-    private void HandleBasicAttackConfirmed(BattleActionResult result)
-    {
-        if (result.MovementMPCost > 0)
-        {
-            turnActionState.MarkMovementUsed();
-            BattleGameManager.Instance?.ResetDiceOnMove();
-        }
-
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-        ActionConfirmed?.Invoke(result);
-
-        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
-        Debug.Log(
-            $"기본 공격 확정: 이동 {result.MovementMPCost}MP + 공격 {result.ActionMPCost}MP, " +
-            $"남은 MP {(playerMP != null ? playerMP.CurrentMP : 0)}. 피해 적용은 아직 연결하지 않았습니다.",
-            this);
-        ShowMoveRange();
-    }
-
-    private void HandleBasicAttackCancelled()
-    {
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-        ShowMoveRange();
-    }
-
-    /// <summary>카드 대상 선택, 사거리 표시와 MP·손패 확정을 담당하는 기능 컴포넌트를 확보한다.</summary>
-    private void EnsureBattleCardActionController()
-    {
-        EnsureBattleRangeVisualizer();
-
-        battleCardActionController = BattleComponentResolver.GetOrAdd(gameObject, battleCardActionController);
-        battleCardActionController.Configure(
-            player,
-            battleRangeVisualizer,
-            cardRangeTileColor,
-            cardEffectAreaTileColor,
-            FindClosestMapTile,
-            mainCamera,
-            battlePushPreviewView);
-        battleCardActionController.TargetSelectionRequested -= HandleCardTargetSelectionRequested;
-        battleCardActionController.ConfirmationRequested -= HandleCardConfirmationRequested;
-        battleCardActionController.Confirmed -= HandleCardConfirmed;
-        battleCardActionController.Cancelled -= HandleCardCancelled;
-        battleCardActionController.RangeVisibilityChanged -= SetRangeVisible;
-        battleCardActionController.TargetSelectionRequested += HandleCardTargetSelectionRequested;
-        battleCardActionController.ConfirmationRequested += HandleCardConfirmationRequested;
-        battleCardActionController.Confirmed += HandleCardConfirmed;
-        battleCardActionController.Cancelled += HandleCardCancelled;
-        battleCardActionController.RangeVisibilityChanged += SetRangeVisible;
-    }
-
-    private void HandleCardTargetSelectionRequested(string message)
-    {
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(message);
-    }
-
-    private void HandleCardConfirmationRequested(string message)
-    {
-        if (confirmMoveButton != null)
-            confirmMoveButton.interactable = true;
-        if (quitMoveButton != null)
-            quitMoveButton.interactable = true;
-
-        SetActionConfirmText(message);
-        SetMoveButtonGroupVisible(true);
-    }
-
-    private void HandleCardConfirmed(BattleActionResult result)
-    {
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-        FindFirstObjectByType<BattleCardPanelToggle>()?.Hide();
-        ActionConfirmed?.Invoke(result);
-
-        BattleUnitMP playerMP = player != null ? player.GetComponent<BattleUnitMP>() : null;
-        Debug.Log(
-            $"카드 사용 확정: {result.Request.DisplayName}, 소모 {result.ActionMPCost}MP, " +
-            $"남은 MP {(playerMP != null ? playerMP.CurrentMP : 0)}.",
-            this);
-    }
-
-    private void HandleCardCancelled()
-    {
-        SetMoveButtonGroupVisible(false);
-        SetActionConfirmText(string.Empty);
-    }
-
-    /// <summary>이동 목적지 화살표 표시 컴포넌트를 확보하고 프리팹 설정을 전달한다.</summary>
-    private void EnsureBattleMovePreview()
-    {
-        battleMovePreview = BattleComponentResolver.GetOrAdd(gameObject, battleMovePreview);
-        battleMovePreview.Configure(moveArrowPrefab, arrowOffset);
+        cardFlow = BattleComponentResolver.GetOrAdd(gameObject, cardFlow);
+        cardFlow.Attach(this);
     }
 
     /// <summary>공용 확인·취소 화면 컴포넌트를 확보하고 UI 참조와 행동을 연결한다.</summary>
@@ -1039,38 +601,67 @@ public class BattlePlayerActionController : MonoBehaviour
         battleUnitHoverHighlighter = BattleComponentResolver.GetOrAdd(
             gameObject,
             battleUnitHoverHighlighter);
-        battleUnitHoverHighlighter.Configure(mainCamera, player);
-    }
-
-    private void EnsureBattleMoveThreatPreview()
-    {
-        battleMoveThreatPreview = BattleComponentResolver.GetOrAdd(
-            gameObject,
-            battleMoveThreatPreview);
-        battleMoveThreatPreview.Configure(
-            mainCamera,
-            battleRaycaster,
-            battlePlayerRangeController);
+        battleUnitHoverHighlighter.AttachReferences(mainCamera, player);
     }
 
     /// <summary>카드 Confirm 전에 밀치기 결과를 표시할 전용 View를 확보한다.</summary>
-    private void EnsureBattlePushPreviewView()
+    internal void EnsureBattlePushPreviewView()
     {
         battlePushPreviewView = BattleComponentResolver.GetOrAdd(
             gameObject,
             battlePushPreviewView);
-        battlePushPreviewView.Configure(mainCamera);
+        battlePushPreviewView.ConfigurePreviewDependencies(mainCamera);
     }
 
     /// <summary>확정/취소 부모를 우선 토글하고, 참조가 없으면 개별 버튼을 토글한다.</summary>
-    private void SetMoveButtonGroupVisible(bool visible)
+    internal void SetMoveButtonGroupVisible(bool visible)
     {
         EnsureBattleActionConfirmView();
         battleActionConfirmView.SetVisible(visible);
     }
 
+    /// <summary>
+    /// 확정(confirmMoveButton)·취소(quitMoveButton) 버튼의 클릭 가능 여부를 null 체크와 함께 한 번에 설정한다.
+    /// 이동/공격/카드/턴 초기화 등 여러 곳에서 반복되던 "두 버튼 interactable 토글" 패턴을 여기 하나로 모았다.
+    /// </summary>
+    internal void SetConfirmButtonsInteractable(bool interactable)
+    {
+        if (confirmMoveButton != null)
+        {
+            confirmMoveButton.interactable = interactable;
+        }
+
+        if (quitMoveButton != null)
+        {
+            quitMoveButton.interactable = interactable;
+        }
+    }
+
+    /// <summary>
+    /// 기본 공격·카드 사용 모두에서 "확인 대기" 단계로 들어갈 때 공통으로 하는 UI 처리
+    /// (확정/취소 버튼 활성화 + 안내 문구 표시 + 버튼 그룹 표시)를 한 곳으로 모은 헬퍼.
+    /// HandleBasicAttackConfirmationRequested/HandleCardConfirmationRequested가 완전히 동일한
+    /// 본문을 갖고 있던 것을 여기로 합쳤다.
+    /// </summary>
+    internal void ShowActionConfirmationUI(string message)
+    {
+        SetConfirmButtonsInteractable(true);
+        SetActionConfirmText(message);
+        SetMoveButtonGroupVisible(true);
+    }
+
+    /// <summary>
+    /// 확인 대기 UI(버튼 그룹 + 안내 문구)를 닫는 공통 처리. 기본 공격/카드 취소 핸들러가
+    /// 각자 이 두 줄을 반복하던 것을 모았다 — 기본 공격 취소는 여기에 더해 ShowMoveRange()를 추가로 부른다.
+    /// </summary>
+    internal void HideActionConfirmationUI()
+    {
+        SetMoveButtonGroupVisible(false);
+        SetActionConfirmText(string.Empty);
+    }
+
     /// <summary>현재 생성된 MapInfo 목록을 다시 수집하고 원본 Material 색상을 보관한다.</summary>
-    private void RefreshMapTiles()
+    internal void RefreshMapTiles()
     {
         ResolveBattleDataPool();
         EnsureBattlePlayerMapContext();
@@ -1079,7 +670,7 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>씬 설치기가 등록한 전투 데이터 저장소를 참조한다.</summary>
-    private void ResolveBattleDataPool()
+    internal void ResolveBattleDataPool()
     {
         if (battleDataPool == null)
         {
@@ -1093,58 +684,19 @@ public class BattlePlayerActionController : MonoBehaviour
         battlePlayerMapContext = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerMapContext);
     }
 
-    /// <summary>원본색과 표시색을 지정 강도로 혼합해 원본 맵 가시성을 유지한다.</summary>
-    private void SetTileColor(MapInfo tile, Color color, float blendStrength)
-    {
-        EnsureBattleRangeVisualizer();
-        battleRangeVisualizer.SetTileColor(tile, color, blendStrength);
-    }
-
     /// <summary>플레이어 행동 제어기가 변경한 모든 타일 Renderer 색상을 원본으로 복구한다.</summary>
-    private void RestoreAllTileColors()
+    internal void RestoreAllTileColors()
     {
         EnsureBattleRangeVisualizer();
         battleRangeVisualizer.RestoreAllTileColors();
     }
 
-    /// <summary>타일 색상, 도달 가능 집합, 전역 범위 표시 상태를 초기화한다.</summary>
-    private void ClearMoveRange()
-    {
-        RestoreAllTileColors();
-        EnsureBattlePlayerRangeController();
-        battlePlayerRangeController.ClearState();
-        SetRangeVisible(false);
-    }
-
     /// <summary>AI 경로 Debug 표시와 충돌하지 않도록 범위 가시성 변경 이벤트를 보낸다.</summary>
-    private void SetRangeVisible(bool visible)
+    internal void SetRangeVisible(bool visible)
     {
         rangeVisible = visible;
-
-        if (IsMoveRangeVisible == visible)
-        {
-            return;
-        }
-
-        IsMoveRangeVisible = visible;
-        MoveRangeVisibilityChanged?.Invoke(visible);
+        // BattleRangeVisibilityTracker.SetVisible이 이전 값과 같으면 무시하므로 여기서 따로 비교하지 않는다.
+        BattleRangeVisibilityTracker.SetVisible(visible);
     }
 
-    /// <summary>목적지 위에 화살표 프리팹을 생성 또는 재사용해 표시한다.</summary>
-    private void ShowMoveArrow(MapInfo targetTile)
-    {
-        EnsureBattleMovePreview();
-        battleMovePreview.Show(targetTile);
-        EnsureBattleMoveThreatPreview();
-        battleMoveThreatPreview.ShowSelectedDestination(targetTile);
-    }
-
-    /// <summary>화살표 인스턴스를 파괴하지 않고 비활성화해 재사용한다.</summary>
-    private void ClearMoveArrow()
-    {
-        EnsureBattleMovePreview();
-        battleMovePreview.Hide();
-        EnsureBattleMoveThreatPreview();
-        battleMoveThreatPreview.ClearSelectedDestination();
-    }
 }

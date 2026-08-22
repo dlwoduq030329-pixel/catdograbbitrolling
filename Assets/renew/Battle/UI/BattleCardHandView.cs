@@ -100,7 +100,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 ClearButtonArtwork(button);
-                CardCostLabelView.Ensure(button.transform)?.Hide();
+                CardCostLabelView.GetOrCreateCostLabel(button.transform)?.HideCostLabel();
                 SetGeneratedHighlight(button, false);
                 continue;
             }
@@ -110,7 +110,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 SetButtonArtworkTint(button, new Color(0.32f, 0.32f, 0.32f, 1f));
-                CardCostLabelView.Ensure(button.transform)?.Hide();
+                CardCostLabelView.GetOrCreateCostLabel(button.transform)?.HideCostLabel();
                 SetGeneratedHighlight(button, false);
                 continue;
             }
@@ -143,18 +143,18 @@ public sealed class BattleCardHandView : MonoBehaviour
                 }
             }
 
-            CardCostLabelView costLabel = CardCostLabelView.Ensure(button.transform);
+            CardCostLabelView costLabel = CardCostLabelView.GetOrCreateCostLabel(button.transform);
             if (costLabel != null)
             {
                 if (visual.Artwork != null)
                 {
-                    costLabel.Show();
-                    costLabel.SetCost(visual.Cost, visual.Rare);
-                    costLabel.SetAffordable(hasEnoughMP);
+                    costLabel.ShowCostLabel();
+                    costLabel.DisplayCardCost(visual.Cost, visual.Rare);
+                    costLabel.SetManaAffordabilityColor(hasEnoughMP);
                 }
                 else
                 {
-                    costLabel.Hide();
+                    costLabel.HideCostLabel();
                 }
             }
 
@@ -207,7 +207,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         if (handIndex >= 0 && handIndex < longPressHandlers.Length &&
             longPressHandlers[handIndex] != null &&
-            longPressHandlers[handIndex].ConsumeSuppressedClick())
+            longPressHandlers[handIndex].ShouldIgnoreClickAfterLongPress())
         {
             return;
         }
@@ -264,7 +264,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 handler = button.gameObject.AddComponent<BattleCardLongPressHandler>();
             }
 
-            handler.Configure(cardInfoHoldSeconds, () => ShowCardInfo(handIndex));
+            handler.ConfigureLongPress(cardInfoHoldSeconds, () => ShowCardInfo(handIndex));
             longPressHandlers[i] = handler;
         }
     }
@@ -424,7 +424,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 button.gameObject.SetActive(true);
                 button.interactable = false;
                 ClearButtonArtwork(button);
-                CardCostLabelView.Ensure(button.transform)?.Hide();
+                CardCostLabelView.GetOrCreateCostLabel(button.transform)?.HideCostLabel();
             }
         }
     }

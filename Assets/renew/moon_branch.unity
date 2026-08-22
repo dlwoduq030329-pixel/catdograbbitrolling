@@ -1861,7 +1861,6 @@ GameObject:
   - component: {fileID: 165833521}
   - component: {fileID: 165833520}
   - component: {fileID: 165833519}
-  - component: {fileID: 165833518}
   m_Layer: 5
   m_Name: StatusSetting
   m_TagString: Untagged
@@ -1869,19 +1868,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 0
---- !u!114 &165833518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 165833517}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 46341db48cd64a59a44c70f09468641a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerChoose: {fileID: 0}
 --- !u!114 &165833519
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11717,15 +11703,7 @@ MonoBehaviour:
   battleDataPool: {fileID: 1943288764}
   secondsPerTile: 1
   moveSpeedMultiplier: 4
-  movableTileColor: {r: 0.25, g: 0.9, b: 0.25, a: 0.39215687}
-  blockedTileColor: {r: 0.9, g: 0.2, b: 0.2, a: 0.39215687}
-  enemyDetectColor: {r: 1, g: 0.6, b: 0.15, a: 0.39215687}
-  selectedTileColor: {r: 1, g: 0.95, b: 0.35, a: 0.39215687}
-  landedTileColor: {r: 0.55, g: 1, b: 0.85, a: 0.39215687}
-  attackableTileColor: {r: 0.9, g: 0.2, b: 0.25, a: 1}
-  cardRangeTileColor: {r: 0.35, g: 0.45, b: 1, a: 1}
-  cardEffectAreaTileColor: {r: 0.15, g: 0.9, b: 0.95, a: 1}
-  enemyThreatTileColor: {r: 0.75, g: 0.15, b: 0.85, a: 1}
+  colorPalette: {fileID: 11400000, guid: 4462fbc624cf4566ba1e828cd6587d96, type: 2}
   rangeColorBlend: 0.3
   selectedColorBlend: 0.65
   landedColorBlend: 0.5
@@ -20906,6 +20884,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   turnButtonController: {fileID: 1943288767}
+  diceRollButton: {fileID: 1826625744}
+  cardPanelToggle: {fileID: 1062061998}
   overlayUi: {fileID: 1943288776}
   playerHealthBinding: {fileID: 1943288777}
   playerActionController: {fileID: 1263296889}
@@ -20938,8 +20918,6 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   turnEndButton: {fileID: 1462165883}
-  diceButton: {fileID: 1826625741}
-  cardPanel: {fileID: 1062061998}
   endTurnKey: 101
 --- !u!114 &1943288768
 MonoBehaviour:

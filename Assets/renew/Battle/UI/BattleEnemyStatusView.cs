@@ -1,145 +1,148 @@
-using TMPro;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Enemy 머리 위에 조작 불능 상태와 남은 턴을 표시한다.</summary>
+/// <summary>
+/// Enemy의 제어 상태와 공용 상태이상 변경 이벤트를 구독하고, 향후 아이콘 UI가 사용할
+/// `상태 종류·남은 턴·중첩` 목록으로 정리해 보관한다.
+/// 현재는 텍스트나 UI 오브젝트를 생성하지 않으며, 사용자가 상태 아이콘 프리팹을 준비한 뒤
+/// <see cref="CurrentStatusEntries"/>를 순회해 각 아이콘에 표시 데이터를 전달하도록 확장한다.
+/// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyStatusView : MonoBehaviour
 {
-    private const float StatusCanvasWorldScale = 0.01f;
-    [InspectorName("Fallback World Offset")]
-    [SerializeField] private Vector3 worldOffset = new Vector3(0f, 2.65f, 0f);
-    [InspectorName("Height Above Collider")]
-    [SerializeField, Min(0f)] private float heightAboveCollider = 0.45f;
-    [InspectorName("Pull Toward Camera")]
-    [Tooltip("Moves the World Space UI slightly toward the camera so the enemy mesh cannot hide it.")]
-    [SerializeField, Min(0f)] private float cameraPullDistance = 0.2f;
-    [SerializeField] private Color stunColor = new Color(1f, 0.82f, 0.15f, 1f);
-    [SerializeField] private Color rootColor = new Color(1f, 0.42f, 0.18f, 1f);
-    [SerializeField] private Color statusColor = new Color(0.75f, 0.92f, 1f, 1f);
-    private BattleEnemyControlState state;
-    private BattleStatusEffects statusEffects;
-    private Canvas canvas;
-    private TMP_Text label;
-    private Collider ownerCollider;
+    private readonly List<BattleStatusDisplayEntry> currentStatusEntries =
+        new List<BattleStatusDisplayEntry>();
 
+    private BattleEnemyControlState enemyControlState;
+    private BattleStatusEffects boundStatusEffects;
+
+    /// <summary>
+    /// 마지막 상태 변경 신호에서 다시 구성한 Enemy의 현재 상태 목록이다.
+    /// 외부 UI는 목록을 수정하지 않고 순회해 상태 종류에 맞는 이미지와 남은 턴을 표시한다.
+    /// </summary>
+    public IReadOnlyList<BattleStatusDisplayEntry> CurrentStatusEntries => currentStatusEntries;
+
+    /// <summary>
+    /// 상태 목록이 다시 구성된 뒤 발생한다. 향후 아이콘 컨테이너가 이 이벤트를 구독해 필요한 슬롯만 갱신한다.
+    /// </summary>
+    public event Action StatusEntriesChanged;
+
+    /// <summary>같은 Enemy에 직접 연결된 제어 상태와 공용 상태이상 저장소를 최초로 가져온다.</summary>
     private void Awake()
     {
-        state = GetComponent<BattleEnemyControlState>();
-        statusEffects = GetComponent<BattleStatusEffects>();
-        ownerCollider = GetComponentInChildren<Collider>();
-        EnsureView();
+        enemyControlState = GetComponent<BattleEnemyControlState>();
+        boundStatusEffects = GetComponent<BattleStatusEffects>();
     }
 
+    /// <summary>
+    /// 컴포넌트가 활성화되면 기절·속박과 공용 상태이상 변경 이벤트를 연결하고 현재 목록을 즉시 구성한다.
+    /// </summary>
     private void OnEnable()
     {
-        if (state == null) state = GetComponent<BattleEnemyControlState>();
-        if (state != null) state.Changed += Refresh;
-        BindStatus(statusEffects != null ? statusEffects : GetComponent<BattleStatusEffects>());
-        RefreshAll();
+        if (enemyControlState == null)
+        {
+            enemyControlState = GetComponent<BattleEnemyControlState>();
+        }
+
+        if (enemyControlState != null)
+        {
+            enemyControlState.Changed -= OnEnemyControlStateChanged;
+            enemyControlState.Changed += OnEnemyControlStateChanged;
+        }
+
+        BindStatusSource(
+            boundStatusEffects != null
+                ? boundStatusEffects
+                : GetComponent<BattleStatusEffects>());
     }
 
+    /// <summary>비활성화된 Enemy View가 계속 상태 변경 신호를 받지 않도록 두 이벤트 구독을 해제한다.</summary>
     private void OnDisable()
     {
-        if (state != null) state.Changed -= Refresh;
-        if (statusEffects != null) statusEffects.Changed -= RefreshStatus;
-    }
-
-    public void BindStatus(BattleStatusEffects effects)
-    {
-        if (statusEffects != null) statusEffects.Changed -= RefreshStatus;
-        statusEffects = effects;
-        if (statusEffects != null) statusEffects.Changed += RefreshStatus;
-        RefreshAll();
-    }
-
-    private void LateUpdate()
-    {
-        Camera camera = Camera.main;
-        if (canvas != null && camera != null)
+        if (enemyControlState != null)
         {
-            Vector3 anchorPosition;
-            if (ownerCollider != null)
-            {
-                Bounds bounds = ownerCollider.bounds;
-                anchorPosition = new Vector3(
-                    bounds.center.x,
-                    bounds.max.y + heightAboveCollider,
-                    bounds.center.z);
-            }
-            else
-            {
-                anchorPosition = transform.position + worldOffset;
-            }
+            enemyControlState.Changed -= OnEnemyControlStateChanged;
+        }
 
-            Vector3 towardCamera = camera.transform.position - anchorPosition;
-            if (towardCamera.sqrMagnitude > 0.0001f)
-                anchorPosition += towardCamera.normalized * cameraPullDistance;
-
-            canvas.transform.position = anchorPosition;
-            canvas.transform.rotation = camera.transform.rotation;
+        if (boundStatusEffects != null)
+        {
+            boundStatusEffects.Changed -= OnBattleStatusEffectsChanged;
         }
     }
 
-    private void EnsureView()
+    /// <summary>
+    /// 이 Enemy의 공용 상태이상 저장소를 연결한다. 기존 저장소 구독을 먼저 해제한 뒤 새 저장소를 구독하고,
+    /// 현재 기절·속박·상태이상을 하나의 표시 목록으로 즉시 다시 구성한다.
+    /// </summary>
+    public void BindStatusSource(BattleStatusEffects statusSource)
     {
-        if (canvas != null) return;
-        GameObject root = new GameObject("Enemy Status View", typeof(RectTransform), typeof(Canvas));
-        root.transform.SetParent(transform, false);
-        canvas = root.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        canvas.sortingOrder = 220;
-        RectTransform rect = root.GetComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(240f, 42f);
-        Vector3 parentScale = transform.lossyScale;
-        rect.localScale = new Vector3(
-            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
-            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)),
-            StatusCanvasWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.z)));
-
-        GameObject text = new GameObject("Status Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
-        text.transform.SetParent(root.transform, false);
-        RectTransform textRect = text.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = textRect.offsetMax = Vector2.zero;
-        label = text.GetComponent<TextMeshProUGUI>();
-        label.alignment = TextAlignmentOptions.Center;
-        label.fontSize = 28f;
-        label.fontStyle = FontStyles.Bold;
-        label.raycastTarget = false;
-
-    }
-
-    private void Refresh(BattleEnemyControlState changedState)
-    {
-        RefreshAll();
-    }
-
-    private void RefreshStatus(BattleStatusEffects changedStatus)
-    {
-        RefreshAll();
-    }
-
-    private void RefreshAll()
-    {
-        EnsureView();
-        string controlText = string.Empty;
-        if (state != null && state.StunTurns > 0)
+        if (boundStatusEffects != null)
         {
-            controlText = $"<color=#{ColorUtility.ToHtmlStringRGB(stunColor)}>Stun {state.StunTurns}</color>";
+            boundStatusEffects.Changed -= OnBattleStatusEffectsChanged;
         }
-        if (state != null && state.RootTurns > 0)
+
+        boundStatusEffects = statusSource;
+        if (boundStatusEffects != null)
         {
-            if (controlText.Length > 0) controlText += "  ";
-            controlText += $"<color=#{ColorUtility.ToHtmlStringRGB(rootColor)}>Root {state.RootTurns}</color>";
+            boundStatusEffects.Changed -= OnBattleStatusEffectsChanged;
+            boundStatusEffects.Changed += OnBattleStatusEffectsChanged;
         }
-        string rawStatusText = statusEffects != null ? statusEffects.BuildCompactLabel() : string.Empty;
-        string statusText = string.IsNullOrEmpty(rawStatusText)
-            ? string.Empty
-            : $"<color=#{ColorUtility.ToHtmlStringRGB(statusColor)}>{rawStatusText}</color>";
-        string combinedStatus = string.IsNullOrEmpty(controlText) ? statusText :
-            string.IsNullOrEmpty(statusText) ? controlText : controlText + "  " + statusText;
-        label.text = combinedStatus;
-        canvas.gameObject.SetActive(!string.IsNullOrEmpty(label.text));
+
+        RebuildCurrentStatusEntries();
+    }
+
+    /// <summary>기절 또는 속박의 남은 턴이 바뀌면 통합 표시 목록을 다시 만든다.</summary>
+    private void OnEnemyControlStateChanged(BattleEnemyControlState changedControlState)
+    {
+        RebuildCurrentStatusEntries();
+    }
+
+    /// <summary>독·화상 등 공용 상태이상 목록이 바뀌면 통합 표시 목록을 다시 만든다.</summary>
+    private void OnBattleStatusEffectsChanged(BattleStatusEffects changedStatusEffects)
+    {
+        RebuildCurrentStatusEntries();
+    }
+
+    /// <summary>
+    /// BattleStatusEffects의 현재 목록을 복사한 뒤, 별도 Enemy 제어 컴포넌트가 관리하는 기절과 속박을 추가한다.
+    /// 목록 구성이 끝나면 향후 아이콘 UI가 다시 그릴 수 있도록 StatusEntriesChanged 이벤트를 발생시킨다.
+    /// </summary>
+    private void RebuildCurrentStatusEntries()
+    {
+        if (boundStatusEffects != null)
+        {
+            boundStatusEffects.CopyActiveStatusesTo(currentStatusEntries);
+            currentStatusEntries.RemoveAll(entry =>
+                entry.Type == BattleStatusType.Stun ||
+                entry.Type == BattleStatusType.Root);
+        }
+        else
+        {
+            currentStatusEntries.Clear();
+        }
+
+        AddControlStatusIfActive(
+            BattleStatusType.Stun,
+            enemyControlState != null ? enemyControlState.StunTurns : 0);
+        AddControlStatusIfActive(
+            BattleStatusType.Root,
+            enemyControlState != null ? enemyControlState.RootTurns : 0);
+
+        StatusEntriesChanged?.Invoke();
+    }
+
+    /// <summary>별도 제어 상태의 남은 턴이 1 이상일 때만 아이콘 표시 목록에 한 항목을 추가한다.</summary>
+    private void AddControlStatusIfActive(BattleStatusType statusType, int remainingTurns)
+    {
+        if (remainingTurns <= 0)
+        {
+            return;
+        }
+
+        currentStatusEntries.Add(new BattleStatusDisplayEntry(
+            statusType,
+            remainingTurns,
+            1));
     }
 }

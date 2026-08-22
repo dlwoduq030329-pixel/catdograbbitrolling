@@ -20,206 +20,260 @@ public static class BattleHealthBarFactory
     // 카메라가 그 안에 파묻히므로, World Space로 쓸 때는 이 배율로 축소한다.
     private const float EnemyBarWorldScale = 0.003f;
 
-    /// <summary>Enemy 머리 위 HP/MP 게이지를 연결한다. 이미 있으면 재사용하고 없으면 새로 조립한다.</summary>
+    /// <summary>
+    /// 전달받은 Enemy 내부에서 기존 EnemyHPBar를 먼저 찾아 재사용하고, 없거나 필수 View가 빠졌으면
+    /// World Space Canvas와 HP/MP 아트 프리팹을 새로 조립한다. 완성된 View에는 체력·MP 데이터,
+    /// Enemy 추적 대상과 적 유형 아이콘을 연결하고 최종 체력 View를 반환한다.
+    /// </summary>
     public static BattleHealthBarView AttachEnemyBar(
-        GameObject enemy,
-        BattleHealth health,
-        BattleUnitMP mp = null,
-        Sprite typeIcon = null)
+        GameObject enemyObject,
+        BattleHealth enemyHealth,
+        BattleUnitMP enemyMana = null,
+        Sprite enemyTypeIcon = null)
     {
-        if (enemy == null || health == null)
+        if (enemyObject == null || enemyHealth == null)
         {
             return null;
         }
 
-        Transform barTransform = FindChildByName(enemy.transform, EnemyBarName);
-        BattleHealthBarView view = barTransform != null ? barTransform.GetComponent<BattleHealthBarView>() : null;
-        BattleManaBarView manaView = barTransform != null
-            ? barTransform.GetComponentInChildren<BattleManaBarView>(true)
+        Transform existingBarRoot = FindDescendantByName(enemyObject.transform, EnemyBarName);
+        BattleHealthBarView healthBarView = existingBarRoot != null
+            ? existingBarRoot.GetComponent<BattleHealthBarView>()
             : null;
-        Image typeImage = barTransform != null
-            ? FindImageByName(barTransform, TypeIconChildName)
+        BattleManaBarView manaBarView = existingBarRoot != null
+            ? existingBarRoot.GetComponentInChildren<BattleManaBarView>(true)
+            : null;
+        Image enemyTypeImage = existingBarRoot != null
+            ? FindDescendantImageByName(existingBarRoot, TypeIconChildName)
             : null;
 
-        if (barTransform == null || view == null)
+        if (existingBarRoot == null || healthBarView == null)
         {
-            EnemyBarBuildResult built = BuildEnemyBar(enemy);
-            if (built == null)
+            EnemyBarBuildResult builtBar = BuildEnemyWorldBar(enemyObject);
+            if (builtBar == null)
             {
                 return null;
             }
 
-            barTransform = built.Root;
-            view = built.HealthView;
-            manaView = built.ManaView;
-            typeImage = built.TypeImage;
+            existingBarRoot = builtBar.BarRoot;
+            healthBarView = builtBar.HealthBarView;
+            manaBarView = builtBar.ManaBarView;
+            enemyTypeImage = builtBar.EnemyTypeImage;
         }
 
-        barTransform.gameObject.SetActive(true);
-        SetWorldScale(barTransform, EnemyBarWorldScale);
-        view.ConfigureBillboard(true);
-        view.AlignToBoxCollider(enemy);
-        view.Bind(health, enemy.transform);
+        existingBarRoot.gameObject.SetActive(true);
+        ApplyParentScaleCompensatedWorldSize(existingBarRoot, EnemyBarWorldScale);
+        healthBarView.ConfigureBillboard(true);
+        healthBarView.AlignToBoxCollider(enemyObject);
+        healthBarView.Bind(enemyHealth, enemyObject.transform);
 
-        if (manaView != null && mp != null)
+        if (manaBarView != null && enemyMana != null)
         {
-            manaView.Bind(mp);
+            manaBarView.Bind(enemyMana);
         }
 
-        if (typeImage != null)
+        if (enemyTypeImage != null)
         {
-            typeImage.sprite = typeIcon;
-            typeImage.preserveAspect = true;
-            typeImage.gameObject.SetActive(typeIcon != null);
+            enemyTypeImage.sprite = enemyTypeIcon;
+            enemyTypeImage.preserveAspect = true;
+            enemyTypeImage.gameObject.SetActive(enemyTypeIcon != null);
         }
 
-        return view;
-    }
-
-    /// <summary>Player 내부의 기존 HP 바를 우선 연결하고 없을 때만 Resources Prefab을 생성한다.</summary>
-    public static BattleHealthBarView AttachPlayerBar(GameObject player, BattleHealth health)
-    {
-        if (player == null || health == null)
-        {
-            return null;
-        }
-
-        Transform barTransform = FindChildByName(player.transform, PlayerBarName);
-        if (barTransform == null)
-        {
-            GameObject prefab = Resources.Load<GameObject>(PlayerResourcePath);
-            if (prefab == null)
-            {
-                Debug.LogWarning($"체력 바 Resources를 찾지 못했습니다: {PlayerResourcePath}", player);
-                return null;
-            }
-
-            GameObject instance = Object.Instantiate(prefab, player.transform, false);
-            instance.name = PlayerBarName;
-            barTransform = instance.transform;
-        }
-
-        // Player HUD는 화면 고정 UI이므로 월드 타일과 같은 평면을 바라보도록 고정한다.
-        barTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-
-        BattleHealthBarView view = barTransform.GetComponent<BattleHealthBarView>();
-        if (view == null)
-        {
-            view = barTransform.gameObject.AddComponent<BattleHealthBarView>();
-        }
-
-        barTransform.gameObject.SetActive(true);
-        view.ConfigureWorldRotationLock(true, new Vector3(90f, 0f, 0f));
-        view.AlignToBoxCollider(player);
-        view.Bind(health, null);
-        return view;
-    }
-
-    private sealed class EnemyBarBuildResult
-    {
-        public Transform Root;
-        public BattleHealthBarView HealthView;
-        public BattleManaBarView ManaView;
-        public Image TypeImage;
+        return healthBarView;
     }
 
     /// <summary>
-    /// BattleEnemyStatusView와 같은 방식으로 먼저 순수 코드로 World Space Canvas 래퍼를 만들고,
+    /// 전달받은 Player 오브젝트의 자식 계층에서 기존 PlayerHPBar를 찾아 재사용하고,
+    /// 없으면 Resources 프리팹을 Player 자식으로 생성한다. 체력 View가 프리팹에 없으면 추가한 뒤
+    /// Player Collider 기준 위치, 고정 월드 회전과 체력 데이터 연결을 적용한다.
+    /// </summary>
+    public static BattleHealthBarView AttachPlayerBar(
+        GameObject playerObject,
+        BattleHealth playerHealth)
+    {
+        if (playerObject == null || playerHealth == null)
+        {
+            return null;
+        }
+
+        Transform playerBarRoot = FindDescendantByName(playerObject.transform, PlayerBarName);
+        if (playerBarRoot == null)
+        {
+            GameObject playerBarPrefab = Resources.Load<GameObject>(PlayerResourcePath);
+            if (playerBarPrefab == null)
+            {
+                Debug.LogWarning(
+                    $"체력 바 Resources를 찾지 못했습니다: {PlayerResourcePath}",
+                    playerObject);
+                return null;
+            }
+
+            GameObject playerBarInstance = Object.Instantiate(
+                playerBarPrefab,
+                playerObject.transform,
+                false);
+            playerBarInstance.name = PlayerBarName;
+            playerBarRoot = playerBarInstance.transform;
+        }
+
+        // Player HUD는 화면 고정 UI이므로 월드 타일과 같은 평면을 바라보도록 고정한다.
+        playerBarRoot.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+        BattleHealthBarView healthBarView = playerBarRoot.GetComponent<BattleHealthBarView>();
+        if (healthBarView == null)
+        {
+            healthBarView = playerBarRoot.gameObject.AddComponent<BattleHealthBarView>();
+        }
+
+        playerBarRoot.gameObject.SetActive(true);
+        healthBarView.ConfigureWorldRotationLock(true, new Vector3(90f, 0f, 0f));
+        healthBarView.AlignToBoxCollider(playerObject);
+        healthBarView.Bind(playerHealth, null);
+        return healthBarView;
+    }
+
+    /// <summary>새 Enemy 월드 체력 바를 조립한 뒤 호출부에 필요한 루트와 각 View 참조를 함께 반환한다.</summary>
+    private sealed class EnemyBarBuildResult
+    {
+        public Transform BarRoot;
+        public BattleHealthBarView HealthBarView;
+        public BattleManaBarView ManaBarView;
+        public Image EnemyTypeImage;
+    }
+
+    /// <summary>
+    /// 먼저 순수 코드로 World Space Canvas 래퍼를 만들고,
     /// 그 안에 아트 프리팹(NewHpPre 등)의 시각 요소만 자식으로 붙인다.
     /// 이미 만들어진(살아있는) 프리팹 인스턴스에 나중에 AddComponent&lt;Canvas&gt;를 붙이면
     /// 드물게 참조가 깨지는 문제가 재현되어(런타임 MissingReferenceException), 처음부터
     /// Canvas를 가진 오브젝트로 시작하는 이 방식이 훨씬 안전하다.
     /// </summary>
-    private static EnemyBarBuildResult BuildEnemyBar(GameObject enemy)
+    private static EnemyBarBuildResult BuildEnemyWorldBar(GameObject enemyObject)
     {
-        GameObject content = Resources.Load<GameObject>(EnemyResourcePath);
-        if (content == null)
+        GameObject enemyBarArtPrefab = Resources.Load<GameObject>(EnemyResourcePath);
+        if (enemyBarArtPrefab == null)
         {
-            Debug.LogWarning($"체력 바 Resources를 찾지 못했습니다: {EnemyResourcePath}", enemy);
+            Debug.LogWarning(
+                $"체력 바 Resources를 찾지 못했습니다: {EnemyResourcePath}",
+                enemyObject);
             return null;
         }
 
-        GameObject wrapper = new GameObject(EnemyBarName, typeof(RectTransform), typeof(Canvas));
-        wrapper.transform.SetParent(enemy.transform, false);
+        GameObject worldCanvasRoot = new GameObject(
+            EnemyBarName,
+            typeof(RectTransform),
+            typeof(Canvas));
+        worldCanvasRoot.transform.SetParent(enemyObject.transform, false);
 
-        Canvas canvas = wrapper.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        canvas.overrideSorting = true;
-        canvas.sortingOrder = 210;
+        Canvas worldCanvas = worldCanvasRoot.GetComponent<Canvas>();
+        worldCanvas.renderMode = RenderMode.WorldSpace;
+        worldCanvas.overrideSorting = true;
+        worldCanvas.sortingOrder = 210;
 
-        RectTransform rect = wrapper.GetComponent<RectTransform>();
-        SetWorldScale(rect, EnemyBarWorldScale);
+        RectTransform worldCanvasRect = worldCanvasRoot.GetComponent<RectTransform>();
+        ApplyParentScaleCompensatedWorldSize(worldCanvasRect, EnemyBarWorldScale);
 
-        GameObject visual = Object.Instantiate(content, wrapper.transform, false);
-        visual.name = "Visual";
+        GameObject enemyBarArt = Object.Instantiate(
+            enemyBarArtPrefab,
+            worldCanvasRoot.transform,
+            false);
+        enemyBarArt.name = "Visual";
 
-        BattleHealthBarView view = wrapper.AddComponent<BattleHealthBarView>();
-        Image hpImage = FindImageByName(visual.transform, HpFillChildName);
-        if (hpImage == null)
+        BattleHealthBarView healthBarView = worldCanvasRoot.AddComponent<BattleHealthBarView>();
+        Image healthFillImage = FindDescendantImageByName(
+            enemyBarArt.transform,
+            HpFillChildName);
+        if (healthFillImage == null)
         {
-            Debug.LogWarning($"체력 바 프리팹에서 '{HpFillChildName}' 채움 이미지를 찾지 못했습니다.", enemy);
+            Debug.LogWarning(
+                $"체력 바 프리팹에서 '{HpFillChildName}' 채움 이미지를 찾지 못했습니다.",
+                enemyObject);
         }
 
-        view.ConfigureFillImage(hpImage);
+        healthBarView.ConfigureFillImage(healthFillImage);
 
-        BattleManaBarView manaView = null;
-        Image mpImage = FindImageByName(visual.transform, MpFillChildName);
-        if (mpImage != null)
+        BattleManaBarView manaBarView = null;
+        Image manaFillImage = FindDescendantImageByName(
+            enemyBarArt.transform,
+            MpFillChildName);
+        if (manaFillImage != null)
         {
-            manaView = wrapper.AddComponent<BattleManaBarView>();
-            manaView.ConfigureFillImage(mpImage);
+            manaBarView = worldCanvasRoot.AddComponent<BattleManaBarView>();
+            manaBarView.ConfigureManaFillImage(manaFillImage);
         }
 
-        Image typeImage = FindImageByName(visual.transform, TypeIconChildName);
+        Image enemyTypeImage = FindDescendantImageByName(
+            enemyBarArt.transform,
+            TypeIconChildName);
 
         return new EnemyBarBuildResult
         {
-            Root = wrapper.transform,
-            HealthView = view,
-            ManaView = manaView,
-            TypeImage = typeImage
+            BarRoot = worldCanvasRoot.transform,
+            HealthBarView = healthBarView,
+            ManaBarView = manaBarView,
+            EnemyTypeImage = enemyTypeImage
         };
     }
 
-    private static Image FindImageByName(Transform root, string targetName)
+    /// <summary>
+    /// 전달받은 UI 루트의 전체 자식 계층에서 정확히 같은 이름의 Transform을 찾고 Image를 반환한다.
+    /// Unit이나 Road를 찾는 함수가 아니라 Enemy 체력 바 아트 프리팹 내부의 HP·MP·종류 이미지를 연결하기 위한 함수다.
+    /// </summary>
+    private static Image FindDescendantImageByName(Transform uiRoot, string targetObjectName)
     {
-        Transform found = FindChildByName(root, targetName);
-        return found != null ? found.GetComponent<Image>() : null;
+        Transform matchingTransform = FindDescendantByName(uiRoot, targetObjectName);
+        return matchingTransform != null ? matchingTransform.GetComponent<Image>() : null;
     }
 
     /// <summary>
-    /// Keeps World Space UI at a stable world size even when the Enemy parent is normalized.
-    /// The local scale compensates for every axis of the parent's lossy scale.
+    /// Enemy 모델의 부모 Scale이 달라도 World Space UI가 같은 화면 크기로 보이도록 로컬 Scale을 보정한다.
+    /// 각 축의 부모 lossyScale로 목표 월드 크기를 나누어 Enemy 모델 크기 변경이 체력 바 크기에 전파되지 않게 한다.
     /// </summary>
-    private static void SetWorldScale(Transform target, float worldScale)
+    private static void ApplyParentScaleCompensatedWorldSize(
+        Transform worldUiRoot,
+        float targetWorldScale)
     {
-        if (target == null) return;
-        Transform parent = target.parent;
-        Vector3 parentScale = parent != null ? parent.lossyScale : Vector3.one;
-        target.localScale = new Vector3(
-            worldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.x)),
-            worldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.y)),
-            worldScale / Mathf.Max(0.0001f, Mathf.Abs(parentScale.z)));
+        if (worldUiRoot == null)
+        {
+            return;
+        }
+
+        Transform parentTransform = worldUiRoot.parent;
+        Vector3 parentWorldScale = parentTransform != null
+            ? parentTransform.lossyScale
+            : Vector3.one;
+        worldUiRoot.localScale = new Vector3(
+            targetWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentWorldScale.x)),
+            targetWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentWorldScale.y)),
+            targetWorldScale / Mathf.Max(0.0001f, Mathf.Abs(parentWorldScale.z)));
     }
 
-    private static Transform FindChildByName(Transform root, string targetName)
+    /// <summary>
+    /// 전달받은 루트 자신과 모든 하위 Transform을 깊이 우선으로 순회해 정확히 같은 이름의 오브젝트를 반환한다.
+    /// Attach 단계에서는 Unit 자식의 기존 HP 바 루트를 찾고, Build 단계에서는 HP 바 아트 내부 이미지를 찾는 데 사용한다.
+    /// </summary>
+    private static Transform FindDescendantByName(
+        Transform searchRoot,
+        string targetObjectName)
     {
-        if (root == null)
+        if (searchRoot == null)
         {
             return null;
         }
 
-        if (root.name == targetName)
+        if (searchRoot.name == targetObjectName)
         {
-            return root;
+            return searchRoot;
         }
 
-        for (int i = 0; i < root.childCount; i++)
+        for (int childIndex = 0; childIndex < searchRoot.childCount; childIndex++)
         {
-            Transform found = FindChildByName(root.GetChild(i), targetName);
-            if (found != null)
+            Transform matchingDescendant = FindDescendantByName(
+                searchRoot.GetChild(childIndex),
+                targetObjectName);
+            if (matchingDescendant != null)
             {
-                return found;
+                return matchingDescendant;
             }
         }
 

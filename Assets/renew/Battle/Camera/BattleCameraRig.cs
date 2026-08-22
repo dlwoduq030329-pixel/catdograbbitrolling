@@ -27,7 +27,7 @@ public sealed class BattleCameraRig : MonoBehaviour
     [SerializeField, Min(1f)] private float camDistance = 15f;
     [SerializeField, Min(0.01f)] private float followSpeed = 4f;
     [InspectorName("플레이어 이동 상태 모듈")]
-    [SerializeField] private BattleMovementController movementController;
+    [SerializeField] private BattlePlayerMoveTransaction moveTransaction;
 
     [Header("확대·축소 제한")]
     [SerializeField, Min(1f)] private float minZoomHeight = 5f;
@@ -97,7 +97,7 @@ public sealed class BattleCameraRig : MonoBehaviour
 
         ResolveMovementController();
         bool holdPlayerDuringMovement =
-            movementController != null && movementController.IsExecuting;
+            moveTransaction != null && moveTransaction.IsExecuting;
         if (holdPlayerDuringMovement)
         {
             manualPanOffset = Vector3.zero;
@@ -165,7 +165,7 @@ public sealed class BattleCameraRig : MonoBehaviour
     /// <summary>마우스 맵 이동으로 생긴 월드 오프셋을 추적 기준에 누적한다.</summary>
     public void AddPan(Vector3 worldDelta)
     {
-        if (movementController != null && movementController.IsExecuting)
+        if (moveTransaction != null && moveTransaction.IsExecuting)
         {
             return;
         }
@@ -245,9 +245,9 @@ public sealed class BattleCameraRig : MonoBehaviour
     /// <summary>일반 이동 실행 상태를 제공하는 모듈을 연결하며 비어 있으면 Scene에서 한 번 확보한다.</summary>
     private void ResolveMovementController()
     {
-        if (movementController == null)
+        if (moveTransaction == null)
         {
-            movementController = FindFirstObjectByType<BattleMovementController>(
+            moveTransaction = FindFirstObjectByType<BattlePlayerMoveTransaction>(
                 FindObjectsInactive.Include);
         }
     }

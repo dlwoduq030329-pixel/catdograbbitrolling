@@ -32,6 +32,27 @@ public enum BattleStatusType
     Vulnerable
 }
 
+/// <summary>
+/// 상태 아이콘 UI가 표시할 상태 종류, 남은 턴과 중첩 수를 한 항목으로 전달하는 읽기 전용 데이터다.
+/// UI가 BattleStatusEffects의 내부 저장 구조나 문자열 변환 규칙에 의존하지 않도록 분리한다.
+/// </summary>
+public readonly struct BattleStatusDisplayEntry
+{
+    public BattleStatusType Type { get; }
+    public int RemainingTurns { get; }
+    public int StackCount { get; }
+
+    public BattleStatusDisplayEntry(
+        BattleStatusType type,
+        int remainingTurns,
+        int stackCount)
+    {
+        Type = type;
+        RemainingTurns = remainingTurns;
+        StackCount = stackCount;
+    }
+}
+
 /// <summary>Player와 Enemy가 공유하는 턴제 상태 효과 저장소와 계산 진입점.</summary>
 [DisallowMultipleComponent]
 public sealed class BattleStatusEffects : MonoBehaviour
@@ -60,25 +81,25 @@ public sealed class BattleStatusEffects : MonoBehaviour
     public int GetStacks(BattleStatusType type) => Find(type)?.stacks ?? 0;
 
     /// <summary>
-    /// Enemy HP UI와 Player 상태 UI에 표시할 "상태이름x중첩 남은턴" 형식의 짧은 문자열을 만든다.
-    /// 기절·속박은 별도 제어 표시와 중복되지 않도록 현재 문자열에서 제외한다.
+    /// 현재 활성 상태를 UI가 사용할 구조화된 표시 데이터로 복사한다.
+    /// 전달받은 목록을 먼저 비우고 내부 StatusEntry를 읽기 전용 값으로 변환하므로,
+    /// 호출자는 같은 List 인스턴스를 재사용해 상태 변경 때마다 새 목록이 생성되는 것을 피할 수 있다.
     /// </summary>
-    public string BuildCompactLabel()
+    public void CopyActiveStatusesTo(List<BattleStatusDisplayEntry> destination)
     {
-        List<string> labels = new List<string>();
+        if (destination == null)
+        {
+            return;
+        }
+
+        destination.Clear();
         foreach (StatusEntry entry in statuses)
         {
-            if (entry.type == BattleStatusType.Stun || entry.type == BattleStatusType.Root)
-            {
-                continue;
-            }
-            string name = GetDisplayName(entry.type);
-            string stack = entry.type == BattleStatusType.Poison && entry.stacks > 1
-                ? $"x{entry.stacks}"
-                : string.Empty;
-            labels.Add($"{name}{stack} {entry.turns}");
+            destination.Add(new BattleStatusDisplayEntry(
+                entry.type,
+                entry.turns,
+                entry.stacks));
         }
-        return string.Join("  ", labels);
     }
 
     /// <summary>

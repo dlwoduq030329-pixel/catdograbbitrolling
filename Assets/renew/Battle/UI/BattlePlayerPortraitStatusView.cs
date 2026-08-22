@@ -1,9 +1,12 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 기존 HUD의 ProfileImage를 변경하지 않고 런타임에 HP·보호막 원형 게이지를 덧붙인다.
-/// HP는 초상화 안쪽 링, 보호막은 바깥쪽 링으로 표시하며 보호막이 없으면 외곽 링을 숨긴다.
+/// 기존 HUD의 ProfileImage를 Scene에서 찾아 HP·보호막 원형 게이지를 런타임에 생성하고 연결한다.
+/// Player BattleHealth의 체력·보호막·사망 이벤트를 구독하며, HP는 안쪽 링의 부드러운 증감으로,
+/// 보호막은 바깥쪽 링의 표시 여부로 나타낸다. 새 Player 초상화 프리팹이 준비되면 이 런타임 생성 구현은
+/// 제거하고 Inspector에 직접 연결된 이미지에 BattleHealth 데이터만 전달하는 View로 새로 작성한다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
@@ -12,11 +15,17 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
     private const string OverlayObjectName = "Battle Player Status Rings";
 
     [Header("원형 HUD 색상")]
-    [SerializeField] private Color hpColor = new Color(0.2f, 0.9f, 0.32f, 1f);
-    [SerializeField] private Color hpBackgroundColor = new Color(0.08f, 0.12f, 0.1f, 0.75f);
-    [SerializeField] private Color shieldColor = new Color(0.15f, 0.72f, 1f, 1f);
-    [SerializeField] private Color shieldBackgroundColor = new Color(0.05f, 0.18f, 0.28f, 0.7f);
-    [SerializeField, Min(1f)] private float hpRingPadding = 8f;
+    [FormerlySerializedAs("hpColor")]
+    [SerializeField] private Color healthRingColor = new Color(0.2f, 0.9f, 0.32f, 1f);
+    [FormerlySerializedAs("hpBackgroundColor")]
+    [SerializeField] private Color healthRingBackgroundColor = new Color(0.08f, 0.12f, 0.1f, 0.75f);
+    [FormerlySerializedAs("shieldColor")]
+    [SerializeField] private Color shieldRingColor = new Color(0.15f, 0.72f, 1f, 1f);
+    [FormerlySerializedAs("shieldBackgroundColor")]
+    [SerializeField] private Color shieldRingBackgroundColor = new Color(0.05f, 0.18f, 0.28f, 0.7f);
+    [FormerlySerializedAs("hpRingPadding")]
+    [SerializeField, Min(1f)] private float healthRingPadding = 8f;
+    [FormerlySerializedAs("shieldRingPadding")]
     [SerializeField, Min(1f)] private float shieldRingPadding = 15f;
 
     [Header("체력 변화 연출")]
@@ -27,86 +36,98 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
     [Tooltip("회복은 피해보다 빠르게 보이도록 별도로 조절할 수 있습니다.")]
     [SerializeField, Min(0.01f)] private float healingIncreaseSpeed = 3f;
 
-    private BattleHealth targetHealth;
-    private RectTransform overlayRoot;
-    private Image hpFill;
-    private Image shieldRoot;
-    private Image shieldFill;
-    private Texture2D ringTexture;
-    private Sprite ringSprite;
-    private float nextAttachAttemptTime;
-    private float targetHpRatio;
-    private float displayedHpRatio;
-    private bool hasInitializedHpRatio;
+    private BattleHealth observedPlayerHealth;
+    private RectTransform statusRingContainer;
+    private Image healthFillRing;
+    private Image shieldBackgroundRing;
+    private Image shieldFillRing;
+    private Texture2D runtimeRingTexture;
+    private Sprite runtimeRingSprite;
+    private float nextPortraitSearchTime;
+    private float targetHealthRatio;
+    private float displayedHealthRatio;
+    private bool hasInitializedHealthRatio;
 
     /// <summary>런타임 자동 생성 시 BattleGameManager의 Inspector 값을 전달받는다.</summary>
-    public void ConfigureAnimation(float decreaseSpeed, float increaseSpeed)
+    public void ConfigureHealthAnimationSpeeds(float decreaseSpeed, float increaseSpeed)
     {
         damageDecreaseSpeed = Mathf.Max(0.01f, decreaseSpeed);
         healingIncreaseSpeed = Mathf.Max(0.01f, increaseSpeed);
     }
 
-    public void Bind(BattleHealth health)
+    /// <summary>
+    /// 표시할 Player BattleHealth를 교체한다. 이전 Player의 이벤트 구독을 해제하고 새 Player를 구독한 뒤,
+    /// 초상화 링을 찾거나 생성하고 현재 체력·보호막 상태를 표시한다.
+    /// </summary>
+    public void BindPlayerHealth(BattleHealth playerHealth)
     {
-        Unsubscribe();
-        targetHealth = health;
-        Subscribe();
-        TryAttachToPortrait();
-        Refresh();
+        UnsubscribeFromPlayerHealth();
+        observedPlayerHealth = playerHealth;
+        SubscribeToPlayerHealth();
+        TryCreateOrReusePortraitRings();
+        RefreshHealthAndShieldTargets();
     }
 
+    /// <summary>
+    /// 표시 중인 HP 비율을 목표 체력 비율로 이동시킨다. 피해는 damageDecreaseSpeed, 회복은
+    /// healingIncreaseSpeed를 사용한다. 초상화가 늦게 생성된 경우에는 0.5초 간격으로 다시 찾아 연결한다.
+    /// </summary>
     private void Update()
     {
-        if (hasInitializedHpRatio && hpFill != null)
+        if (hasInitializedHealthRatio && healthFillRing != null)
         {
-            float speed = targetHpRatio < displayedHpRatio
+            float healthChangeSpeed = targetHealthRatio < displayedHealthRatio
                 ? damageDecreaseSpeed
                 : healingIncreaseSpeed;
-            displayedHpRatio = Mathf.MoveTowards(
-                displayedHpRatio,
-                targetHpRatio,
-                speed * Time.unscaledDeltaTime);
-            hpFill.fillAmount = displayedHpRatio;
+            displayedHealthRatio = Mathf.MoveTowards(
+                displayedHealthRatio,
+                targetHealthRatio,
+                healthChangeSpeed * Time.unscaledDeltaTime);
+            healthFillRing.fillAmount = displayedHealthRatio;
         }
 
-        if (overlayRoot != null || Time.unscaledTime < nextAttachAttemptTime)
+        if (statusRingContainer != null || Time.unscaledTime < nextPortraitSearchTime)
         {
             return;
         }
 
-        nextAttachAttemptTime = Time.unscaledTime + 0.5f;
-        if (TryAttachToPortrait())
+        nextPortraitSearchTime = Time.unscaledTime + 0.5f;
+        if (TryCreateOrReusePortraitRings())
         {
-            Refresh();
+            RefreshHealthAndShieldTargets();
         }
     }
 
     private void OnDisable()
     {
-        Unsubscribe();
+        UnsubscribeFromPlayerHealth();
     }
 
     private void OnEnable()
     {
-        Subscribe();
-        Refresh();
+        SubscribeToPlayerHealth();
+        RefreshHealthAndShieldTargets();
     }
 
     private void OnDestroy()
     {
-        Unsubscribe();
-        if (ringSprite != null)
+        UnsubscribeFromPlayerHealth();
+        if (runtimeRingSprite != null)
         {
-            Destroy(ringSprite);
+            Destroy(runtimeRingSprite);
         }
 
-        if (ringTexture != null)
+        if (runtimeRingTexture != null)
         {
-            Destroy(ringTexture);
+            Destroy(runtimeRingTexture);
         }
     }
 
-    private bool TryAttachToPortrait()
+    /// <summary>
+    /// Scene의 ProfileImage를 찾고 기존 상태 링이 있으면 참조를 복구한다. 없으면 원형 Sprite와
+    /// HP 배경/채움, 보호막 배경/채움 오브젝트를 런타임 생성한다.
+    /// </summary>
+    private bool TryCreateOrReusePortraitRings()
     {
         RectTransform portrait = FindProfileImage();
         if (portrait == null)
@@ -117,19 +138,19 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         Transform existing = portrait.Find(OverlayObjectName);
         if (existing != null)
         {
-            overlayRoot = existing as RectTransform;
+            statusRingContainer = existing as RectTransform;
             ResolveExistingImages();
-            return overlayRoot != null;
+            return statusRingContainer != null;
         }
 
-        EnsureRingSprite();
-        overlayRoot = CreateRect(OverlayObjectName, portrait, Vector2.zero);
-        Stretch(overlayRoot, Vector2.zero);
+        EnsureRuntimeRingSprite();
+        statusRingContainer = CreateRectTransform(OverlayObjectName, portrait, Vector2.zero);
+        StretchToParent(statusRingContainer, Vector2.zero);
 
-        CreateRing("HP Ring Background", overlayRoot, hpRingPadding, hpBackgroundColor, false);
-        hpFill = CreateRing("HP Ring Fill", overlayRoot, hpRingPadding, hpColor, true);
-        shieldRoot = CreateRing("Shield Ring Background", overlayRoot, shieldRingPadding, shieldBackgroundColor, false);
-        shieldFill = CreateRing("Shield Ring Fill", overlayRoot, shieldRingPadding, shieldColor, true);
+        CreateRing("HP Ring Background", statusRingContainer, healthRingPadding, healthRingBackgroundColor, false);
+        healthFillRing = CreateRing("HP Ring Fill", statusRingContainer, healthRingPadding, healthRingColor, true);
+        shieldBackgroundRing = CreateRing("Shield Ring Background", statusRingContainer, shieldRingPadding, shieldRingBackgroundColor, false);
+        shieldFillRing = CreateRing("Shield Ring Fill", statusRingContainer, shieldRingPadding, shieldRingColor, true);
         return true;
     }
 
@@ -156,11 +177,11 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         Color color,
         bool isFill)
     {
-        RectTransform rect = CreateRect(objectName, parent, new Vector2(padding * 2f, padding * 2f));
-        Stretch(rect, new Vector2(-padding, -padding));
+        RectTransform rect = CreateRectTransform(objectName, parent, new Vector2(padding * 2f, padding * 2f));
+        StretchToParent(rect, new Vector2(-padding, -padding));
 
         Image image = rect.gameObject.AddComponent<Image>();
-        image.sprite = ringSprite;
+        image.sprite = runtimeRingSprite;
         image.color = color;
         image.raycastTarget = false;
         image.preserveAspect = true;
@@ -176,7 +197,7 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         return image;
     }
 
-    private static RectTransform CreateRect(string objectName, Transform parent, Vector2 sizeDelta)
+    private static RectTransform CreateRectTransform(string objectName, Transform parent, Vector2 sizeDelta)
     {
         GameObject child = new GameObject(objectName, typeof(RectTransform));
         child.layer = parent.gameObject.layer;
@@ -190,7 +211,7 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         return rect;
     }
 
-    private static void Stretch(RectTransform rect, Vector2 offset)
+    private static void StretchToParent(RectTransform rect, Vector2 offset)
     {
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.one;
@@ -198,9 +219,9 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         rect.offsetMax = -offset;
     }
 
-    private void EnsureRingSprite()
+    private void EnsureRuntimeRingSprite()
     {
-        if (ringSprite != null)
+        if (runtimeRingSprite != null)
         {
             return;
         }
@@ -208,7 +229,7 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
         const int size = 128;
         const float outerRadius = 62f;
         const float innerRadius = 52f;
-        ringTexture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        runtimeRingTexture = new Texture2D(size, size, TextureFormat.RGBA32, false)
         {
             name = "Battle Runtime Portrait Ring",
             filterMode = FilterMode.Bilinear,
@@ -228,107 +249,111 @@ public sealed class BattlePlayerPortraitStatusView : MonoBehaviour
             }
         }
 
-        ringTexture.SetPixels(pixels);
-        ringTexture.Apply(false, true);
-        ringSprite = Sprite.Create(
-            ringTexture,
+        runtimeRingTexture.SetPixels(pixels);
+        runtimeRingTexture.Apply(false, true);
+        runtimeRingSprite = Sprite.Create(
+            runtimeRingTexture,
             new Rect(0f, 0f, size, size),
             new Vector2(0.5f, 0.5f),
             100f);
-        ringSprite.name = "Battle Runtime Portrait Ring Sprite";
+        runtimeRingSprite.name = "Battle Runtime Portrait Ring Sprite";
     }
 
     private void ResolveExistingImages()
     {
-        hpFill = FindImage("HP Ring Fill");
-        shieldRoot = FindImage("Shield Ring Background");
-        shieldFill = FindImage("Shield Ring Fill");
+        healthFillRing = FindRingImage("HP Ring Fill");
+        shieldBackgroundRing = FindRingImage("Shield Ring Background");
+        shieldFillRing = FindRingImage("Shield Ring Fill");
     }
 
-    private Image FindImage(string childName)
+    private Image FindRingImage(string childName)
     {
-        Transform child = overlayRoot != null ? overlayRoot.Find(childName) : null;
+        Transform child = statusRingContainer != null ? statusRingContainer.Find(childName) : null;
         return child != null ? child.GetComponent<Image>() : null;
     }
 
-    private void Refresh()
+    /// <summary>현재 Player 체력 비율을 목표값으로 갱신하고 보호막 링 표시 여부를 현재 보호막 수치와 맞춘다.</summary>
+    private void RefreshHealthAndShieldTargets()
     {
-        if (targetHealth == null)
+        if (observedPlayerHealth == null)
         {
-            targetHpRatio = 0f;
-            displayedHpRatio = 0f;
-            hasInitializedHpRatio = true;
-            if (hpFill != null)
+            targetHealthRatio = 0f;
+            displayedHealthRatio = 0f;
+            hasInitializedHealthRatio = true;
+            if (healthFillRing != null)
             {
-                hpFill.fillAmount = 0f;
+                healthFillRing.fillAmount = 0f;
             }
             SetShieldVisible(false);
             return;
         }
 
-        targetHpRatio = targetHealth.MaxHealth > 0f
-            ? Mathf.Clamp01(targetHealth.CurrentHealth / targetHealth.MaxHealth)
+        targetHealthRatio = observedPlayerHealth.MaxHealth > 0f
+            ? Mathf.Clamp01(observedPlayerHealth.CurrentHealth / observedPlayerHealth.MaxHealth)
             : 0f;
-        if (!hasInitializedHpRatio)
+        if (!hasInitializedHealthRatio)
         {
-            displayedHpRatio = targetHpRatio;
-            hasInitializedHpRatio = true;
+            displayedHealthRatio = targetHealthRatio;
+            hasInitializedHealthRatio = true;
         }
-        if (hpFill != null)
+        if (healthFillRing != null)
         {
-            hpFill.fillAmount = displayedHpRatio;
+            healthFillRing.fillAmount = displayedHealthRatio;
         }
 
-        bool hasShield = targetHealth.CurrentShield > 0f;
+        bool hasShield = observedPlayerHealth.CurrentShield > 0f;
         SetShieldVisible(hasShield);
-        if (shieldFill != null)
+        if (shieldFillRing != null)
         {
             // 현재 보호막에는 별도 최대치가 없으므로 존재 여부를 완전한 외곽 링으로 표시한다.
-            shieldFill.fillAmount = hasShield ? 1f : 0f;
+            shieldFillRing.fillAmount = hasShield ? 1f : 0f;
         }
     }
 
     private void SetShieldVisible(bool visible)
     {
-        if (shieldRoot != null)
+        if (shieldBackgroundRing != null)
         {
-            shieldRoot.gameObject.SetActive(visible);
+            shieldBackgroundRing.gameObject.SetActive(visible);
         }
-        if (shieldFill != null)
+        if (shieldFillRing != null)
         {
-            shieldFill.gameObject.SetActive(visible);
+            shieldFillRing.gameObject.SetActive(visible);
         }
     }
 
-    private void Subscribe()
+    /// <summary>Player의 체력·보호막·사망 이벤트를 중복 없이 구독한다.</summary>
+    private void SubscribeToPlayerHealth()
     {
-        if (targetHealth == null)
+        if (observedPlayerHealth == null)
         {
             return;
         }
 
-        targetHealth.HealthChanged -= HandleHealthChanged;
-        targetHealth.ShieldChanged -= HandleHealthChanged;
-        targetHealth.Died -= HandleHealthChanged;
-        targetHealth.HealthChanged += HandleHealthChanged;
-        targetHealth.ShieldChanged += HandleHealthChanged;
-        targetHealth.Died += HandleHealthChanged;
+        observedPlayerHealth.HealthChanged -= OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.ShieldChanged -= OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.Died -= OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.HealthChanged += OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.ShieldChanged += OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.Died += OnPlayerHealthOrShieldChanged;
     }
 
-    private void Unsubscribe()
+    /// <summary>현재 Player 체력에서 이 View의 모든 이벤트 구독을 해제한다.</summary>
+    private void UnsubscribeFromPlayerHealth()
     {
-        if (targetHealth == null)
+        if (observedPlayerHealth == null)
         {
             return;
         }
 
-        targetHealth.HealthChanged -= HandleHealthChanged;
-        targetHealth.ShieldChanged -= HandleHealthChanged;
-        targetHealth.Died -= HandleHealthChanged;
+        observedPlayerHealth.HealthChanged -= OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.ShieldChanged -= OnPlayerHealthOrShieldChanged;
+        observedPlayerHealth.Died -= OnPlayerHealthOrShieldChanged;
     }
 
-    private void HandleHealthChanged(BattleHealth health)
+    /// <summary>Player 체력·보호막·사망 상태가 바뀌면 화면 목표값을 다시 계산한다.</summary>
+    private void OnPlayerHealthOrShieldChanged(BattleHealth changedHealth)
     {
-        Refresh();
+        RefreshHealthAndShieldTargets();
     }
 }

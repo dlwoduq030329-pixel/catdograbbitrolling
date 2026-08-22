@@ -55,7 +55,7 @@ public sealed class BattleCardActionController : MonoBehaviour
         findClosestTile = tileFinder;
         battleCamera = camera;
         pushPreviewView = previewView;
-        pushPreviewView?.Configure(battleCamera);
+        pushPreviewView?.ConfigurePreviewDependencies(battleCamera);
     }
 
     /// <summary>손패 카드 요청을 검증하고 대상 선택 및 확인 대기 상태를 시작한다. 실제 효과는 아직 적용하지 않는다.</summary>
@@ -222,7 +222,7 @@ public sealed class BattleCardActionController : MonoBehaviour
 
     private void ReturnToTargetSelection()
     {
-        pushPreviewView?.Hide();
+        pushPreviewView?.HidePushPredictions();
         IsAwaitingConfirmation = false;
         IsSelectingTarget = true;
         selectedTarget = null;
@@ -393,7 +393,7 @@ public sealed class BattleCardActionController : MonoBehaviour
         if (unit == null) return;
         BattleStatusEffects effects = BattleStatusEffects.GetOrAdd(unit);
         effects?.Apply(type, turns, player);
-        unit.GetComponent<BattleEnemyStatusView>()?.BindStatus(effects);
+        unit.GetComponent<BattleEnemyStatusView>()?.BindStatusSource(effects);
         if (type == BattleStatusType.Stun || type == BattleStatusType.Root)
         {
             BattleEnemyControlState control = unit.GetComponent<BattleEnemyControlState>();
@@ -492,7 +492,7 @@ public sealed class BattleCardActionController : MonoBehaviour
 
     private void ClearStateAndRange()
     {
-        pushPreviewView?.Hide();
+        pushPreviewView?.HidePushPredictions();
         IsSelectingTarget = false;
         IsAwaitingConfirmation = false;
         pendingUse = null;
@@ -510,7 +510,7 @@ public sealed class BattleCardActionController : MonoBehaviour
         if (pushPreviewView == null || pendingUse == null || selectedTarget == null ||
             !BattleCardEffectExecutor.HasEffect(pendingUse.CardData, BattleCardEffectType.Push))
         {
-            pushPreviewView?.Hide();
+            pushPreviewView?.HidePushPredictions();
             return;
         }
 
@@ -530,7 +530,7 @@ public sealed class BattleCardActionController : MonoBehaviour
                     plans.Add(plan);
                 }
             }
-            pushPreviewView.ShowMany(plans);
+            pushPreviewView.ShowPushPredictions(plans);
             return;
         }
 
@@ -555,11 +555,11 @@ public sealed class BattleCardActionController : MonoBehaviour
             out BattleCardMovementService.PushPlan pushPlan);
         if (planned)
         {
-            pushPreviewView.Show(pushPlan);
+            pushPreviewView.ShowSinglePushPrediction(pushPlan);
         }
         else
         {
-            pushPreviewView.Hide();
+            pushPreviewView.HidePushPredictions();
         }
     }
 

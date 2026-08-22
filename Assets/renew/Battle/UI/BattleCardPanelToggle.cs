@@ -1,52 +1,67 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 
 /// <summary>
-/// 카드 손패 패널을 지정 키로 화면 안팎에 슬라이드한다.
-/// 오브젝트를 비활성화하지 않으므로 키 입력과 손패 갱신 이벤트는 계속 받을 수 있다.
+/// 전투 손패 패널을 지정 키 또는 외부 UI 요청으로 화면 안팎에 슬라이드한다.
+/// 패널 GameObject를 비활성화하지 않고 위치와 CanvasGroup 입력만 변경하므로,
+/// 숨겨진 동안에도 손패 변경 이벤트를 계속 받아 다음 표시 상태를 준비할 수 있다.
+/// 향후 항상 보이는 부채꼴 손패를 채택하면 Tab 입력은 제거하고 손패 등장·퇴장 연출 제어기로 재사용할 수 있다.
 /// </summary>
 public class BattleCardPanelToggle : MonoBehaviour
 {
     [Header("카드 패널")]
     [InspectorName("이동할 카드 패널")]
-    [SerializeField] private RectTransform cardPanel;
+    [FormerlySerializedAs("cardPanel")]
+    [SerializeField] private RectTransform handPanelRect;
     [InspectorName("입력 차단용 캔버스 그룹")]
-    [SerializeField] private CanvasGroup canvasGroup;
+    [FormerlySerializedAs("canvasGroup")]
+    [SerializeField] private CanvasGroup handPanelInputGroup;
 
     [Header("입력")]
     [InspectorName("카드 패널 열기/닫기 키")]
-    [SerializeField] private KeyCode toggleKey = KeyCode.Tab;
+    [FormerlySerializedAs("toggleKey")]
+    [SerializeField] private KeyCode handPanelToggleKey = KeyCode.Tab;
     [InspectorName("문자 입력 중 단축키 무시")]
-    [SerializeField] private bool ignoreWhenEditingUI = true;
+    [FormerlySerializedAs("ignoreWhenEditingUI")]
+    [SerializeField] private bool ignoreShortcutWhileTyping = true;
 
     [Header("슬라이드 설정")]
     [Tooltip("인스펙터에 배치한 위치를 열린 위치로 사용합니다.")]
     [InspectorName("닫힐 때 이동할 거리")]
-    [SerializeField] private Vector2 hiddenOffset = new Vector2(0f, -320f);
+    [FormerlySerializedAs("hiddenOffset")]
+    [SerializeField] private Vector2 hiddenPositionOffset = new Vector2(0f, -320f);
     [InspectorName("슬라이드 시간")]
-    [SerializeField, Min(0f)] private float slideDuration = 0.2f;
+    [FormerlySerializedAs("slideDuration")]
+    [SerializeField, Min(0f)] private float slideDurationSeconds = 0.2f;
     [InspectorName("시작할 때 패널 닫기")]
-    [SerializeField] private bool startHidden = true;
+    [FormerlySerializedAs("startHidden")]
+    [SerializeField] private bool hidePanelAtBattleStart = true;
 
-    private Vector2 shownPosition;
-    private Vector2 hiddenPosition;
-    private Coroutine slideRoutine;
-    private BattleCardInfoPresenter cardInfoPresenter;
+    private Vector2 visibleAnchoredPosition;
+    private Vector2 hiddenAnchoredPosition;
+    private Coroutine activeSlideCoroutine;
+    private BattleCardInfoPresenter cardInfoPanelPresenter;
 
+    /// <summary>손패 패널이 열린 목표 상태인지 나타낸다. 슬라이드가 끝나기 전에도 목표 상태가 즉시 반영된다.</summary>
     public bool IsShown { get; private set; }
-    public KeyCode ToggleKey => toggleKey;
+    /// <summary>현재 Inspector에 설정된 손패 열기·닫기 단축키를 외부 입력 안내 UI에 제공한다.</summary>
+    public KeyCode ToggleKey => handPanelToggleKey;
 
-    /// <summary>이동 패널과 입력 차단용 CanvasGroup을 보완하고 열림·닫힘 위치를 계산한다.</summary>
+    /// <summary>
+    /// 손패 RectTransform과 입력 차단용 CanvasGroup을 준비하고, Inspector에 배치된 위치를 기준으로
+    /// 열린 위치와 숨겨진 위치를 한 번 계산한다. 필수 계층 검증에 실패하면 이후 입력 처리를 중단한다.
+    /// </summary>
     private void Awake()
     {
-        if (cardPanel == null)
+        if (handPanelRect == null)
         {
-            cardPanel = transform as RectTransform;
+            handPanelRect = transform as RectTransform;
         }
 
-        cardInfoPresenter = cardPanel != null
-            ? cardPanel.GetComponent<BattleCardInfoPresenter>()
+        cardInfoPanelPresenter = handPanelRect != null
+            ? handPanelRect.GetComponent<BattleCardInfoPresenter>()
             : null;
 
         if (!IsValidBattleCardPanel())
@@ -55,37 +70,39 @@ public class BattleCardPanelToggle : MonoBehaviour
             return;
         }
 
-        if (canvasGroup == null && cardPanel != null)
+        if (handPanelInputGroup == null && handPanelRect != null)
         {
-            canvasGroup = cardPanel.GetComponent<CanvasGroup>();
-            if (canvasGroup == null)
+            handPanelInputGroup = handPanelRect.GetComponent<CanvasGroup>();
+            if (handPanelInputGroup == null)
             {
-                canvasGroup = cardPanel.gameObject.AddComponent<CanvasGroup>();
+                handPanelInputGroup = handPanelRect.gameObject.AddComponent<CanvasGroup>();
             }
         }
 
-        if (cardPanel == null)
+        if (handPanelRect == null)
         {
             Debug.LogError("카드 패널 전환 실패: RectTransform을 찾을 수 없습니다.", this);
             enabled = false;
             return;
         }
 
-        shownPosition = cardPanel.anchoredPosition;
-        hiddenPosition = shownPosition + hiddenOffset;
-        ApplyImmediate(startHidden ? hiddenPosition : shownPosition, !startHidden);
+        visibleAnchoredPosition = handPanelRect.anchoredPosition;
+        hiddenAnchoredPosition = visibleAnchoredPosition + hiddenPositionOffset;
+        ApplyPanelStateImmediately(
+            hidePanelAtBattleStart ? hiddenAnchoredPosition : visibleAnchoredPosition,
+            !hidePanelAtBattleStart);
     }
 
     /// <summary>카드 패널이 전투 Canvas 내부의 하위 오브젝트인지 검사한다.</summary>
     private bool IsValidBattleCardPanel()
     {
-        if (cardPanel == null)
+        if (handPanelRect == null)
         {
             Debug.LogError("카드 패널 전환 실패: RectTransform을 찾을 수 없습니다.", this);
             return false;
         }
 
-        Canvas[] parentCanvases = cardPanel.GetComponentsInParent<Canvas>(true);
+        Canvas[] parentCanvases = handPanelRect.GetComponentsInParent<Canvas>(true);
         if (parentCanvases.Length == 0)
         {
             Debug.LogError("카드 패널 전환 실패: 상위 Canvas를 찾을 수 없습니다.", this);
@@ -96,12 +113,12 @@ public class BattleCardPanelToggle : MonoBehaviour
         if (rootCanvas.name.Trim() != "Canvas - Battle")
         {
             Debug.LogError(
-                $"카드 패널 전환 실패: '{cardPanel.name}'은 Canvas - Battle 내부에 있어야 합니다.",
+                $"카드 패널 전환 실패: '{handPanelRect.name}'은 Canvas - Battle 내부에 있어야 합니다.",
                 this);
             return false;
         }
 
-        if (cardPanel.gameObject == rootCanvas.gameObject)
+        if (handPanelRect.gameObject == rootCanvas.gameObject)
         {
             Debug.LogError(
                 "카드 패널 전환 실패: Canvas - Battle 자체가 아닌 하위 손패 패널에 추가해야 합니다.",
@@ -116,12 +133,12 @@ public class BattleCardPanelToggle : MonoBehaviour
     /// 카드 사거리 표시·대상 선택 중에도 Tab으로 패널을 여닫을 수 있다(더 이상 차단하지 않음).</summary>
     private void Update()
     {
-        if (Input.GetKeyDown(toggleKey) &&
-            !ShouldIgnoreShortcut())
+        if (Input.GetKeyDown(handPanelToggleKey) &&
+            !ShouldIgnoreToggleShortcut())
         {
-            if (cardInfoPresenter != null)
+            if (cardInfoPanelPresenter != null)
             {
-                cardInfoPresenter.Hide();
+                cardInfoPanelPresenter.Hide();
             }
 
             Toggle();
@@ -144,85 +161,97 @@ public class BattleCardPanelToggle : MonoBehaviour
     /// <summary>카드 패널을 화면 안으로 올린다.</summary>
     public void Show()
     {
-        StartSlide(shownPosition, true);
+        StartPanelSlide(visibleAnchoredPosition, true);
     }
 
     /// <summary>카드 패널을 화면 밖으로 내린다.</summary>
     public void Hide()
     {
-        if (cardInfoPresenter != null)
+        if (cardInfoPanelPresenter != null)
         {
-            cardInfoPresenter.Hide();
+            cardInfoPanelPresenter.Hide();
         }
 
-        StartSlide(hiddenPosition, false);
+        StartPanelSlide(hiddenAnchoredPosition, false);
     }
 
-    /// <summary>진행 중인 이동을 정리하고 지정 위치로 향하는 새 슬라이드 애니메이션을 시작한다.</summary>
-    private void StartSlide(Vector2 targetPosition, bool show)
+    /// <summary>
+    /// 이전 손패 이동이 진행 중이면 중단하고 새 목표 위치로 이동을 시작한다.
+    /// 이동 중 잘못된 카드 클릭이 발생하지 않도록 먼저 입력을 잠그고 목표 열림 상태를 기록한다.
+    /// </summary>
+    private void StartPanelSlide(Vector2 targetAnchoredPosition, bool shouldBeVisible)
     {
-        if (slideRoutine != null)
+        if (activeSlideCoroutine != null)
         {
-            StopCoroutine(slideRoutine);
+            StopCoroutine(activeSlideCoroutine);
         }
 
-        IsShown = show;
-        SetInteraction(false);
-        slideRoutine = StartCoroutine(SlideTo(targetPosition, show));
+        IsShown = shouldBeVisible;
+        SetHandPanelInteraction(false);
+        activeSlideCoroutine = StartCoroutine(
+            AnimatePanelToPosition(targetAnchoredPosition, shouldBeVisible));
     }
 
-    /// <summary>시간 배율과 무관한 시간으로 카드 패널을 부드럽게 목표 위치까지 이동한다.</summary>
-    private IEnumerator SlideTo(Vector2 targetPosition, bool show)
+    /// <summary>
+    /// 게임 일시정지와 무관한 시간으로 손패를 현재 위치에서 목표 위치까지 부드럽게 이동한다.
+    /// 이동이 끝난 뒤 최종 위치를 정확히 맞추고, 열린 상태일 때만 카드 입력을 다시 허용한다.
+    /// </summary>
+    private IEnumerator AnimatePanelToPosition(
+        Vector2 targetAnchoredPosition,
+        bool shouldBeVisible)
     {
-        Vector2 startPosition = cardPanel.anchoredPosition;
-        if (slideDuration <= 0f)
+        Vector2 startingAnchoredPosition = handPanelRect.anchoredPosition;
+        if (slideDurationSeconds <= 0f)
         {
-            ApplyImmediate(targetPosition, show);
-            slideRoutine = null;
+            ApplyPanelStateImmediately(targetAnchoredPosition, shouldBeVisible);
+            activeSlideCoroutine = null;
             yield break;
         }
 
-        float elapsed = 0f;
-        while (elapsed < slideDuration)
+        float elapsedSeconds = 0f;
+        while (elapsedSeconds < slideDurationSeconds)
         {
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / slideDuration);
-            float easedProgress = 1f - Mathf.Pow(1f - progress, 3f);
-            cardPanel.anchoredPosition = Vector2.LerpUnclamped(
-                startPosition,
-                targetPosition,
+            elapsedSeconds += Time.unscaledDeltaTime;
+            float normalizedProgress = Mathf.Clamp01(elapsedSeconds / slideDurationSeconds);
+            float easedProgress = 1f - Mathf.Pow(1f - normalizedProgress, 3f);
+            handPanelRect.anchoredPosition = Vector2.LerpUnclamped(
+                startingAnchoredPosition,
+                targetAnchoredPosition,
                 easedProgress);
             yield return null;
         }
 
-        ApplyImmediate(targetPosition, show);
-        slideRoutine = null;
+        ApplyPanelStateImmediately(targetAnchoredPosition, shouldBeVisible);
+        activeSlideCoroutine = null;
     }
 
-    /// <summary>애니메이션 없이 위치와 표시 상태, 입력 가능 여부를 즉시 일치시킨다.</summary>
-    private void ApplyImmediate(Vector2 position, bool show)
+    /// <summary>애니메이션 없이 손패 위치·열림 상태·입력 가능 여부를 같은 상태로 즉시 맞춘다.</summary>
+    private void ApplyPanelStateImmediately(Vector2 anchoredPosition, bool shouldBeVisible)
     {
-        cardPanel.anchoredPosition = position;
-        IsShown = show;
-        SetInteraction(show);
+        handPanelRect.anchoredPosition = anchoredPosition;
+        IsShown = shouldBeVisible;
+        SetHandPanelInteraction(shouldBeVisible);
     }
 
     /// <summary>닫힌 카드가 보이지 않는 위치에서 클릭되는 것을 CanvasGroup으로 차단한다.</summary>
-    private void SetInteraction(bool enabledInteraction)
+    private void SetHandPanelInteraction(bool allowCardInput)
     {
-        if (canvasGroup == null)
+        if (handPanelInputGroup == null)
         {
             return;
         }
 
-        canvasGroup.interactable = enabledInteraction;
-        canvasGroup.blocksRaycasts = enabledInteraction;
+        handPanelInputGroup.interactable = allowCardInput;
+        handPanelInputGroup.blocksRaycasts = allowCardInput;
     }
 
-    /// <summary>현재 선택된 화면 요소가 문자 입력창이면 카드 패널 단축키를 무시할지 판단한다.</summary>
-    private bool ShouldIgnoreShortcut()
+    /// <summary>
+    /// 사용자가 InputField에 문자를 입력하는 동안 Tab이 손패 전환까지 실행되지 않도록 검사한다.
+    /// 입력창 무시 옵션이 꺼져 있거나 EventSystem이 없으면 단축키를 정상 처리한다.
+    /// </summary>
+    private bool ShouldIgnoreToggleShortcut()
     {
-        if (!ignoreWhenEditingUI || EventSystem.current == null)
+        if (!ignoreShortcutWhileTyping || EventSystem.current == null)
         {
             return false;
         }

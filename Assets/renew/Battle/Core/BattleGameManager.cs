@@ -32,6 +32,12 @@ public class BattleGameManager : MonoBehaviour
     [Header("턴 진행 모듈")] // 턴/오버레이/플레이어 체력만 관리 현재는 BattleGameManager가 담당하지만, 추후 별도 조정자로 분리할 수 있다.
     [InspectorName("턴 버튼 제어 모듈")]
     [SerializeField] private BattleTurnButtonController turnButtonController;
+    [InspectorName("주사위 버튼 입력·표시 모듈")]
+    [Tooltip("주사위 버튼의 누르기 연출과 버튼 표시·활성 상태를 직접 관리합니다.")]
+    [SerializeField] private BattleDiceRollButton diceRollButton;
+    [InspectorName("카드 패널 표시 제어 모듈")]
+    [Tooltip("주사위를 굴리면 손패를 열고 새 턴 또는 적 턴에는 숨길 카드 패널입니다. 턴 버튼 제어기를 경유하지 않고 직접 제어합니다.")]
+    [SerializeField] private BattleCardPanelToggle cardPanelToggle;
     [InspectorName("오버레이 UI 제어 모듈")]
     [SerializeField] private BattleOverlayUiController overlayUi;
     [InspectorName("플레이어 체력 연결 모듈")]
@@ -41,7 +47,7 @@ public class BattleGameManager : MonoBehaviour
     [InspectorName("플레이어 행동 제어기")]
     [SerializeField] private BattlePlayerActionController playerActionController;
     [InspectorName("플레이어 런타임 연결 모듈")]
-    [SerializeField] private BattlePlayerRuntimeBinder playerRuntimeBinder;
+    [SerializeField] private BattlePlayerRegistrationBinder playerRuntimeBinder;
     [InspectorName("카드 드로우 시스템")]
     [SerializeField] private BattleCardDrawSystem cardDrawSystem;
     [InspectorName("상자 보상 시스템")]
@@ -141,7 +147,7 @@ public class BattleGameManager : MonoBehaviour
     public void LockBattleInputForOverlay()
     {
         // 실제 입력 차단과 열린 UI 개수 관리는 Overlay 전용 컴포넌트에 맡긴다.
-        overlayUi.LockBattleInput();
+        overlayUi.RegisterOpenedOverlayAndLockInput();
         // UI가 열린 즉시 턴 종료·주사위·카드 버튼 상태도 같은 잠금 상태로 맞춘다.
         SyncTurnUI();
     }
@@ -154,7 +160,7 @@ public class BattleGameManager : MonoBehaviour
     public void UnlockBattleInputAfterOverlay()
     {
         // Player 턴인지, 전투가 중지됐는지를 전달해 입력을 복구해도 되는지 Overlay가 판단하게 한다.
-        overlayUi.UnlockBattleInput(isPlayerTurnActive, isBattleStopped);
+        overlayUi.RegisterClosedOverlayAndRestoreInput(isPlayerTurnActive, isBattleStopped);
         SyncTurnUI();
     }
 
@@ -195,7 +201,7 @@ public class BattleGameManager : MonoBehaviour
         isBattleStopped = false;
         Time.timeScale = 1f;
         // 정적 로그 저장소는 Scene을 다시 열어도 유지될 수 있으므로 새 전투 시작 시 비운다.
-        BattleCombatLog.Clear();
+        BattleCombatLog.ClearAllEntries();
 
         // 죽음을 판정하는 초기화가 아니다. BattleHealth.Died 이벤트가 발생했을 때
         // 이 Manager의 HandlePlayerDied가 호출되도록 콜백만 연결한다.
@@ -205,7 +211,7 @@ public class BattleGameManager : MonoBehaviour
         ValidateRequiredReferences();
 
         // UI 모듈은 버튼 클릭을 해석하고, 실제 턴 규칙은 이 Manager의 공개 함수를 호출한다.
-        turnButtonController?.Bind(EndTurn, RollDice);
+        turnButtonController?.BindEndTurnAction(EndTurn);
 
         // Scene에 저장된 최초 턴 상태를 버튼·카드 사용 가능 상태에 즉시 반영한다.
         SyncTurnUI();
@@ -288,6 +294,11 @@ public class BattleGameManager : MonoBehaviour
             hasRolledDiceThisTurn = false;
             currentDiceRoll = 0;
             currentTurnNumber++;
+            // 실제 버그 수정(2026-08-22, 사용자 확인): 기절로 Player 턴을 건너뛰어도 바로 이어지는
+            // Enemy 턴은 그대로 진행되므로, 여기서도 다음 Enemy 턴 MP를 새로 굴려둬야 한다.
+            // 이 호출이 없으면 EnemyTurnActor.RollTurnMP()가 이번 라운드에 한 번도 호출되지 않아
+            // Enemy가 그 이전 Player 턴에서 굴렸던 오래된 MP 값을 그대로 들고 행동하게 된다.
+            PrepareEnemiesForNextTurn();
             // 버튼과 카드 사용 가능 상태를 먼저 잠근 뒤 Enemy 순차 행동을 시작한다.
             SyncTurnUI();
             StartCoroutine(RunEnemyTurnSequence());
@@ -313,7 +324,7 @@ public class BattleGameManager : MonoBehaviour
         // Manager의 턴 초기화가 전부 끝난 뒤 DrawSystem 등 구독자가 손패를 구성하게 한다.
         PlayerTurnStarted?.Invoke();
         // 화면 전투 로그에는 내부 초기화가 완료된 턴만 기록한다.
-        BattleCombatLog.Add($"TURN {currentTurnNumber}  PLAYER TURN");
+        BattleCombatLog.AddEntry($"TURN {currentTurnNumber}  PLAYER TURN");
         // 첫 전투 진입은 기존 입장 흐름이 페이드 한 번을 이미 담당한다.
         // 호출 경로가 추가되더라도 TURN 1에서 두 번째 페이드가 발생하지 않게 방어한다.
         bool willPlayTurnTransition = showAnnouncement && currentTurnNumber > 1;
@@ -340,7 +351,7 @@ public class BattleGameManager : MonoBehaviour
             // 페이드와 입력 잠금은 생략하므로 문구가 표시되는 동안에도 즉시 주사위/조작이 가능하다.
             if (currentTurnNumber > 1)
             {
-                turnAnnouncementView?.ShowPlayerTurn(currentTurnNumber, 1f);
+                turnAnnouncementView?.StartPlayerTurnAnnouncement(currentTurnNumber, 1f);
             }
         }
     }
@@ -366,7 +377,7 @@ public class BattleGameManager : MonoBehaviour
         cameraRig?.FocusPlayerImmediately();
 
         turnTransitionFade?.FadeIn(0.15f);
-        yield return turnAnnouncementView.ShowPlayerTurnRoutine(turn, 1f);
+        yield return turnAnnouncementView.ShowPlayerTurnAnnouncementAndWait(turn, 1f);
 
         while (turnTransitionFade != null && turnTransitionFade.IsFading)
         {
@@ -383,7 +394,7 @@ public class BattleGameManager : MonoBehaviour
     {
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
-        yield return turnAnnouncementView.ShowStage(Mathf.Max(1, DataConfig.stage), 2f);
+        yield return turnAnnouncementView.ShowStageAnnouncement(Mathf.Max(1, DataConfig.stage), 2f);
         BattleMapCameraInput.SetEnabledOnMainCamera(true);
         UnlockBattleInputAfterOverlay();
     }
@@ -471,12 +482,13 @@ public class BattleGameManager : MonoBehaviour
         isBattleStopped = true;
         ChestRewardSystem?.ForceClose();
         CardShopSystem?.ForceClose();
-        overlayUi.Reset();
+        overlayUi.ResetOverlayInputState();
         Debug.Log("플레이어 체력이 0이 되어 게임을 정지합니다.", this);
 
         playerActionController?.SetBattleInputEnabled(false);
 
-        turnButtonController?.DisableAllInput();
+        turnButtonController?.DisableTurnEndInput();
+        diceRollButton?.DisableRollInput();
 
         StopAllCoroutines();
         Time.timeScale = 0f;
@@ -485,7 +497,7 @@ public class BattleGameManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance != this) return;
-        overlayUi?.Reset();
+        overlayUi?.ResetOverlayInputState();
         playerHealthBinding?.ClearBinding();
         Instance = null;
     }
@@ -495,7 +507,7 @@ public class BattleGameManager : MonoBehaviour
     #region Dice And Enemy Turn
 
     /// <summary>
-    /// BattleDiceRollButton 또는 일반 diceButton 클릭이 호출한다. Player 턴에 정확히 한 번만 1~6을 뽑고,
+    /// BattleDiceRollButton이 호출한다. Player 턴에 정확히 한 번만 1~6을 뽑고,
     /// 결과를 BattlePlayerActionController의 이동 가능 거리로 전달한다. 그 다음 카드 패널을 표시하고
     /// DiceRolled(true)를 발행한다. 조건 불충족 입력은 상태를 바꾸지 않고 DiceRolled(false)를 발행한다.
     /// </summary>
@@ -522,7 +534,7 @@ public class BattleGameManager : MonoBehaviour
             playerActionController.SetMoveRange(currentDiceRoll);
         }
 
-        turnButtonController?.ShowCardPanel();
+        cardPanelToggle?.Show();
 
         // 주사위를 실제로 굴렸을 때만 true로 알린다. 추후 주사위 굴리는 연출(VFX)을 여기 걸면 된다.
         DiceRolled?.Invoke(true);
@@ -549,8 +561,8 @@ public class BattleGameManager : MonoBehaviour
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
         int enemyRound = Mathf.Max(1, currentTurnNumber - 1);
-        BattleCombatLog.Add($"TURN {enemyRound}  ENEMY TURN");
-        yield return turnAnnouncementView.ShowEnemyTurnRoutine(enemyRound, 1f);
+        BattleCombatLog.AddEntry($"TURN {enemyRound}  ENEMY TURN");
+        yield return turnAnnouncementView.ShowEnemyTurnAnnouncementAndWait(enemyRound, 1f);
         UnlockBattleInputAfterOverlay();
 
         // 2. Runner는 UnitRegistry에 등록된 Enemy의 생성 순서를 기준으로 한 명씩 실행한다.
@@ -571,7 +583,12 @@ public class BattleGameManager : MonoBehaviour
     /// <summary>현재 턴과 주사위 상태에 맞춰 주사위 및 턴 종료 버튼 사용 여부를 갱신한다.</summary>
     private void SyncTurnUI()
     {
-        turnButtonController?.ApplyTurnState(
+        turnButtonController?.ApplyTurnEndButtonState(
+            isPlayerTurnActive,
+            isBattleStopped,
+            IsBattleBlockingUiOpen);
+
+        diceRollButton?.ApplyRollButtonState(
             isPlayerTurnActive,
             hasRolledDiceThisTurn,
             isBattleStopped,
@@ -592,7 +609,7 @@ public class BattleGameManager : MonoBehaviour
     /// <summary>새 Player 턴과 Enemy 턴에는 카드 패널을 숨겨 주사위 이후에만 표시한다.</summary>
     private void HideCardPanelUntilDice()
     {
-        turnButtonController?.HideCardPanel();
+        cardPanelToggle?.Hide();
     }
 
     /// <summary>
@@ -603,6 +620,8 @@ public class BattleGameManager : MonoBehaviour
     private void ValidateRequiredReferences()
     {
         if (turnButtonController == null) Debug.LogError("턴 버튼 제어기 참조가 없습니다.", this);
+        if (diceRollButton == null) Debug.LogError("주사위 버튼 입력·표시 모듈 참조가 없습니다.", this);
+        if (cardPanelToggle == null) Debug.LogError("카드 패널 표시 제어기 참조가 없습니다.", this);
         if (playerRuntimeBinder == null) Debug.LogError("Player 런타임 연결 모듈 참조가 없습니다.", this);
         if (cardDrawSystem == null) Debug.LogError("카드 드로우 시스템 참조가 없습니다.", this);
         if (chestRewardSystem == null) Debug.LogError("상자 보상 시스템 참조가 없습니다.", this);

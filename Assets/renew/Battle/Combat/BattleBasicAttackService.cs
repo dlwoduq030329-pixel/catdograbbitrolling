@@ -39,7 +39,8 @@ public static class BattleBasicAttackService
                 continue;
             }
 
-            int attackDistance = BattleTileRangeCalculator.GetDistance(origin, enemyTile, attackRange);
+            int attackDistance = BattleTileRangeCalculator.GetDistance(
+                origin, enemyTile, attackRange, isWalkable, occupiedTiles);
             if (attackDistance < 0 ||
                 !BattleTileRangeCalculator.TryCalculatePath(
                     playerTile,
@@ -84,7 +85,9 @@ public static class BattleBasicAttackService
         MapInfo enemyTile,
         IReadOnlyList<MapInfo> movementPath,
         int currentActionCost,
-        out BattleActionResult result)
+        out BattleActionResult result,
+        Func<MapInfo, bool> isWalkable = null,
+        ISet<MapInfo> occupiedTiles = null)
     {
         result = null;
         if (pendingAction == null || player == null || enemy == null ||
@@ -96,7 +99,9 @@ public static class BattleBasicAttackService
         int attackDistance = BattleTileRangeCalculator.GetDistance(
             playerTile,
             enemyTile,
-            pendingAction.RangeTiles);
+            pendingAction.RangeTiles,
+            isWalkable,
+            occupiedTiles);
         BattleUnitMP playerMP = player.GetComponent<BattleUnitMP>();
         int movementCost = movementPath.Count;
         int actionCost = Mathf.Max(0, currentActionCost);

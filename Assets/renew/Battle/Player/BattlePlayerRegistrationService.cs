@@ -26,13 +26,13 @@ public static class BattlePlayerRegistrationService
             return false;
         }
 
-        if (!BattlePlayerRuntimeDataFactory.TryCreate(player, out playerMP, out combatData, out playerHealth))
+        if (!BattlePlayerCombatDataFactory.TryCreate(player, out playerMP, out combatData, out playerHealth))
         {
             Debug.LogError("플레이어 등록 실패: 전투 런타임 데이터를 구성하지 못했습니다.", logContext);
             return false;
         }
 
-        playerMPUI?.Bind(playerMP);
+        playerMPUI?.BindPlayerMana(playerMP);
         playerMP.RestoreFull();
         PlayerDeck registeredDeck = player.GetComponentInParent<PlayerDeck>(true);
         cardDrawSystem?.InitializeDeck(registeredDeck);

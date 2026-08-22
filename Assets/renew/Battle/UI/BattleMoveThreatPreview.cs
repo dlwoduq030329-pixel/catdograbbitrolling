@@ -23,29 +23,33 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
     [SerializeField] private float fallbackIconHeight = 2.8f;
     [Tooltip("Enemy HP UI의 화면상 위쪽 끝과 의도 아이콘 사이의 간격입니다.")]
     [SerializeField, Min(0f)] private float iconGapAboveHealthBar = 0.06f;
-    private readonly List<LineRenderer> lines = new List<LineRenderer>();
-    private readonly List<SpriteRenderer> icons = new List<SpriteRenderer>();
-    private readonly List<Transform> iconTargets = new List<Transform>();
-    private BattleRaycaster raycaster;
-    private BattlePlayerRangeController rangeController;
-    private MapInfo hoveredTile;
-    private MapInfo selectedDestination;
-    private Material lineMaterial;
+    private readonly List<LineRenderer> threatLinePool = new List<LineRenderer>();
+    private readonly List<SpriteRenderer> threatIconPool = new List<SpriteRenderer>();
+    private readonly List<Transform> threatIconEnemyTargets = new List<Transform>();
+    private BattleRaycaster mapPointerRaycaster;
+    private BattlePlayerRangeController playerMoveRange;
+    private MapInfo lastPreviewedHoverTile;
+    private MapInfo lockedMoveDestination;
+    private Material sharedThreatLineMaterial;
 
-    private enum ThreatIntent { Attack, Chase }
+    private enum EnemyThreatIntent { Attack, Chase }
 
-    private readonly struct ThreatPreview
+    private readonly struct EnemyThreatResult
     {
         public readonly GameObject Enemy;
-        public readonly ThreatIntent Intent;
+        public readonly EnemyThreatIntent Intent;
 
-        public ThreatPreview(GameObject enemy, ThreatIntent intent)
+        public EnemyThreatResult(GameObject enemy, EnemyThreatIntent intent)
         {
             Enemy = enemy;
             Intent = intent;
         }
     }
 
+    /// <summary>
+    /// 현재 컴포넌트가 BattleUnitMoveFlow에서 런타임 생성되므로 Inspector 아이콘 참조가 비어 있을 때만
+    /// Resources의 기본 검·눈 아이콘을 임시로 연결한다. 컴포넌트를 직접 배치한 뒤에는 이 폴백을 제거한다.
+    /// </summary>
     private void Awake()
     {
         if (attackIcon == null)
@@ -54,119 +58,142 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
             chaseIcon = Resources.Load<Sprite>("Battle/UI/ThreatIcons/EnemyIntent_Chase");
     }
 
-    public void Configure(
-        Camera camera,
-        BattleRaycaster targetRaycaster,
-        BattlePlayerRangeController targetRangeController)
+    /// <summary>
+    /// 이동 미리보기에 필요한 전투 카메라, 마우스 타일 판정기와 Player 이동 가능 범위 제공자를 연결한다.
+    /// 이 함수는 데이터를 계산하지 않고 BattleUnitMoveFlow가 가진 의존성만 전달한다.
+    /// </summary>
+    public void ConfigureDependencies(
+        Camera battleCamera,
+        BattleRaycaster pointerRaycaster,
+        BattlePlayerRangeController moveRangeController)
     {
-        targetCamera = camera;
-        raycaster = targetRaycaster;
-        rangeController = targetRangeController;
+        targetCamera = battleCamera;
+        mapPointerRaycaster = pointerRaycaster;
+        playerMoveRange = moveRangeController;
     }
 
+    /// <summary>
+    /// 목적지가 확정 대기 중이면 해당 타일의 위협 표시를 고정하고, 아니면 현재 마우스 아래의 이동 가능 타일을
+    /// 찾아 미리보기를 갱신한다. 같은 타일을 계속 가리키는 동안 Enemy 위협 계산과 선 재구성은 반복하지 않고,
+    /// 카메라 변화에 따른 아이콘 위치·회전만 매 프레임 보정한다.
+    /// </summary>
     private void Update()
     {
-        if (selectedDestination != null)
+        if (lockedMoveDestination != null)
         {
             bool blockedByModal = BattleGameManager.Instance != null &&
                                   BattleGameManager.Instance.IsModalInteractionOpen;
-            if (blockedByModal || !BattlePlayerActionController.IsMoveRangeVisible)
+            if (blockedByModal || !BattleRangeVisibilityTracker.IsAnyRangeVisible)
             {
-                HideLines();
+                HideAllThreatVisuals();
                 return;
             }
 
-            if (hoveredTile != selectedDestination)
+            if (lastPreviewedHoverTile != lockedMoveDestination)
             {
-                hoveredTile = selectedDestination;
-                DrawThreats(selectedDestination);
+                lastPreviewedHoverTile = lockedMoveDestination;
+                RebuildThreatVisuals(lockedMoveDestination);
             }
-            UpdateIconTransforms();
+            UpdateThreatIconTransforms();
             return;
         }
 
-        if (!BattlePlayerActionController.IsMoveRangeVisible || raycaster == null || rangeController == null ||
+        if (!BattleRangeVisibilityTracker.IsAnyRangeVisible || mapPointerRaycaster == null || playerMoveRange == null ||
             BattlePlayerInputReader.IsPointerOverInteractiveUI(Input.mousePosition) ||
-            !raycaster.TryGetMapTile(Input.mousePosition, out MapInfo tile) ||
-            !rangeController.IsReachable(tile))
+            !mapPointerRaycaster.TryGetMapTile(Input.mousePosition, out MapInfo hoveredMapTile) ||
+            !playerMoveRange.IsReachable(hoveredMapTile))
         {
-            hoveredTile = null;
-            HideLines();
+            lastPreviewedHoverTile = null;
+            HideAllThreatVisuals();
             return;
         }
 
-        if (hoveredTile != tile)
+        if (lastPreviewedHoverTile != hoveredMapTile)
         {
-            hoveredTile = tile;
-            DrawThreats(tile);
+            lastPreviewedHoverTile = hoveredMapTile;
+            RebuildThreatVisuals(hoveredMapTile);
         }
-        UpdateIconTransforms();
+        UpdateThreatIconTransforms();
     }
 
     /// <summary>선택한 이동 목적지의 Enemy 의도를 Player 클릭으로 확정할 때까지 고정한다.</summary>
     public void ShowSelectedDestination(MapInfo destination)
     {
-        selectedDestination = destination;
-        hoveredTile = null;
-        if (selectedDestination != null) DrawThreats(selectedDestination);
+        lockedMoveDestination = destination;
+        lastPreviewedHoverTile = null;
+        if (lockedMoveDestination != null)
+        {
+            RebuildThreatVisuals(lockedMoveDestination);
+        }
     }
 
     /// <summary>이동 취소·완료 시 고정된 의도 표시를 제거하고 다시 호버 미리보기 상태로 돌린다.</summary>
     public void ClearSelectedDestination()
     {
-        selectedDestination = null;
-        hoveredTile = null;
-        HideLines();
+        lockedMoveDestination = null;
+        lastPreviewedHoverTile = null;
+        HideAllThreatVisuals();
     }
 
-    private void DrawThreats(MapInfo destination)
+    /// <summary>
+    /// 이동 후보 타일을 기준으로 공격 또는 추격할 Enemy 목록을 계산하고, 재사용 중인 LineRenderer와
+    /// SpriteRenderer에 위치·색상·아이콘을 적용한다. 필요한 개수보다 많은 풀 항목은 비활성화한다.
+    /// </summary>
+    private void RebuildThreatVisuals(MapInfo moveDestination)
     {
-        List<ThreatPreview> threats = FindThreateningEnemies(destination);
-        EnsureLineCount(threats.Count);
-        EnsureIconCount(lines.Count);
-        for (int i = 0; i < lines.Count; i++)
+        List<EnemyThreatResult> enemyThreats = CalculateEnemyThreats(moveDestination);
+        EnsureThreatLinePoolSize(enemyThreats.Count);
+        EnsureThreatIconPoolSize(threatLinePool.Count);
+        for (int previewIndex = 0; previewIndex < threatLinePool.Count; previewIndex++)
         {
-            bool visible = i < threats.Count;
-            lines[i].enabled = visible;
-            icons[i].enabled = visible;
-            iconTargets[i] = visible ? threats[i].Enemy.transform : null;
+            bool visible = previewIndex < enemyThreats.Count;
+            threatLinePool[previewIndex].enabled = visible;
+            threatIconPool[previewIndex].enabled = visible;
+            threatIconEnemyTargets[previewIndex] = visible
+                ? enemyThreats[previewIndex].Enemy.transform
+                : null;
             if (!visible) continue;
-            ThreatPreview threat = threats[i];
+            EnemyThreatResult threat = enemyThreats[previewIndex];
             Vector3 from = threat.Enemy.transform.position;
-            Vector3 to = destination.transform.position;
+            Vector3 to = moveDestination.transform.position;
             from.y += lineHeight;
             to.y += lineHeight;
-            lines[i].SetPosition(0, from);
-            lines[i].SetPosition(1, to);
-            Color intentColor = threat.Intent == ThreatIntent.Attack ? lineColor : chaseLineColor;
-            lines[i].startColor = lines[i].endColor = intentColor;
-            icons[i].sprite = threat.Intent == ThreatIntent.Attack ? attackIcon : chaseIcon;
-            icons[i].transform.position = ResolveIconPosition(threat.Enemy.transform);
-            float spriteSize = icons[i].sprite != null
-                ? Mathf.Max(icons[i].sprite.bounds.size.x, icons[i].sprite.bounds.size.y)
+            threatLinePool[previewIndex].SetPosition(0, from);
+            threatLinePool[previewIndex].SetPosition(1, to);
+            Color intentColor = threat.Intent == EnemyThreatIntent.Attack ? lineColor : chaseLineColor;
+            threatLinePool[previewIndex].startColor = threatLinePool[previewIndex].endColor = intentColor;
+            threatIconPool[previewIndex].sprite = threat.Intent == EnemyThreatIntent.Attack ? attackIcon : chaseIcon;
+            threatIconPool[previewIndex].transform.position = ResolveThreatIconPosition(threat.Enemy.transform);
+            float spriteSize = threatIconPool[previewIndex].sprite != null
+                ? Mathf.Max(threatIconPool[previewIndex].sprite.bounds.size.x, threatIconPool[previewIndex].sprite.bounds.size.y)
                 : 1f;
-            icons[i].transform.localScale = Vector3.one * (iconWorldSize / Mathf.Max(0.001f, spriteSize));
+            threatIconPool[previewIndex].transform.localScale =
+                Vector3.one * (iconWorldSize / Mathf.Max(0.001f, spriteSize));
         }
     }
 
-    private static List<ThreatPreview> FindThreateningEnemies(MapInfo destination)
+    /// <summary>
+    /// 후보 목적지에 이미 공격 사거리가 닿는 Enemy는 Attack으로 분류한다. 바로 공격할 수 없는 Enemy는
+    /// 기본 공격 MP를 남긴 이동 가능 범위를 계산하고, 이동 후 사거리가 닿는 위치가 있으면 Chase로 분류한다.
+    /// </summary>
+    private static List<EnemyThreatResult> CalculateEnemyThreats(MapInfo moveDestination)
     {
-        List<ThreatPreview> result = new List<ThreatPreview>();
-        EnemyTurnActor[] enemies = FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None);
-        foreach (EnemyTurnActor enemy in enemies)
+        List<EnemyThreatResult> threatResults = new List<EnemyThreatResult>();
+        EnemyTurnActor[] activeEnemyActors = FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None);
+        foreach (EnemyTurnActor enemy in activeEnemyActors)
         {
             if (enemy == null || !enemy.gameObject.activeInHierarchy) continue;
             BattleEnemyRuntimeData runtime = enemy.GetComponent<BattleEnemyRuntimeData>();
             if (runtime == null || runtime.Data == null) continue;
-            MapInfo origin = FindClosestTile(enemy.transform.position);
+            MapInfo origin = FindMapTileClosestToPosition(enemy.transform.position);
             if (origin == null) continue;
 
             if (BattleTileRangeCalculator.GetDistance(
                     origin,
-                    destination,
+                    moveDestination,
                     enemy.AttackRangeTiles) >= 0)
             {
-                result.Add(new ThreatPreview(enemy.gameObject, ThreatIntent.Attack));
+                threatResults.Add(new EnemyThreatResult(enemy.gameObject, EnemyThreatIntent.Attack));
                 continue;
             }
 
@@ -186,28 +213,30 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
             {
                 if (BattleTileRangeCalculator.GetDistance(
                         attackOrigin,
-                        destination,
+                        moveDestination,
                         enemy.AttackRangeTiles) >= 0)
                 {
-                    result.Add(new ThreatPreview(enemy.gameObject, ThreatIntent.Chase));
+                    threatResults.Add(new EnemyThreatResult(enemy.gameObject, EnemyThreatIntent.Chase));
                     break;
                 }
             }
         }
-        return result;
+        return threatResults;
     }
 
-    private static MapInfo FindClosestTile(Vector3 position)
+    /// <summary>Enemy 월드 위치와 가장 가까운 MapInfo를 Registry에서 찾고, Registry가 비었을 때만 Scene 검색으로 보완한다.</summary>
+    private static MapInfo FindMapTileClosestToPosition(Vector3 worldPosition)
     {
         BattleMapRegistry registry = FindFirstObjectByType<BattleMapRegistry>(FindObjectsInactive.Include);
-        if (registry != null && registry.Tiles.Count > 0) return registry.FindClosestTile(position);
-        return BattleTileLocator.FindClosestXZ(position, FindObjectsByType<MapInfo>(FindObjectsSortMode.None));
+        if (registry != null && registry.Tiles.Count > 0) return registry.FindClosestTile(worldPosition);
+        return BattleTileLocator.FindClosestXZ(worldPosition, FindObjectsByType<MapInfo>(FindObjectsSortMode.None));
     }
 
-    private void EnsureLineCount(int count)
+    /// <summary>필요한 Enemy 수만큼 연결선 풀을 늘린다. 기존 LineRenderer는 삭제하지 않고 다음 미리보기에 재사용한다.</summary>
+    private void EnsureThreatLinePoolSize(int requiredCount)
     {
-        if (lineMaterial == null) lineMaterial = new Material(Shader.Find("Sprites/Default"));
-        while (lines.Count < count)
+        if (sharedThreatLineMaterial == null) sharedThreatLineMaterial = new Material(Shader.Find("Sprites/Default"));
+        while (threatLinePool.Count < requiredCount)
         {
             GameObject child = new GameObject("Enemy Threat Line");
             child.transform.SetParent(transform, false);
@@ -217,16 +246,17 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
             line.startWidth = startWidth;
             line.endWidth = endWidth;
             line.startColor = line.endColor = lineColor;
-            line.material = lineMaterial;
+            line.material = sharedThreatLineMaterial;
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.receiveShadows = false;
-            lines.Add(line);
+            threatLinePool.Add(line);
         }
     }
 
-    private void EnsureIconCount(int count)
+    /// <summary>연결선 풀과 같은 개수까지 공격·추격 아이콘 풀을 늘리고 각 아이콘의 Enemy 추적 슬롯을 준비한다.</summary>
+    private void EnsureThreatIconPoolSize(int requiredCount)
     {
-        while (icons.Count < count)
+        while (threatIconPool.Count < requiredCount)
         {
             GameObject child = new GameObject("Enemy Intent Icon");
             child.transform.SetParent(transform, false);
@@ -234,23 +264,24 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
             icon.sortingOrder = 100;
             icon.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             icon.receiveShadows = false;
-            icons.Add(icon);
-            iconTargets.Add(null);
+            threatIconPool.Add(icon);
+            threatIconEnemyTargets.Add(null);
         }
     }
 
-    private void UpdateIconTransforms()
+    /// <summary>활성 아이콘이 카메라를 향하고 담당 Enemy HP 바 위를 계속 따라가도록 회전과 위치를 갱신한다.</summary>
+    private void UpdateThreatIconTransforms()
     {
         Quaternion rotation = targetCamera != null
             ? targetCamera.transform.rotation
             : Quaternion.identity;
-        for (int i = 0; i < icons.Count; i++)
+        for (int i = 0; i < threatIconPool.Count; i++)
         {
-            SpriteRenderer icon = icons[i];
+            SpriteRenderer icon = threatIconPool[i];
             if (icon == null || !icon.enabled) continue;
             icon.transform.rotation = rotation;
-            if (i < iconTargets.Count && iconTargets[i] != null)
-                icon.transform.position = ResolveIconPosition(iconTargets[i]);
+            if (i < threatIconEnemyTargets.Count && threatIconEnemyTargets[i] != null)
+                icon.transform.position = ResolveThreatIconPosition(threatIconEnemyTargets[i]);
         }
     }
 
@@ -258,11 +289,11 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
     /// EnemyHPBar의 모든 RectTransform을 카메라 화면 위쪽 축으로 투영해 가장 높은 지점을 찾고,
     /// 그 위에 아이콘을 둔다. 카메라가 Side/Top View 사이를 움직여도 HP 프리팹과 겹치지 않는다.
     /// </summary>
-    private Vector3 ResolveIconPosition(Transform enemy)
+    private Vector3 ResolveThreatIconPosition(Transform enemy)
     {
         if (enemy == null) return Vector3.zero;
         Vector3 cameraUp = targetCamera != null ? targetCamera.transform.up : Vector3.up;
-        Transform healthBar = FindChildByName(enemy, "EnemyHPBar");
+        Transform healthBar = FindDescendantByName(enemy, "EnemyHPBar");
         if (healthBar == null)
             return enemy.position + cameraUp * fallbackIconHeight;
 
@@ -283,37 +314,42 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
         return enemy.position + cameraUp * offset;
     }
 
-    private static Transform FindChildByName(Transform root, string targetName)
+    /// <summary>Enemy 자식 계층에서 EnemyHPBar 기준점을 찾기 위해 이름이 같은 하위 Transform을 재귀 탐색한다.</summary>
+    private static Transform FindDescendantByName(Transform root, string targetName)
     {
         if (root == null) return null;
         if (root.name == targetName) return root;
         foreach (Transform child in root)
         {
-            Transform found = FindChildByName(child, targetName);
+            Transform found = FindDescendantByName(child, targetName);
             if (found != null) return found;
         }
         return null;
     }
 
-    private void HideLines()
+    /// <summary>
+    /// 이동 범위가 닫힘, 포인터가 유효 타일을 벗어남, UI 위로 이동, 모달 UI 열림, 이동 취소·완료 또는
+    /// 컴포넌트 비활성화 시 모든 연결선과 아이콘을 숨기고 Enemy 추적 참조를 비운다.
+    /// </summary>
+    private void HideAllThreatVisuals()
     {
-        foreach (LineRenderer line in lines) if (line != null) line.enabled = false;
-        for (int i = 0; i < icons.Count; i++)
+        foreach (LineRenderer line in threatLinePool) if (line != null) line.enabled = false;
+        for (int i = 0; i < threatIconPool.Count; i++)
         {
-            if (icons[i] != null) icons[i].enabled = false;
-            if (i < iconTargets.Count) iconTargets[i] = null;
+            if (threatIconPool[i] != null) threatIconPool[i].enabled = false;
+            if (i < threatIconEnemyTargets.Count) threatIconEnemyTargets[i] = null;
         }
     }
 
     private void OnDisable()
     {
-        selectedDestination = null;
-        hoveredTile = null;
-        HideLines();
+        lockedMoveDestination = null;
+        lastPreviewedHoverTile = null;
+        HideAllThreatVisuals();
     }
 
     private void OnDestroy()
     {
-        if (lineMaterial != null) Destroy(lineMaterial);
+        if (sharedThreatLineMaterial != null) Destroy(sharedThreatLineMaterial);
     }
 }

@@ -1,100 +1,123 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 캐릭터 선택 Canvas에서 전투 Canvas로 넘어가는 흐름만 담당한다.
-/// 맵 생성과 카메라 이동 완료 상태를 확인해 화면을 전환한다.
+/// 캐릭터 선택 단계가 끝난 뒤 맵·Player·Enemy·카메라가 준비되는 순서를 기다리고 전투를 시작하는 Scene 로더다.
+/// UI의 세부 표현이나 전투 규칙은 관리하지 않으며, 선택 Canvas에서 Battle Canvas로 넘어가는 시작 순서만 연결한다.
 /// </summary>
 public class BattleUIFlowController : MonoBehaviour
 {
     [Header("캔버스 참조")]
     [InspectorName("플레이어 선택 캔버스")]
-    [SerializeField] private GameObject playerSelectCanvas;
+    [FormerlySerializedAs("playerSelectCanvas")]
+    [SerializeField, Tooltip("전투 시작 전 캐릭터를 선택하는 UI 전체입니다. 전투 준비가 끝나면 숨깁니다.")]
+    private GameObject characterSelectionCanvas;
     [InspectorName("전투 캔버스")]
-    [SerializeField] private GameObject battleCanvas;
+    [FormerlySerializedAs("battleCanvas")]
+    [SerializeField, Tooltip("맵·유닛·카메라 준비와 스테이지 안내가 끝난 뒤 표시할 전투 HUD 전체입니다.")]
+    private GameObject battleHudCanvas;
 
     [Header("전환 시스템 참조")]
     [InspectorName("맵 생성기")]
-    [SerializeField] private MapGenerator mapGenerator;
-    [InspectorName("맵 생성기")]
-    [SerializeField] private NewMapGenerator newmapGenerator;
+    [FormerlySerializedAs("mapGenerator")]
+    [SerializeField, Tooltip("기존 맵 생성 완료 상태를 제공하는 생성기입니다. 두 생성기가 준비될 때까지 전투 진입을 기다립니다.")]
+    private MapGenerator legacyMapGenerator;
+    [InspectorName("Renew 맵 생성기")]
+    [FormerlySerializedAs("newmapGenerator")]
+    [SerializeField, Tooltip("Renew 전투 맵 생성 완료 상태를 제공하는 생성기입니다.")]
+    private NewMapGenerator renewMapGenerator;
 
     [InspectorName("전투 게임 관리자")]
-    [SerializeField] private BattleGameManager battleGameManager;
+    [SerializeField, Tooltip("생성된 Player 등록, 스테이지 안내와 첫 Player 턴 시작을 요청할 전투 진행 관리자입니다.")]
+    private BattleGameManager battleGameManager;
     [InspectorName("플레이어 생성기")]
-    [SerializeField] private SpawnPlayer playerSpawner;
+    [FormerlySerializedAs("playerSpawner")]
+    [SerializeField, Tooltip("맵 생성 뒤 실제로 생성된 Player 인스턴스를 제공하는 컴포넌트입니다.")]
+    private SpawnPlayer spawnedPlayerProvider;
     [InspectorName("적 생성기")]
-    [SerializeField] private EnemySpawner enemySpawner;
+    [SerializeField, Tooltip("등록된 Player 위치를 기준으로 전투 Enemy 생성을 시작할 컴포넌트입니다.")]
+    private EnemySpawner enemySpawner;
 
     [Header("카메라 전환 완료 판정")]
     [InspectorName("전환 카메라")]
-    [SerializeField] private Camera transitionCamera;
+    [FormerlySerializedAs("transitionCamera")]
+    [SerializeField, Tooltip("Player 생성 후 추적 이동이 멈출 때까지 기다리고 전투 입력을 켤 카메라입니다.")]
+    private Camera battleCamera;
     [InspectorName("카메라 정지 판정 거리")]
-    [SerializeField, Min(0.0001f)] private float cameraStopThreshold = 0.01f;
+    [FormerlySerializedAs("cameraStopThreshold")]
+    [SerializeField, Min(0.0001f), Tooltip("프레임 사이 카메라 이동 거리가 이 값 이하면 정지한 프레임으로 계산합니다.")]
+    private float cameraStoppedDistanceThreshold = 0.01f;
     [InspectorName("정지 확인 프레임 수")]
-    [SerializeField, Min(1)] private int cameraStableFrameCount = 5;
+    [FormerlySerializedAs("cameraStableFrameCount")]
+    [SerializeField, Min(1), Tooltip("카메라 이동 완료로 인정하기 위해 연속으로 정지해야 하는 프레임 수입니다.")]
+    private int requiredCameraStoppedFrames = 5;
     [InspectorName("카메라 대기 제한 시간")]
-    [SerializeField, Min(0.1f)] private float cameraWaitTimeout = 10f;
+    [FormerlySerializedAs("cameraWaitTimeout")]
+    [SerializeField, Min(0.1f), Tooltip("카메라가 멈추지 않아도 전투 진입을 계속할 최대 대기 시간입니다.")]
+    private float maximumCameraWaitSeconds = 10f;
 
-    private Coroutine transitionRoutine;
-    private CanvasGroup battleCanvasInputGroup;
-    private bool battleCanvasWasInteractable;
-    private bool battleCanvasWasBlockingRaycasts;
-    private GameObject startupInputBlocker;
+    private Coroutine battleStartupRoutine;
+    private CanvasGroup battleHudInputGroup;
+    private bool battleHudWasInteractable;
+    private bool battleHudWasBlockingRaycasts;
+    private GameObject battleStartupClickBlocker;
 
-    /// <summary>전환 카메라를 보완하고 시작 화면을 캐릭터 선택 Canvas로 맞춘다.</summary>
+    /// <summary>Main Camera fallback을 보완하고 최초 화면을 캐릭터 선택 단계로 맞춘다.</summary>
     private void Awake()
     {
-        if (transitionCamera == null)
+        if (battleCamera == null)
         {
-            transitionCamera = Camera.main;
+            battleCamera = Camera.main;
         }
 
-        EnsureInitialPlayerSelectionUI();
-        SetCanvasState(showBattle: false);
+        ShowInitialCharacterSelectionPanel();
+        ShowCharacterSelectionOrBattleCanvas(showBattle: false);
     }
 
-    /// <summary>캐릭터 선택 코드 수정 없이 맵 생성 상태를 관찰하는 전투 전환 절차를 시작한다.</summary>
+    /// <summary>Scene 시작 후 캐릭터 선택 코드와 별개로 맵 생성 완료를 기다리는 전투 시작 절차를 등록한다.</summary>
     private void Start()
     {
         // 버튼 OnClick 연결 여부와 무관하게 캐릭터 선택 뒤 시작되는 맵 생성을 감시한다.
-        BeginBattleTransition();
+        StartBattleSceneLoading();
     }
 
     /// <summary>
-    /// 캐릭터 확정 버튼에서도 호출할 수 있다.
-    /// StatusUI.summonPlayer()와 함께 사용하면 맵 및 카메라 전환 완료 뒤 전투 UI가 열린다.
+    /// 캐릭터 확정 후 맵 생성, 유닛 등록, 카메라 정지, 스테이지 안내 순서로 전투 Scene 로딩을 시작한다.
+    /// Start와 캐릭터 확정 버튼 양쪽에서 호출되어도 Coroutine 하나만 실행하도록 중복 요청을 무시한다.
     /// </summary>
-    /// <summary>캐릭터 선택 완료 후 카메라 이동을 기다리고 Player Select UI에서 Battle UI로 전환한다.</summary>
-    public void BeginBattleTransition()
+    public void StartBattleSceneLoading()
     {
-        if (transitionRoutine != null)
+        if (battleStartupRoutine != null)
         {
             Debug.Log("리턴됨");
             return;
             
         }
 
-        transitionRoutine = StartCoroutine(WaitForMapAndShowBattle());
+        battleStartupRoutine = StartCoroutine(LoadBattleAfterMapGeneration());
         
     }
 
-    /// <summary>맵 생성, Player 등록, 카메라 이동을 순서대로 기다린다.</summary>
-    private IEnumerator WaitForMapAndShowBattle()
+    /// <summary>
+    /// 맵 생성 완료 → 입력 차단 → Player 등록 → Enemy 생성 → 카메라 정지 → 스테이지 안내 → 첫 턴 시작을 순서대로 실행한다.
+    /// 이 순서를 한 Coroutine에 유지하여 준비되지 않은 Player나 맵을 후속 시스템이 먼저 참조하지 않게 한다.
+    /// </summary>
+    private IEnumerator LoadBattleAfterMapGeneration()
     {
         // 같은 버튼의 StatusUI.summonPlayer()가 MapGenerator 상태를 먼저 초기화하도록 한 Frame 양보한다.
         yield return null;
         Debug.Log("진입 성공");
-        if (mapGenerator == null||newmapGenerator == null)
+        if (legacyMapGenerator == null || renewMapGenerator == null)
         {
             Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
-            transitionRoutine = null;
+            battleStartupRoutine = null;
             yield break;
         }
 
-        while (!mapGenerator.IsGenerateEnd()&&!newmapGenerator.IsGenerateEnd())
+        while (!legacyMapGenerator.IsGenerateEnd() && !renewMapGenerator.IsGenerateEnd())
         {
             Debug.Log("한무대기");
 
@@ -104,31 +127,31 @@ public class BattleUIFlowController : MonoBehaviour
 
         // SpawnPlayer가 같은 프레임에 HUDCanvas를 활성화하더라도 EventSystem 입력보다 먼저
         // 최상위 차단막을 올려 연타 입력이 인벤토리/캐릭터 정보창을 열지 못하게 한다.
-        SetStartupInputBlocked(true);
+        SetBattleStartupClickBlockerActive(true);
         Debug.Log("맵 생성 확인 완료");
 
         if (battleGameManager == null)
         {
             Debug.LogError("전투 UI 전환 실패: 전투 게임 관리자 참조가 없습니다.", this);
-            transitionRoutine = null;
+            battleStartupRoutine = null;
             yield break;
         }
 
-        if (playerSpawner == null || playerSpawner.SpawnedPlayer == null)
+        if (spawnedPlayerProvider == null || spawnedPlayerProvider.SpawnedPlayer == null)
         {
             Debug.LogError("전투 UI 전환 실패: SpawnPlayer의 생성 결과가 없습니다.", this);
-            transitionRoutine = null;
+            battleStartupRoutine = null;
             yield break;
         }
 
-        battleGameManager.RegisterPlayer(playerSpawner.SpawnedPlayer);
+        battleGameManager.RegisterPlayer(spawnedPlayerProvider.SpawnedPlayer);
 
         enemySpawner?.SpawnEnemiesOnGeneratedMap(battleGameManager.CurrentPlayer.transform);
 
-        yield return WaitForCameraMovementToFinish();
+        yield return WaitUntilBattleCameraStops();
 
-        SetCanvasState(showBattle: true);
-        SetBattleCanvasInputLocked(true);
+        ShowCharacterSelectionOrBattleCanvas(showBattle: true);
+        SetBattleHudInteractionLocked(true);
         battleGameManager.LockBattleInputForOverlay();
         yield return battleGameManager.PlayStageIntro();
         // SpawnPlayer.waitUnitMApGen()이 맵 생성 완료 시점에 LoadingUI로 이미 페이드 아웃/인을
@@ -146,18 +169,18 @@ public class BattleUIFlowController : MonoBehaviour
             yield return null;
         }
 
-        SetBattleCanvasInputLocked(false);
-        SetStartupInputBlocked(false);
+        SetBattleHudInteractionLocked(false);
+        SetBattleStartupClickBlockerActive(false);
 
-        transitionRoutine = null;
+        battleStartupRoutine = null;
     }
 
-    /// <summary>전투 첫 연출 동안 모든 Canvas보다 앞에서 포인터 입력을 소비한다.</summary>
-    private void SetStartupInputBlocked(bool blocked)
+    /// <summary>전투 첫 연출 동안 투명한 최상위 Raycast 이미지를 켜서 연타가 뒤쪽 HUD에 전달되지 않게 한다.</summary>
+    private void SetBattleStartupClickBlockerActive(bool shouldBlockClicks)
     {
-        if (startupInputBlocker == null)
+        if (battleStartupClickBlocker == null)
         {
-            startupInputBlocker = new GameObject(
+            battleStartupClickBlocker = new GameObject(
                 "Battle Startup Input Blocker",
                 typeof(RectTransform),
                 typeof(Canvas),
@@ -165,66 +188,66 @@ public class BattleUIFlowController : MonoBehaviour
                 typeof(GraphicRaycaster),
                 typeof(Image));
 
-            Canvas blockerCanvas = startupInputBlocker.GetComponent<Canvas>();
+            Canvas blockerCanvas = battleStartupClickBlocker.GetComponent<Canvas>();
             blockerCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             blockerCanvas.sortingOrder = 32760;
 
-            RectTransform blockerRect = startupInputBlocker.GetComponent<RectTransform>();
+            RectTransform blockerRect = battleStartupClickBlocker.GetComponent<RectTransform>();
             blockerRect.anchorMin = Vector2.zero;
             blockerRect.anchorMax = Vector2.one;
             blockerRect.offsetMin = Vector2.zero;
             blockerRect.offsetMax = Vector2.zero;
 
-            Image blockerImage = startupInputBlocker.GetComponent<Image>();
+            Image blockerImage = battleStartupClickBlocker.GetComponent<Image>();
             blockerImage.color = Color.clear;
             blockerImage.raycastTarget = true;
         }
 
-        startupInputBlocker.SetActive(blocked);
-        if (blocked && EventSystem.current != null)
+        battleStartupClickBlocker.SetActive(shouldBlockClicks);
+        if (shouldBlockClicks && EventSystem.current != null)
         {
             EventSystem.current.SetSelectedGameObject(null);
         }
     }
 
-    /// <summary>전투 진입 연출 동안 Battle Canvas의 모든 UI 상호작용을 일괄 차단한다.</summary>
-    private void SetBattleCanvasInputLocked(bool locked)
+    /// <summary>전투 진입 연출 동안 Battle HUD의 기존 입력 상태를 저장하고 UI·카메라 입력을 함께 잠근다.</summary>
+    private void SetBattleHudInteractionLocked(bool shouldLockInput)
     {
-        if (battleCanvas == null) return;
+        if (battleHudCanvas == null) return;
 
-        if (battleCanvasInputGroup == null)
+        if (battleHudInputGroup == null)
         {
-            battleCanvasInputGroup = battleCanvas.GetComponent<CanvasGroup>();
-            if (battleCanvasInputGroup == null)
+            battleHudInputGroup = battleHudCanvas.GetComponent<CanvasGroup>();
+            if (battleHudInputGroup == null)
             {
-                battleCanvasInputGroup = battleCanvas.AddComponent<CanvasGroup>();
+                battleHudInputGroup = battleHudCanvas.AddComponent<CanvasGroup>();
             }
         }
 
-        if (locked)
+        if (shouldLockInput)
         {
-            battleCanvasWasInteractable = battleCanvasInputGroup.interactable;
-            battleCanvasWasBlockingRaycasts = battleCanvasInputGroup.blocksRaycasts;
-            battleCanvasInputGroup.interactable = false;
-            battleCanvasInputGroup.blocksRaycasts = true;
+            battleHudWasInteractable = battleHudInputGroup.interactable;
+            battleHudWasBlockingRaycasts = battleHudInputGroup.blocksRaycasts;
+            battleHudInputGroup.interactable = false;
+            battleHudInputGroup.blocksRaycasts = true;
             BattleMapCameraInput.SetEnabledOnMainCamera(false);
             return;
         }
 
-        battleCanvasInputGroup.interactable = battleCanvasWasInteractable;
-        battleCanvasInputGroup.blocksRaycasts = battleCanvasWasBlockingRaycasts;
+        battleHudInputGroup.interactable = battleHudWasInteractable;
+        battleHudInputGroup.blocksRaycasts = battleHudWasBlockingRaycasts;
         BattleMapCameraInput.SetEnabledOnMainCamera(true);
     }
 
-    /// <summary>원본 PlayerChoose를 수정하지 않고 초기 캐릭터 선택 State 화면을 활성화한다.</summary>
-    private void EnsureInitialPlayerSelectionUI()
+    /// <summary>이전 Player 선택 코드를 수정하지 않고 선택 Canvas 아래의 초기 State 화면을 활성화한다.</summary>
+    private void ShowInitialCharacterSelectionPanel()
     {
-        if (playerSelectCanvas == null)
+        if (characterSelectionCanvas == null)
         {
             return;
         }
 
-        Transform[] children = playerSelectCanvas.GetComponentsInChildren<Transform>(true);
+        Transform[] children = characterSelectionCanvas.GetComponentsInChildren<Transform>(true);
         foreach (Transform child in children)
         {
             if (child != null && child.name == "State")
@@ -235,10 +258,10 @@ public class BattleUIFlowController : MonoBehaviour
         }
     }
 
-    /// <summary>Camera 위치가 지정 Frame 동안 충분히 정지할 때까지 기다린다.</summary>
-    private IEnumerator WaitForCameraMovementToFinish()
+    /// <summary>Battle Camera 위치가 지정 프레임 동안 충분히 정지하거나 최대 대기 시간을 넘길 때까지 기다린다.</summary>
+    private IEnumerator WaitUntilBattleCameraStops()
     {
-        if (transitionCamera == null)
+        if (battleCamera == null)
         {
             Debug.LogWarning("전환 카메라 참조가 없어 기다리지 않고 전투 UI를 표시합니다.", this);
             yield break;
@@ -247,69 +270,72 @@ public class BattleUIFlowController : MonoBehaviour
         // SpawnPlayer의 CameraChase.InitTarget 호출과 첫 LateUpdate 이동이 반영될 때까지 기다린다.
         yield return new WaitForEndOfFrame();
 
-        Vector3 previousPosition = transitionCamera.transform.position;
+        Vector3 previousPosition = battleCamera.transform.position;
         int stableFrames = 0;
         float elapsed = 0f;
 
-        while (stableFrames < cameraStableFrameCount && elapsed < cameraWaitTimeout)
+        while (stableFrames < requiredCameraStoppedFrames && elapsed < maximumCameraWaitSeconds)
         {
             yield return new WaitForEndOfFrame();
 
-            float movedDistance = Vector3.Distance(previousPosition, transitionCamera.transform.position);
-            stableFrames = movedDistance <= cameraStopThreshold ? stableFrames + 1 : 0;
-            previousPosition = transitionCamera.transform.position;
+            float movedDistance = Vector3.Distance(previousPosition, battleCamera.transform.position);
+            stableFrames = movedDistance <= cameraStoppedDistanceThreshold ? stableFrames + 1 : 0;
+            previousPosition = battleCamera.transform.position;
             elapsed += Time.unscaledDeltaTime;
         }
 
-        if (elapsed >= cameraWaitTimeout)
+        if (elapsed >= maximumCameraWaitSeconds)
         {
             Debug.LogWarning("카메라 전환 대기 시간이 초과되어 전투 UI를 표시합니다.", this);
         }
     }
 
-    /// <summary>두 Canvas를 상호 배타적으로 전환하고 전투 카메라 입력 상태를 맞춘다.</summary>
-    private void SetCanvasState(bool showBattle)
+    /// <summary>캐릭터 선택 Canvas와 Battle HUD를 상호 배타적으로 표시하고 카메라 입력 상태도 같은 단계로 맞춘다.</summary>
+    private void ShowCharacterSelectionOrBattleCanvas(bool showBattle)
     {
-        if (playerSelectCanvas != null)
+        if (characterSelectionCanvas != null)
         {
-            if (!showBattle && playerSelectCanvas.transform.localScale.sqrMagnitude < 0.0001f)
+            if (!showBattle && characterSelectionCanvas.transform.localScale.sqrMagnitude < 0.0001f)
             {
-                playerSelectCanvas.transform.localScale = Vector3.one;
+                characterSelectionCanvas.transform.localScale = Vector3.one;
             }
 
-            playerSelectCanvas.SetActive(!showBattle);
+            characterSelectionCanvas.SetActive(!showBattle);
         }
 
-        if (battleCanvas != null)
+        if (battleHudCanvas != null)
         {
-            if (showBattle && battleCanvas.transform.localScale.sqrMagnitude < 0.0001f)
+            if (showBattle && battleHudCanvas.transform.localScale.sqrMagnitude < 0.0001f)
             {
-                battleCanvas.transform.localScale = Vector3.one;
+                battleHudCanvas.transform.localScale = Vector3.one;
             }
 
-            battleCanvas.SetActive(showBattle);
+            battleHudCanvas.SetActive(showBattle);
         }
 
-        ConfigureBattleCameraInput(showBattle);
+        SetBattleCameraInputEnabled(showBattle);
     }
 
-    /// <summary>전환 Camera에 입력 컴포넌트가 없으면 런타임에 추가하고 활성 상태를 전달한다.</summary>
-    private void ConfigureBattleCameraInput(bool enabled)
+    /// <summary>
+    /// Battle Camera 입력을 현재 화면 단계에 맞춰 켜거나 끈다.
+    /// 현재는 이전 Scene 호환을 위해 컴포넌트가 없을 때 자동 추가하며, 직접 참조 전환 후 이 생성 분기는 삭제한다.
+    /// </summary>
+    private void SetBattleCameraInputEnabled(bool shouldEnableInput)
     {
-        if (transitionCamera == null)
+        if (battleCamera == null)
         {
             return;
         }
 
-        BattleMapCameraInput cameraInput = transitionCamera.GetComponent<BattleMapCameraInput>();
-        if (cameraInput == null && enabled)
+        BattleMapCameraInput cameraInput = battleCamera.GetComponent<BattleMapCameraInput>();
+        if (cameraInput == null && shouldEnableInput)
         {
-            cameraInput = transitionCamera.gameObject.AddComponent<BattleMapCameraInput>();
+            cameraInput = battleCamera.gameObject.AddComponent<BattleMapCameraInput>();
         }
 
         if (cameraInput != null)
         {
-            cameraInput.SetInputEnabled(enabled);
+            cameraInput.SetInputEnabled(shouldEnableInput);
         }
     }
 }

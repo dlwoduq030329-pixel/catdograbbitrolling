@@ -24,14 +24,14 @@ public class PathDebugView : MonoBehaviour
     /// <summary>활성화될 때 플레이어 이동 범위 표시 이벤트를 구독한다.</summary>
     private void OnEnable()
     {
-        BattlePlayerActionController.MoveRangeVisibilityChanged += HandleMoveRangeVisibilityChanged;
+        BattleRangeVisibilityTracker.VisibilityChanged += HandleMoveRangeVisibilityChanged;
         UpdateLineVisibility();
     }
 
     /// <summary>비활성화될 때 이벤트 구독을 해제해 중복 호출을 방지한다.</summary>
     private void OnDisable()
     {
-        BattlePlayerActionController.MoveRangeVisibilityChanged -= HandleMoveRangeVisibilityChanged;
+        BattleRangeVisibilityTracker.VisibilityChanged -= HandleMoveRangeVisibilityChanged;
     }
 
     /// <summary>시작 위치와 MapInfo 경로 중심을 연결해 디버그 선을 갱신한다.</summary>
@@ -108,7 +108,7 @@ public class PathDebugView : MonoBehaviour
     {
         if (lineRenderer != null)
         {
-            lineRenderer.enabled = hasPath && !BattlePlayerActionController.IsMoveRangeVisible;
+            lineRenderer.enabled = hasPath && !BattleRangeVisibilityTracker.IsAnyRangeVisible;
         }
     }
 }

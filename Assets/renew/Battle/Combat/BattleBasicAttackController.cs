@@ -19,6 +19,9 @@ public sealed class BattleBasicAttackController : MonoBehaviour
     private BattleActionRequest pendingAction;
     private EnemyTurnActor pendingEnemy;
     private List<MapInfo> pendingMovementPath = new List<MapInfo>();
+    // Begin() 시점의 Enemy 점유 타일 집합을 Confirm()까지 들고 있는다 — 확정 직전 재검증에서도
+    // "점유 타일 너머로는 공격 사거리가 닿지 않는다"는 같은 규칙을 적용하기 위함(GetDistance 벽/점유 버그 수정분).
+    private ISet<MapInfo> pendingOccupiedTiles;
     private MapInfo originalTile;
     private Vector3 originalPosition;
     private int attackCountThisTurn;
@@ -81,6 +84,7 @@ public sealed class BattleBasicAttackController : MonoBehaviour
             return false;
         }
 
+        pendingOccupiedTiles = occupiedTiles;
         pendingAction = new BattleActionRequest(
             "기본 공격",
             BattleActionType.BasicAttack,
@@ -124,7 +128,9 @@ public sealed class BattleBasicAttackController : MonoBehaviour
                 enemyTile,
                 pendingMovementPath,
                 actionCost,
-                out BattleActionResult result))
+                out BattleActionResult result,
+                isWalkable,
+                pendingOccupiedTiles))
         {
             Debug.Log("공격 확정 직전 조건이 변경되어 기본 공격을 취소합니다.", this);
             Cancel();
@@ -230,6 +236,7 @@ public sealed class BattleBasicAttackController : MonoBehaviour
         pendingAction = null;
         pendingEnemy = null;
         pendingMovementPath.Clear();
+        pendingOccupiedTiles = null;
         originalTile = null;
         originalPosition = Vector3.zero;
     }

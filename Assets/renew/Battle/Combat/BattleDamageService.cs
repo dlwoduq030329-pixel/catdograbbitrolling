@@ -123,7 +123,7 @@ public static class BattleDamageService
 
         // 전투 Log는 실제로 적용된 피해와 사망 여부만 기록한다.
         string attackerName = attacker != null ? attacker.name : "Environment";
-        BattleCombatLog.Add(
+        BattleCombatLog.AddEntry(
             $"{attackerName} → {target.name}  -{appliedDamage:0.#} HP" +
             (targetHealth.IsDead ? "  [DEFEATED]" : string.Empty));
 

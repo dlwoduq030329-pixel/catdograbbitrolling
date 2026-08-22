@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8123f4bfac4f4317b5fe02c2f8bad499, type: 3}
+  m_Name: DefaultRangeColorPalette
+  m_EditorClassIdentifier: 
+  movableTileColor: {r: 0.25, g: 0.9, b: 0.25, a: 0.39215687}
+  blockedTileColor: {r: 0.9, g: 0.2, b: 0.2, a: 0.39215687}
+  enemyDetectColor: {r: 1, g: 0.6, b: 0.15, a: 0.39215687}
+  selectedTileColor: {r: 1, g: 0.95, b: 0.35, a: 0.39215687}
+  landedTileColor: {r: 0.55, g: 1, b: 0.85, a: 0.39215687}
+  attackableTileColor: {r: 0.9, g: 0.2, b: 0.25, a: 1}
+  cardRangeTileColor: {r: 0.35, g: 0.45, b: 1, a: 1}
+  cardEffectAreaTileColor: {r: 0.15, g: 0.9, b: 0.95, a: 1}
+  enemyThreatTileColor: {r: 0.75, g: 0.15, b: 0.85, a: 1}
