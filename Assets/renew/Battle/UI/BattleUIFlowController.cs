@@ -18,6 +18,9 @@ public class BattleUIFlowController : MonoBehaviour
     [Header("전환 시스템 참조")]
     [InspectorName("맵 생성기")]
     [SerializeField] private MapGenerator mapGenerator;
+    [InspectorName("맵 생성기")]
+    [SerializeField] private NewMapGenerator newmapGenerator;
+
     [InspectorName("전투 게임 관리자")]
     [SerializeField] private BattleGameManager battleGameManager;
     [InspectorName("플레이어 생성기")]
@@ -69,10 +72,13 @@ public class BattleUIFlowController : MonoBehaviour
     {
         if (transitionRoutine != null)
         {
+            Debug.Log("리턴됨");
             return;
+            
         }
 
         transitionRoutine = StartCoroutine(WaitForMapAndShowBattle());
+        
     }
 
     /// <summary>맵 생성, Player 등록, 카메라 이동을 순서대로 기다린다.</summary>
@@ -80,22 +86,26 @@ public class BattleUIFlowController : MonoBehaviour
     {
         // 같은 버튼의 StatusUI.summonPlayer()가 MapGenerator 상태를 먼저 초기화하도록 한 Frame 양보한다.
         yield return null;
-
-        if (mapGenerator == null)
+        Debug.Log("진입 성공");
+        if (mapGenerator == null||newmapGenerator == null)
         {
             Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
             transitionRoutine = null;
             yield break;
         }
 
-        while (!mapGenerator.IsGenerateEnd())
+        while (!mapGenerator.IsGenerateEnd()&&!newmapGenerator.IsGenerateEnd())
         {
+            Debug.Log("한무대기");
+
             yield return null;
         }
+        Debug.Log("맵 생성 확인 완료");
 
         // SpawnPlayer가 같은 프레임에 HUDCanvas를 활성화하더라도 EventSystem 입력보다 먼저
         // 최상위 차단막을 올려 연타 입력이 인벤토리/캐릭터 정보창을 열지 못하게 한다.
         SetStartupInputBlocked(true);
+        Debug.Log("맵 생성 확인 완료");
 
         if (battleGameManager == null)
         {

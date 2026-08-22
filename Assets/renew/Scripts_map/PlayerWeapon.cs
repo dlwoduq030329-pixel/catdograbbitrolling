@@ -16,3 +16,4 @@ public class PlayerWeapon : MonoBehaviour
         
     }
 }
+//ai 기능구현 중심으로 써야지.... 구조를 짜버리면 내가 못따라가
