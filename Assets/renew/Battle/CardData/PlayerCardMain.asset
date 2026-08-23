@@ -131,13 +131,13 @@ MonoBehaviour:
     legacyCardIndex: 5
     effectSummary: "같은 손패 자리에 무작위 카드를 생성하고 이번 턴 MP 비용을 1 감소시킵니다."
     effects:
-    - effectType: 4
+    - effectType: 13
       effectTarget: 1
       amount: 1
       distanceTiles: 0
       durationTurns: 1
       repeatCount: 1
-      effectCode: WEIRD_MUSHROOM
+      effectCode: ""
       description: "버섯을 무작위 카드로 교체하고 생성 카드 비용을 이번 턴 1 감소시킵니다."
       cancelCardOnFailure: 1
     targetType: 1
@@ -293,7 +293,7 @@ MonoBehaviour:
       description: "주변 1칸의 모든 적에게 피해 2를 줍니다."
       cancelCardOnFailure: 0
     - effectType: 5
-      effectTarget: 3
+      effectTarget: 2
       amount: 0
       distanceTiles: 1
       durationTurns: 0
@@ -415,13 +415,13 @@ MonoBehaviour:
     legacyCardIndex: 18
     effectSummary: "현재 턴 동안 자신의 기본 공격 피해가 2 증가합니다."
     effects:
-    - effectType: 4
+    - effectType: 14
       effectTarget: 1
       amount: 2
       distanceTiles: 0
       durationTurns: 1
       repeatCount: 1
-      effectCode: BASIC_ATTACK_DAMAGE
+      effectCode: ""
       description: "현재 턴 동안 자신의 기본 공격 피해를 2 증가시킵니다."
       cancelCardOnFailure: 1
     targetType: 1

@@ -16,39 +16,39 @@ public class InventorySetting : MonoBehaviour
     [SerializeField]
     PlayerDeck playerDeck;
 
-    // 편집 중인 임시 덱이다. 인벤토리에서 카드를 클릭/드래그해서 바꾸는 동안에는 이 배열만 바뀌고,
+    // 현재 인벤토리 화면에서 변경 중인 덱 복사본이다. 카드를 클릭/드래그해서 바꾸는 동안에는 이 배열만 바뀌고,
     // "저장" 버튼(SaveDeck)을 눌러야 실제 전투에 쓰이는 playerDeck.deckCardforUI에 반영된다.
     // 저장하지 않고 화면을 닫았다가 다시 열면(OnEnable) 마지막으로 저장된 덱으로 되돌아간다.
-    private int[] stagedDeck = new int[10];
-    private bool stagedInitialized;
+    private int[] deckBeingEdited = new int[10];
+    private bool deckEditingCopyLoaded;
 
     public void OnEnable()
     {
-        LoadStagedDeckFromPlayerDeck();
-        InitAll();
+        CopyEquippedDeckIntoEditor();
+        RefreshDeckEditorVisuals();
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
     }
 
-    /// <summary>패널을 열 때(또는 저장 직후) 실제 전투 덱 값으로 편집용 임시 덱을 새로 채운다.</summary>
-    private void LoadStagedDeckFromPlayerDeck()
+    /// <summary>패널을 열 때 실제 장착 덱을 편집 화면용 배열에 복사한다. 저장하지 않은 이전 편집 내용은 이때 폐기된다.</summary>
+    private void CopyEquippedDeckIntoEditor()
     {
         if (playerDeck == null || playerDeck.deckCardforUI == null) return;
 
         int length = playerDeck.deckCardforUI.Length;
-        if (stagedDeck == null || stagedDeck.Length != length)
+        if (deckBeingEdited == null || deckBeingEdited.Length != length)
         {
-            stagedDeck = new int[length];
+            deckBeingEdited = new int[length];
         }
-        System.Array.Copy(playerDeck.deckCardforUI, stagedDeck, length);
-        stagedInitialized = true;
+        System.Array.Copy(playerDeck.deckCardforUI, deckBeingEdited, length);
+        deckEditingCopyLoaded = true;
     }
 
-    public void InitAll()
+    public void RefreshDeckEditorVisuals()
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
 
         SortDeckByCostDescending();
         SortInventoryByCostDescending();
@@ -70,7 +70,7 @@ public class InventorySetting : MonoBehaviour
             {
                 if (invenCards[k] != null)
                 {
-                    invenCards[k].Apply();
+                    invenCards[k].RefreshOwnershipAndEquippedCount();
                 }
             }
         }
@@ -78,51 +78,53 @@ public class InventorySetting : MonoBehaviour
 
     }
 
-    /// <summary>사용 중인 카드 슬롯을 클릭하면 해당 카드 한 장을 편집용 임시 덱에서 제거한다(저장 전까지는 미리보기일 뿐).</summary>
-    public void RemoveDeckCardAtSlot(int slotIndex)
+    /// <summary>장착 카드 슬롯을 누르면 편집 중인 덱에서 한 장을 제거하고 즉시 화면을 다시 그린다. 저장 전에는 PlayerDeck을 변경하지 않는다.</summary>
+    public void RemoveCardFromDeckBeingEdited(int slotIndex)
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
-        if (stagedDeck == null ||
-            slotIndex < 0 || slotIndex >= stagedDeck.Length ||
-            stagedDeck[slotIndex] < 0) return;
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
+        if (deckBeingEdited == null ||
+            slotIndex < 0 || slotIndex >= deckBeingEdited.Length ||
+            deckBeingEdited[slotIndex] < 0) return;
 
-        stagedDeck[slotIndex] = -1;
-        ApplyStagedChange();
+        deckBeingEdited[slotIndex] = -1;
+        SortAndRefreshDeckBeingEdited();
     }
 
-    /// <summary>인벤토리 카드를 클릭하면 보유 수량 안에서 첫 빈 편집용 덱 슬롯에 한 장 추가한다(저장 전까지는 미리보기일 뿐).</summary>
-    public bool TryAddCardToDeck(int cardIndex)
+    /// <summary>보유 카드를 누르면 편집 중인 덱의 첫 빈 슬롯에 추가하고 즉시 화면을 다시 그린다. 저장 전에는 PlayerDeck을 변경하지 않는다.</summary>
+    public bool TryAddOwnedCardToDeckBeingEdited(int cardIndex)
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
-        if (stagedDeck == null ||
-            !DataConfig.CardsCount.TryGetValue(cardIndex, out int ownedCount)) return false;
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
+        if (deckBeingEdited == null || playerDeck == null) return false;
 
-        int usedCount = stagedDeck.Count(index => index == cardIndex);
+        int ownedCount = playerDeck.GetOwnedCardCount(cardIndex);
+        if (ownedCount <= 0) return false;
+
+        int usedCount = deckBeingEdited.Count(index => index == cardIndex);
         if (usedCount >= ownedCount) return false;
 
-        int emptySlot = System.Array.IndexOf(stagedDeck, -1);
+        int emptySlot = System.Array.IndexOf(deckBeingEdited, -1);
         if (emptySlot < 0) return false;
 
-        stagedDeck[emptySlot] = cardIndex;
-        ApplyStagedChange();
+        deckBeingEdited[emptySlot] = cardIndex;
+        SortAndRefreshDeckBeingEdited();
         return true;
     }
 
     /// <summary>편집용 임시 덱을 코스트가 높은 순서로 정렬하고 빈 슬롯은 뒤로 보낸다.</summary>
     private void SortDeckByCostDescending()
     {
-        if (stagedDeck == null) return;
+        if (deckBeingEdited == null) return;
         CardDatabase database = DataPool.Instance != null ? DataPool.Instance.cardDatabase : null;
         if (database == null || database.cards == null) return;
 
-        int[] sorted = stagedDeck
+        int[] sorted = deckBeingEdited
             .Where(index => index >= 0 && index < database.cards.Count && database.cards[index] != null)
             .OrderByDescending(index => database.cards[index].cardCost)
             .ThenBy(index => index)
             .ToArray();
 
-        for (int i = 0; i < stagedDeck.Length; i++)
-            stagedDeck[i] = i < sorted.Length ? sorted[i] : -1;
+        for (int i = 0; i < deckBeingEdited.Length; i++)
+            deckBeingEdited[i] = i < sorted.Length ? sorted[i] : -1;
     }
 
     /// <summary>인벤토리 카드 오브젝트를 코스트가 높은 순서로 배치한다.</summary>
@@ -146,11 +148,11 @@ public class InventorySetting : MonoBehaviour
             invenCards[i].transform.SetSiblingIndex(firstSibling + i);
     }
 
-    /// <summary>편집용 임시 덱이 바뀔 때마다 정렬하고 화면을 다시 그린다. 실제 전투 데이터는 아직 바뀌지 않는다.</summary>
-    private void ApplyStagedChange()
+    /// <summary>카드 추가·제거 후 편집 중인 덱을 코스트순으로 정렬하고 모든 덱·보유 카드 이미지를 갱신한다.</summary>
+    private void SortAndRefreshDeckBeingEdited()
     {
         SortDeckByCostDescending();
-        InitAll();
+        RefreshDeckEditorVisuals();
     }
 
     /// <summary>
@@ -160,20 +162,20 @@ public class InventorySetting : MonoBehaviour
     /// </summary>
     public void SaveDeck()
     {
-        if (playerDeck == null || playerDeck.deckCardforUI == null || stagedDeck == null)
+        if (playerDeck == null || playerDeck.deckCardforUI == null || deckBeingEdited == null)
         {
             Debug.LogWarning("덱 저장 실패: PlayerDeck 참조가 없습니다.", this);
             return;
         }
 
-        int length = Mathf.Min(playerDeck.deckCardforUI.Length, stagedDeck.Length);
-        for (int i = 0; i < length; i++)
+        if (!playerDeck.TryReplaceEntireEquippedDeck(deckBeingEdited, out string failureReason))
         {
-            playerDeck.deckCardforUI[i] = stagedDeck[i];
+            Debug.LogWarning($"덱 저장 실패: {failureReason}", this);
+            return;
         }
 
         DataConfig.cardData.Clear();
-        foreach (int cardIndex in playerDeck.deckCardforUI)
+        foreach (int cardIndex in playerDeck.EquippedCards)
         {
             if (cardIndex >= 0) DataConfig.cardData.Add(cardIndex);
         }
@@ -181,47 +183,45 @@ public class InventorySetting : MonoBehaviour
         Debug.Log("덱 저장 완료: 다음 전투부터 적용됩니다.", this);
     }
 
-    public void SetScroll(bool temp)
+    public void SetInventoryVerticalScrollEnabled(bool enabled)
     {
-        scroll.vertical = temp;
+        scroll.vertical = enabled;
     }
 
-    /// <summary>편집 화면에 표시할 카드 인덱스를 반환한다(편집용 임시 덱 기준, 저장 전 값도 즉시 반영됨).</summary>
-    public int returnCardIndex(int x)
+    /// <summary>지정한 편집 슬롯에 현재 표시할 카드 인덱스를 반환한다. 빈 슬롯은 -1이다.</summary>
+    public int GetCardIndexFromDeckBeingEdited(int slotIndex)
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
-        if (stagedDeck == null || x < 0 || x >= stagedDeck.Length)
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
+        if (deckBeingEdited == null || slotIndex < 0 || slotIndex >= deckBeingEdited.Length)
         {
-            Debug.LogError($"플레이어 덱 참조 또는 슬롯이 올바르지 않습니다: 슬롯 {x}", this);
+            Debug.LogError($"플레이어 덱 참조 또는 슬롯이 올바르지 않습니다: 슬롯 {slotIndex}", this);
             return -1;
         }
 
-        Debug.Log("return card Index : " + stagedDeck[x]);
-        return stagedDeck[x];
+        return deckBeingEdited[slotIndex];
     }
 
-    /// <summary>드래그로 카드를 교체할 때 편집용 임시 덱만 바꾼다. 저장 전까지는 실제 전투 덱에 영향을 주지 않는다.</summary>
-    public void ChangeCard(int index, int change)
+    /// <summary>드래그·드롭으로 선택한 편집 슬롯의 카드를 교체한다. 저장 전까지 실제 PlayerDeck에는 반영하지 않는다.</summary>
+    public void ReplaceCardInDeckBeingEdited(int slotIndex, int replacementCardIndex)
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
-        if (stagedDeck == null || index < 0 || index >= stagedDeck.Length) return;
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
+        if (deckBeingEdited == null || slotIndex < 0 || slotIndex >= deckBeingEdited.Length) return;
 
-        stagedDeck[index] = change;
+        deckBeingEdited[slotIndex] = replacementCardIndex;
+        SortAndRefreshDeckBeingEdited();
     }
 
-    public (bool hasCard, int value) returnHaveCard(int x)
+    public (bool isOwned, int ownedCount) GetOwnedCardDisplayState(int cardIndex)
     {
-        bool hasCard = !playerDeck.cardPool.ContainsKey(x); // 있으면 false 없으면 true
-        int value = hasCard ? 0 :playerDeck.cardPool[x];
-
-        return (hasCard, value);
+        int ownedCount = playerDeck != null ? playerDeck.GetOwnedCardCount(cardIndex) : 0;
+        return (ownedCount > 0, ownedCount);
     }
 
-    /// <summary>인벤토리의 "사용 중" 표시에 쓰이는 편집용 임시 덱 배열이다(저장 여부와 무관하게 현재 편집 상태 기준).</summary>
-    public int[] deckCardArr()
+    /// <summary>각 카드가 편집 중인 덱에 몇 장 들어 있는지 UI가 계산할 때 사용하는 현재 편집 배열을 반환한다.</summary>
+    public int[] GetDeckBeingEdited()
     {
-        if (!stagedInitialized) LoadStagedDeckFromPlayerDeck();
-        return stagedDeck;
+        if (!deckEditingCopyLoaded) CopyEquippedDeckIntoEditor();
+        return deckBeingEdited;
     }
 
 

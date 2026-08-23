@@ -19,7 +19,9 @@ public enum BattleCardEffectType
     [InspectorName("소환")] Summon,
     [InspectorName("지속 영역 생성")] CreateArea,
     [InspectorName("처형")] Execute,
-    [InspectorName("상태이상 제거")] Cleanse
+    [InspectorName("상태이상 제거")] Cleanse,
+    [InspectorName("무작위 카드 드로우")] DrawRandomCard,
+    [InspectorName("기본 공격 피해 증가")] IncreaseBasicAttackDamage
 }
 
 /// <summary>

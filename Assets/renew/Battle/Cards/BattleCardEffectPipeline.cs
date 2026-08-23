@@ -22,7 +22,8 @@ internal static class BattleCardEffectPipeline
         public BattleActionRequest Request;
         public Func<Vector3, MapInfo> FindClosestTile;
         public Action<GameObject, BattleStatusType, int> ApplyStatus;
-        public Action<BattleCardEffectData> ExecuteSpecial;
+        public BattleCardDrawSystem DrawSystem;
+        public CardUseWaitingForConfirmation ConsumedCardUse;
         public BattleRangeVisualizer RangeVisualizer;
         public Color PersistentAreaColor;
     }
@@ -186,7 +187,15 @@ internal static class BattleCardEffectPipeline
                     break;
 
                 case BattleCardEffectType.ModifyStat:
-                    context.ExecuteSpecial?.Invoke(effect);
+                    break;
+
+                case BattleCardEffectType.DrawRandomCard:
+                    context.DrawSystem?.GenerateWeirdMushroomCard(context.ConsumedCardUse);
+                    break;
+
+                case BattleCardEffectType.IncreaseBasicAttackDamage:
+                    BattleComponentResolver.GetOrAdd<BattleBasicAttackBuff>(context.Player, null)
+                        .Add(effect.amount);
                     break;
 
                 case BattleCardEffectType.Cleanse:
@@ -295,10 +304,22 @@ internal static class BattleCardEffectPipeline
                 failure = $"일반 적의 현재 HP가 최대 HP의 {effect.amount:0.#}% 미만이어야 합니다.";
                 return false;
             case BattleCardEffectType.ModifyStat:
-                if (IsCode(effect, "WEIRD_MUSHROOM", "이상한버섯") ||
-                    IsCode(effect, "BASIC_ATTACK_DAMAGE", "기본공격피해증가")) return true;
                 failure = $"아직 실행기가 연결되지 않은 능력치 효과입니다: {effect.effectCode}";
                 return false;
+            case BattleCardEffectType.DrawRandomCard:
+                if (context.DrawSystem == null || context.ConsumedCardUse == null)
+                {
+                    failure = "카드 드로우 시스템이 연결되지 않았습니다.";
+                    return false;
+                }
+                return true;
+            case BattleCardEffectType.IncreaseBasicAttackDamage:
+                if (effect.amount <= 0f)
+                {
+                    failure = "기본 공격 피해 증가량이 0 이하입니다.";
+                    return false;
+                }
+                return true;
             case BattleCardEffectType.Cleanse:
                 if (step.Targets.Count == 0) { failure = "상태이상을 제거할 대상이 없습니다."; return false; }
                 return true;

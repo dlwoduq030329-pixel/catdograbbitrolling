@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// BattlePlayerActionController에서 분리한 "카드 사용" 행동 플로우 전용 컴포넌트다.
-/// 카드 사용 시작(BeginUseConfirmation), 유효 대상 판정(HasValidTarget), 우클릭 대상 선택
+/// 카드 사용 시작(TryStartSelectedCardUse), 우클릭 대상 선택
 /// (HandleTargetRightClick), 확인 UI 요청/확정/취소를 전담하는 BattleCardActionController의
 /// 이벤트를 받아 처리한다.
 ///
@@ -34,7 +33,7 @@ public class BattleUnitCardFlow : MonoBehaviour
     public void Attach(BattlePlayerActionController controller)
     {
         owner = controller;
-        EnsureBattleCardActionController();
+        InitializeCardActionController();
     }
 
     private void OnDestroy()
@@ -50,7 +49,7 @@ public class BattleUnitCardFlow : MonoBehaviour
     }
 
     /// <summary>카드 대상 선택, 사거리 표시와 MP·손패 확정을 담당하는 기능 컴포넌트를 확보한다.</summary>
-    private void EnsureBattleCardActionController()
+    private void InitializeCardActionController()
     {
         owner.EnsureBattleRangeVisualizer();
         owner.EnsureBattlePushPreviewView();
@@ -64,11 +63,6 @@ public class BattleUnitCardFlow : MonoBehaviour
             owner.FindClosestMapTile,
             owner.mainCamera,
             owner.battlePushPreviewView);
-        battleCardActionController.TargetSelectionRequested -= HandleTargetSelectionRequested;
-        battleCardActionController.ConfirmationRequested -= HandleConfirmationRequested;
-        battleCardActionController.Confirmed -= HandleConfirmed;
-        battleCardActionController.Cancelled -= HandleCancelled;
-        battleCardActionController.RangeVisibilityChanged -= owner.SetRangeVisible;
         battleCardActionController.TargetSelectionRequested += HandleTargetSelectionRequested;
         battleCardActionController.ConfirmationRequested += HandleConfirmationRequested;
         battleCardActionController.Confirmed += HandleConfirmed;
@@ -85,7 +79,7 @@ public class BattleUnitCardFlow : MonoBehaviour
     /// <summary>확인 대기 중인 카드 사용을 확정한다.</summary>
     public void Confirm()
     {
-        battleCardActionController?.Confirm();
+        battleCardActionController?.TryConfirmCardUse();
     }
 
     /// <summary>대상 선택 또는 확인 대기 중인 카드 사용을 취소한다.</summary>
@@ -95,63 +89,19 @@ public class BattleUnitCardFlow : MonoBehaviour
     }
 
     /// <summary>
-    /// 이 카드가 실제로 유효한 대상(사거리 안의 살아있는 Enemy 등)을 갖고 있는지 판정한다.
-    /// 공격형이 아니거나 명시적으로 Enemy를 겨냥하지 않는 카드는 대상 판정 없이 항상 사용 가능하다.
+    /// 손패 클릭으로 만들어진 카드 사용 요청을 실제 대상 선택 흐름에 전달한다.
+    /// 호출 경로: BattleCardHandView.SelectCard()
+    /// → BattlePlayerActionController.BeginCardUseConfirmation()
+    /// → 이 함수
+    /// → BattleCardActionController.TryStartCardUse().
+    /// 이동 범위를 닫고 현재 턴의 카드 사용 가능 상태를 전달할 뿐, 카드 효과나 MP는 여기서 소비하지 않는다.
     /// </summary>
-    public bool HasValidTarget(BattleCardData card)
+    public bool TryStartSelectedCardUse(CardUseWaitingForConfirmation cardUse, BattleCardDrawSystem cardDrawSystem)
     {
-        if (card == null) return false;
-        bool explicitlyTargetsEnemy = card.targetType == BattleCardTargetType.Enemy ||
-                                      card.targetType == BattleCardTargetType.Character ||
-                                      card.targetType == BattleCardTargetType.AllEnemies;
-        if (card.category != BattleCardCategory.Attack && !explicitlyTargetsEnemy) return true;
-
-        owner.ResolveBattleDataPool();
-        GameObject currentPlayer = owner.player != null ? owner.player : owner.battleDataPool != null ? owner.battleDataPool.CurrentPlayer : null;
-        MapInfo playerTile = currentPlayer != null ? owner.FindClosestMapTile(currentPlayer.transform.position) : null;
-        if (playerTile == null) return false;
-
-        IEnumerable<GameObject> registered = owner.battleDataPool != null && owner.battleDataPool.Units != null
-            ? owner.battleDataPool.Units.Enemies : null;
-        if (registered == null)
-        {
-            List<GameObject> fallback = new List<GameObject>();
-            foreach (EnemyTurnActor enemy in FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None))
-                if (enemy != null) fallback.Add(enemy.gameObject);
-            registered = fallback;
-        }
-
-        int range = card.targetType == BattleCardTargetType.Self
-            ? Mathf.Max(1, card.areaSizeTiles)
-            : Mathf.Max(1, card.rangeTiles);
-        foreach (GameObject enemy in registered)
-        {
-            if (enemy == null || !enemy.activeInHierarchy) continue;
-            BattleHealth health = enemy.GetComponent<BattleHealth>();
-            if (health != null && health.IsDead) continue;
-            if (card.targetType == BattleCardTargetType.AllEnemies) return true;
-            MapInfo enemyTile = owner.FindClosestMapTile(enemy.transform.position);
-            int distance = BattleTileRangeCalculator.GetDistance(playerTile, enemyTile, range);
-            if (distance >= 0 && distance <= range) return true;
-        }
-        return false;
-    }
-
-    /// <summary>카드 사용 확인 단계를 열고 공용 확인·취소 버튼을 표시한다.
-    /// 다른 행동이 진행 중인지 같은 라우팅 판단은 owner(BattlePlayerActionController)의
-    /// BeginCardUseConfirmation이 먼저 하고, 이 메서드는 "실제로 카드를 시작하는" 부분만 담당한다.</summary>
-    public bool BeginUseConfirmation(PendingBattleCardUse cardUse, BattleCardDrawSystem cardDrawSystem)
-    {
-        if (!HasValidTarget(cardUse.CardData))
-        {
-            Debug.Log("Card use blocked: no valid enemy is within this card's range.", this);
-            return false;
-        }
-
         owner.moveFlow.ClearMoveRange();
-        EnsureBattleCardActionController();
         bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;
-        return battleCardActionController.Begin(cardUse, cardDrawSystem, canUseCards);
+        return battleCardActionController != null &&
+               battleCardActionController.TryStartCardUse(cardUse, cardDrawSystem, canUseCards);
     }
 
     /// <summary>카드 대상 유형에 맞는 적 또는 타일을 우클릭으로 선택한다.</summary>
@@ -172,7 +122,7 @@ public class BattleUnitCardFlow : MonoBehaviour
             owner.TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
         {
             MapInfo enemyTile = owner.FindClosestMapTile(enemy.transform.position);
-            if (battleCardActionController.TrySelectTarget(enemy.gameObject, enemyTile))
+            if (battleCardActionController.TryStoreTargetAndOpenConfirmation(enemy.gameObject, enemyTile))
             {
                 return;
             }
@@ -180,7 +130,7 @@ public class BattleUnitCardFlow : MonoBehaviour
 
         if (targetType == BattleCardTargetType.Tile &&
             owner.TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
-            battleCardActionController.TrySelectTarget(tile.gameObject, tile))
+            battleCardActionController.TryStoreTargetAndOpenConfirmation(tile.gameObject, tile))
         {
             return;
         }

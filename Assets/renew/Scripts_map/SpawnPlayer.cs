@@ -73,11 +73,9 @@ public class SpawnPlayer : MonoBehaviour
         player.transform.localPosition = spawnLocalPosition;
         playerBody.GetComponent<CharactorStatus>().TribeSet(charactorIndex);
         PlayerDeck deck = playerBody.GetComponent<PlayerDeck>();
-        deck.UICardInit();
-        for (int i = 0; i < 5; i++)
-        {
-            deck.AddCardPool(i, 2);
-        }
+        // 신규 Player의 기본 카드 상태는 PlayerDeck 한 곳에서 구성한다.
+        // SpawnPlayer는 카드 수량과 장착 슬롯 규칙을 알지 않고 초기화 시점만 결정한다.
+        deck.InitializeDefaultCards(5, 2);
         StartCoroutine(waitUnitMApGen());
     }
 

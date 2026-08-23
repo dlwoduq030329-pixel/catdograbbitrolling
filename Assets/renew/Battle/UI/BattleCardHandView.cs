@@ -28,12 +28,12 @@ public sealed class BattleCardHandView : MonoBehaviour
     private BattlePlayerActionController playerActionController;
     private BattleCardInfoPresenter cardInfoPresenter;
     private BattleUnitMP boundPlayerMP;
+    private BattleStatusEffects boundPlayerStatusEffects;
     private readonly BattleCardLongPressHandler[] longPressHandlers =
         new BattleCardLongPressHandler[SlotCount];
-    private float nextTargetRefreshTime;
 
     /// <summary>클릭한 카드의 행동 요청이 생성됐을 때 호출된다.</summary>
-    public event System.Action<int, PendingBattleCardUse> CardSelected;
+    public event System.Action<int, CardUseWaitingForConfirmation> CardSelected;
 
     private void Awake()
     {
@@ -47,26 +47,10 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         ConnectDrawSystem();
         ConnectPlayerActionController();
-        ConnectPlayerMP();
-        SubscribeCardAvailability();
+        SubscribeGameManagerEvents();
+        BindRegisteredPlayerResources(
+            BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentPlayer : null);
         RefreshCurrentHand();
-    }
-
-    private void Start()
-    {
-        ConnectDrawSystem();
-        ConnectPlayerActionController();
-        ConnectPlayerMP();
-        SubscribeCardAvailability();
-        RefreshCurrentHand();
-    }
-
-    private void Update()
-    {
-        if (Time.unscaledTime < nextTargetRefreshTime) return;
-        nextTargetRefreshTime = Time.unscaledTime + 0.2f;
-        if (BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards)
-            RefreshCurrentHand();
     }
 
     private void OnDisable()
@@ -79,6 +63,7 @@ public sealed class BattleCardHandView : MonoBehaviour
         if (BattleGameManager.Instance != null)
         {
             BattleGameManager.Instance.CardUseAvailabilityChanged -= HandleCardAvailabilityChanged;
+            BattleGameManager.Instance.PlayerRegistered -= HandlePlayerRegistered;
         }
 
         UnsubscribePlayerMP();
@@ -117,7 +102,13 @@ public sealed class BattleCardHandView : MonoBehaviour
 
             CardVisualData visual = ResolveVisualData(hand[i]);
             button.gameObject.SetActive(true);
-            bool hasEnoughMP = HasEnoughMPForCard(hand[i]);
+            bool cardCostResolved = TryGetCurrentCardCost(hand[i], out int currentCardCost);
+            if (!cardCostResolved)
+            {
+                currentCardCost = visual.Cost;
+            }
+            bool hasEnoughMP = !cardCostResolved ||
+                               (boundPlayerMP != null && boundPlayerMP.CanSpend(currentCardCost));
             button.interactable = BattleGameManager.Instance != null &&
                                   BattleGameManager.Instance.CanUsePlayerCards && hasEnoughMP;
 
@@ -149,7 +140,8 @@ public sealed class BattleCardHandView : MonoBehaviour
                 if (visual.Artwork != null)
                 {
                     costLabel.ShowCostLabel();
-                    costLabel.DisplayCardCost(visual.Cost, visual.Rare);
+                    // 원본 CardData 비용이 아니라 동상 등 현재 상태가 반영된 실제 사용 비용을 표시한다.
+                    costLabel.DisplayCardCost(currentCardCost, visual.Rare);
                     costLabel.SetManaAffordabilityColor(hasEnoughMP);
                 }
                 else
@@ -163,25 +155,13 @@ public sealed class BattleCardHandView : MonoBehaviour
         }
     }
 
-    /// <summary>현재 Player의 MP가 이 카드를 사용하기에 충분한지 확인한다.
-    /// 정보를 확인할 수 없을 때는(참조 미연결 등) 기존처럼 막지 않고 true를 반환한다.</summary>
-    private bool HasEnoughMPForCard(int legacyCardIndex)
+    /// <summary>
+    /// 카드 행동 데이터의 기본 MP에 현재 Player의 동상(Frostbite) 비용 증가를 반영한다.
+    /// 손패 숫자 표시, 부족 색상과 클릭 차단이 모두 이 결과를 공유한다.
+    /// </summary>
+    private bool TryGetCurrentCardCost(int legacyCardIndex, out int currentCardCost)
     {
-        ConnectPlayerMP();
-        GameObject playerObject = boundPlayerMP != null ? boundPlayerMP.gameObject :
-            playerActionController != null ? playerActionController.player : null;
-        if (playerObject == null)
-        {
-            return true;
-        }
-
-        BattleUnitMP playerMP = boundPlayerMP != null
-            ? boundPlayerMP
-            : playerObject.GetComponent<BattleUnitMP>();
-        if (playerMP == null)
-        {
-            return true;
-        }
+        currentCardCost = 0;
 
         if (!BattleCardConnector.TryCreateActionRequest(
                 legacyCardIndex,
@@ -189,17 +169,29 @@ public sealed class BattleCardHandView : MonoBehaviour
                 out BattleActionRequest request,
                 out BattleCardData resolvedCard))
         {
-            return true;
+            return false;
         }
 
-        int cardCost = request.MPCost;
-        BattleStatusEffects status = playerObject.GetComponent<BattleStatusEffects>();
-        if (status != null && resolvedCard != null && resolvedCard.category == BattleCardCategory.Attack)
+        currentCardCost = request.MPCost;
+        if (boundPlayerStatusEffects != null && resolvedCard != null &&
+            resolvedCard.category == BattleCardCategory.Attack)
         {
-            cardCost = status.ModifyAttackCost(cardCost);
+            currentCardCost = boundPlayerStatusEffects.ModifyAttackCost(currentCardCost);
         }
 
-        return playerMP.CanSpend(cardCost);
+        return true;
+    }
+
+    /// <summary>현재 Player MP가 상태이상까지 반영된 실제 카드 비용을 지불할 수 있는지 확인한다.</summary>
+    private bool HasEnoughMPForCard(int legacyCardIndex)
+    {
+        if (boundPlayerMP == null)
+        {
+            return false;
+        }
+
+        return !TryGetCurrentCardCost(legacyCardIndex, out int currentCardCost) ||
+               boundPlayerMP.CanSpend(currentCardCost);
     }
 
     /// <summary>선택한 손패 카드의 행동 요청을 생성한다.</summary>
@@ -218,15 +210,16 @@ public sealed class BattleCardHandView : MonoBehaviour
             return;
         }
 
-        if (drawSystem == null || handIndex < 0 || handIndex >= drawSystem.Hand.Count ||
-            !HasEnoughMPForCard(drawSystem.Hand[handIndex]))
+        if (drawSystem == null || handIndex < 0 || handIndex >= drawSystem.CardsInCurrentHand.Count ||
+            !HasEnoughMPForCard(drawSystem.CardsInCurrentHand[handIndex]))
         {
             Debug.Log("MP가 부족해 이 카드를 사용할 수 없습니다.", this);
             RefreshCurrentHand();
             return;
         }
 
-        if (drawSystem == null || !drawSystem.BeginCardUse(handIndex, out PendingBattleCardUse pendingUse))
+        if (drawSystem == null ||
+            !drawSystem.TryCreateCardUseWaitingForConfirmation(handIndex, out CardUseWaitingForConfirmation pendingUse))
         {
             return;
         }
@@ -272,13 +265,13 @@ public sealed class BattleCardHandView : MonoBehaviour
     private void ShowCardInfo(int handIndex)
     {
         if (cardInfoPresenter == null || drawSystem == null ||
-            handIndex < 0 || handIndex >= drawSystem.Hand.Count)
+            handIndex < 0 || handIndex >= drawSystem.CardsInCurrentHand.Count)
         {
             return;
         }
 
         cardInfoPresenter.Show(
-            drawSystem.Hand[handIndex],
+            drawSystem.CardsInCurrentHand[handIndex],
             drawSystem.OriginalDatabase,
             drawSystem.Database);
     }
@@ -315,19 +308,18 @@ public sealed class BattleCardHandView : MonoBehaviour
         }
     }
 
-    /// <summary>현재 Player MP 변경 이벤트에 연결해 이동·공격·카드 사용 직후 손패 상태를 갱신한다.</summary>
-    private void ConnectPlayerMP()
+    /// <summary>
+    /// BattleGameManager가 등록한 Player의 MP와 상태이상 이벤트를 한 번 연결한다.
+    /// 손패 카드별 비용 검사에서는 컴포넌트를 다시 찾지 않고 여기서 저장한 참조만 사용한다.
+    /// </summary>
+    private void BindRegisteredPlayerResources(GameObject registeredPlayer)
     {
-        BattleUnitMP nextMP = BattleGameManager.Instance != null
-            ? BattleGameManager.Instance.CurrentPlayerMP
-            : null;
-        if (nextMP == null)
-        {
-            ConnectPlayerActionController();
-            nextMP = playerActionController != null && playerActionController.player != null
-                ? playerActionController.player.GetComponent<BattleUnitMP>()
-                : null;
-        }
+        BattleUnitMP nextMP = BattleGameManager.Instance != null &&
+            BattleGameManager.Instance.CurrentPlayer == registeredPlayer
+                ? BattleGameManager.Instance.CurrentPlayerMP
+                : registeredPlayer != null
+                    ? registeredPlayer.GetComponent<BattleUnitMP>()
+                    : null;
 
         if (nextMP == boundPlayerMP) return;
         UnsubscribePlayerMP();
@@ -336,6 +328,13 @@ public sealed class BattleCardHandView : MonoBehaviour
         {
             boundPlayerMP.MPChanged -= HandlePlayerMPChanged;
             boundPlayerMP.MPChanged += HandlePlayerMPChanged;
+
+            boundPlayerStatusEffects = boundPlayerMP.GetComponent<BattleStatusEffects>();
+            if (boundPlayerStatusEffects != null)
+            {
+                boundPlayerStatusEffects.Changed -= HandlePlayerStatusEffectsChanged;
+                boundPlayerStatusEffects.Changed += HandlePlayerStatusEffectsChanged;
+            }
         }
     }
 
@@ -343,7 +342,10 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         if (boundPlayerMP != null)
             boundPlayerMP.MPChanged -= HandlePlayerMPChanged;
+        if (boundPlayerStatusEffects != null)
+            boundPlayerStatusEffects.Changed -= HandlePlayerStatusEffectsChanged;
         boundPlayerMP = null;
+        boundPlayerStatusEffects = null;
     }
 
     private void HandlePlayerMPChanged(int current, int maximum)
@@ -351,7 +353,13 @@ public sealed class BattleCardHandView : MonoBehaviour
         RefreshCurrentHand();
     }
 
-    private void SubscribeCardAvailability()
+    /// <summary>동상처럼 카드 MP 비용을 바꾸는 상태이상이 변경되면 MP 부족 표시를 다시 계산한다.</summary>
+    private void HandlePlayerStatusEffectsChanged(BattleStatusEffects changedStatusEffects)
+    {
+        RefreshCurrentHand();
+    }
+
+    private void SubscribeGameManagerEvents()
     {
         if (BattleGameManager.Instance == null)
         {
@@ -360,6 +368,15 @@ public sealed class BattleCardHandView : MonoBehaviour
 
         BattleGameManager.Instance.CardUseAvailabilityChanged -= HandleCardAvailabilityChanged;
         BattleGameManager.Instance.CardUseAvailabilityChanged += HandleCardAvailabilityChanged;
+        BattleGameManager.Instance.PlayerRegistered -= HandlePlayerRegistered;
+        BattleGameManager.Instance.PlayerRegistered += HandlePlayerRegistered;
+    }
+
+    /// <summary>Player가 생성·교체되면 기존 자원 이벤트를 해제하고 새 Player 자원에 연결한다.</summary>
+    private void HandlePlayerRegistered(GameObject registeredPlayer)
+    {
+        BindRegisteredPlayerResources(registeredPlayer);
+        RefreshCurrentHand();
     }
 
     private void HandleCardAvailabilityChanged(bool canUseCards)
@@ -369,7 +386,7 @@ public sealed class BattleCardHandView : MonoBehaviour
 
     private void RefreshCurrentHand()
     {
-        Refresh(drawSystem != null ? drawSystem.Hand : null);
+        Refresh(drawSystem != null ? drawSystem.CardsInCurrentHand : null);
     }
 
     private const string NoNumberResourceFolder = "UI/Cards/NoNumber/";

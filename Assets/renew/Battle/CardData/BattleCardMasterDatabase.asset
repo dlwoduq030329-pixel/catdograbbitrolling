@@ -166,13 +166,13 @@ MonoBehaviour:
     baseDamage: 2
     effectSummary: "\uAC19\uC740 \uC190\uD328 \uC790\uB9AC\uC5D0 \uBB34\uC791\uC704 \uCE74\uB4DC\uB97C \uC0DD\uC131\uD558\uACE0 \uC774\uBC88 \uD134 MP \uBE44\uC6A9\uC744 1 \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
     effects:
-    - effectType: 4
+    - effectType: 13
       effectTarget: 1
       amount: 1
       distanceTiles: 0
       durationTurns: 1
       repeatCount: 1
-      effectCode: WEIRD_MUSHROOM
+      effectCode: 
       description: "\uBC84\uC12F\uC744 \uBB34\uC791\uC704 \uCE74\uB4DC\uB85C \uAD50\uCCB4\uD558\uACE0 \uC0DD\uC131 \uCE74\uB4DC \uBE44\uC6A9\uC744 \uC774\uBC88 \uD134 1 \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
       cancelCardOnFailure: 1
     effectIds: []
@@ -392,7 +392,7 @@ MonoBehaviour:
         2\uB97C \uC90D\uB2C8\uB2E4."
       cancelCardOnFailure: 0
     - effectType: 5
-      effectTarget: 3
+      effectTarget: 2
       amount: 0
       distanceTiles: 1
       durationTurns: 0
@@ -560,13 +560,13 @@ MonoBehaviour:
     effectSummary: "\uC120\uD0DD\uD55C \uC544\uAD70\uC758 \uAE30\uBCF8 \uACF5\uACA9
       \uD53C\uD574\uB97C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
     effects:
-    - effectType: 4
+    - effectType: 14
       effectTarget: 0
       amount: 1
       distanceTiles: 0
       durationTurns: 1
       repeatCount: 1
-      effectCode: "\uAE30\uBCF8\uACF5\uACA9\uD53C\uD574\uC99D\uAC00"
+      effectCode: 
       description: "\uAE30\uBCF8 \uACF5\uACA9 \uD53C\uD574 \uC99D\uAC00 \uD6A8\uACFC\uB97C
         1\uD134 \uB3D9\uC548 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
       cancelCardOnFailure: 0

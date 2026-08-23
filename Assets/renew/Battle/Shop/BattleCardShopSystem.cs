@@ -336,10 +336,11 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         List<int> result = new List<int>();
         if (battleCardDatabase == null || originalCardDatabase == null) return result;
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
         foreach (BattleCardData battleCard in battleCardDatabase.Cards)
         {
             if (battleCard == null || battleCard.legacyCardIndex < 0) continue;
-            int owned = DataConfig.CardsCount.TryGetValue(battleCard.legacyCardIndex, out int count) ? count : 0;
+            int owned = playerDeck != null ? playerDeck.GetOwnedCardCount(battleCard.legacyCardIndex) : 0;
             if (owned >= 2) continue;
             if (BattleCardConnector.FindOriginalCard(battleCard.legacyCardIndex, originalCardDatabase) != null)
                 result.Add(battleCard.legacyCardIndex);
@@ -366,7 +367,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         int cardIndex = currentState.OfferedCards[slot];
         CardData originalCard = BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase);
         if (originalCard == null) return;
-        int ownedCount = DataConfig.CardsCount.TryGetValue(cardIndex, out int currentOwnedCount) ? currentOwnedCount : 0;
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+        if (playerDeck == null)
+        {
+            Debug.LogError("[Shop] 카드 구매 실패: PlayerDeck 참조가 없습니다.", this);
+            return;
+        }
+        int ownedCount = playerDeck.GetOwnedCardCount(cardIndex);
         int price = Mathf.Max(0, originalCard.cardCost * 2);
         // 카드 1종당 최대 2장 보유 규칙 — BuildEligibleCards가 애초에 후보에서 걸러내지만, fallback
         // 재사용(GenerateOffers)이나 다른 슬롯에서 같은 카드를 이미 산 경우까지 대비해 여기서도 다시 확인한다.
@@ -374,7 +381,8 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (DataConfig.playerMoney < price) { Debug.LogWarning($"[Shop] 골드 부족: {price}G 필요", this); return; }
 
         DataConfig.playerMoney -= price;
-        DataConfig.AddDic(cardIndex, 1);
+        playerDeck.AddOwnedCard(cardIndex, 1);
+        DataConfig.CardsCount[cardIndex] = playerDeck.GetOwnedCardCount(cardIndex);
         currentState.Sold[slot] = true;
         Debug.Log($"[Shop] 카드 구매: {originalCard.name} / {price}G", this);
         RefreshView();
@@ -574,6 +582,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (rerollText != null) rerollText.text = $"REROLL {currentState.RerollPrice}G";
         if (rerollButton != null)
             rerollButton.interactable = DataConfig.playerMoney >= currentState.RerollPrice;
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
         for (int i = 0; i < SlotCount; i++)
         {
             CardData card = currentState.Kinds[i] == OfferKind.Card && currentState.OfferedCards[i] >= 0
@@ -584,8 +593,8 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             int price = card != null ? Mathf.Max(0, card.cardCost * 2) :
                 equipment != null ? Mathf.Max(0, equipment.cost) : 0;
             bool canAfford = DataConfig.playerMoney >= price;
-            bool atCardLimit = card != null &&
-                DataConfig.CardsCount.TryGetValue(card.index, out int ownedCount) && ownedCount >= 2;
+            bool atCardLimit = card != null && playerDeck != null &&
+                playerDeck.GetOwnedCardCount(card.index) >= PlayerDeck.MaximumOwnedCopiesPerCard;
             if (offerButtons != null && i < offerButtons.Length && offerButtons[i] != null)
                 offerButtons[i].interactable = hasOffer && !currentState.Sold[i] && canAfford && !atCardLimit;
             if (offerImages != null && i < offerImages.Length && offerImages[i] != null)
@@ -863,21 +872,12 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private void SelectInventoryCardForSale(int cardIndex)
     {
         if (currentState == null) return;
-        if (!DataConfig.CardsCount.TryGetValue(cardIndex, out int owned) || owned <= 0) return;
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+        if (playerDeck == null || !playerDeck.HasCard(cardIndex)) return;
         CardData card = BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase);
         if (card == null) return;
 
         selectedPurchaseSlot = -1;
-        if (IsProtectedStartingCard(cardIndex))
-        {
-            selectedSellCardIndex = -1;
-            purchaseButtonMode = PurchaseButtonMode.None;
-            SetPreviewImage(card.myCardSprite, $"{card.name} (LOCKED)");
-            if (purchaseButton != null) purchaseButton.gameObject.SetActive(false);
-            Debug.Log($"[Shop] 기본 장착 카드는 판매할 수 없습니다: 카드 {cardIndex}", this);
-            return;
-        }
-
         selectedSellCardIndex = cardIndex;
         purchaseButtonMode = PurchaseButtonMode.SellCard;
         HideOfferDetails();
@@ -935,21 +935,28 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         int index = selectedSellCardIndex;
         if (index < 0) { ResetPurchaseSelection(); return; }
-        if (!DataConfig.CardsCount.TryGetValue(index, out int owned) || owned <= 0) { ResetPurchaseSelection(); RefreshView(); return; }
-        if (IsProtectedStartingCard(index))
+        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+        if (playerDeck == null)
         {
-            Debug.LogWarning($"[Shop] 기본 장착 카드 판매 요청 차단: 카드 {index}", this);
+            Debug.LogError("[Shop] 카드 판매 실패: PlayerDeck 참조가 없습니다.", this);
             ResetPurchaseSelection();
-            RefreshOwnedInventory();
             return;
         }
+        if (!playerDeck.HasCard(index)) { ResetPurchaseSelection(); RefreshView(); return; }
         CardData card = BattleCardConnector.FindOriginalCard(index, originalCardDatabase);
         if (card == null) { ResetPurchaseSelection(); return; }
 
         int refund = Mathf.Max(0, card.cardCost / 2);
-        DataConfig.AddDic(index, -1);
-        int remainingOwned = Mathf.Max(0, owned - 1);
-        SynchronizePlayerCardData(index, remainingOwned);
+        if (!playerDeck.TryRemoveOwnedCard(index, 1, out int remainingOwned))
+        {
+            Debug.LogWarning($"[Shop] 카드 판매 실패: 장착 수량 또는 보유 수량을 확인하세요. 카드 {index}", this);
+            ResetPurchaseSelection();
+            RefreshOwnedInventory();
+            return;
+        }
+        if (remainingOwned <= 0) DataConfig.CardsCount.Remove(index);
+        else DataConfig.CardsCount[index] = remainingOwned;
+        CopyEquippedDeckToLegacyCardData(playerDeck);
         BattleGameManager.Instance?.CardDrawSystem?.SynchronizeOwnedCardCount(index, remainingOwned);
         DataConfig.playerMoney += refund;
         RefreshLinkedCardInventories();
@@ -958,17 +965,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         RefreshView();
     }
 
-    /// <summary>전투 시작 당시 기본 덱에 포함된 카드 종류인지 확인해 판매를 잠근다.</summary>
-    private static bool IsProtectedStartingCard(int cardIndex)
+    /// <summary>PlayerDeck에서 확정된 장착 덱을 기존 저장·UI 호환 목록에 복사한다.</summary>
+    private static void CopyEquippedDeckToLegacyCardData(PlayerDeck playerDeck)
     {
-        BattleCardDrawSystem drawSystem = BattleGameManager.Instance?.CardDrawSystem;
-        if (drawSystem != null) return drawSystem.IsProtectedStartingCard(cardIndex);
-
-        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
-        if (playerDeck == null || playerDeck.deckCardforUI == null) return false;
-        foreach (int equippedCardIndex in playerDeck.deckCardforUI)
-            if (equippedCardIndex == cardIndex) return true;
-        return false;
+        DataConfig.cardData.Clear();
+        if (playerDeck == null || playerDeck.EquippedCards == null) return;
+        foreach (int equippedCardIndex in playerDeck.EquippedCards)
+            if (equippedCardIndex >= 0) DataConfig.cardData.Add(equippedCardIndex);
     }
 
     /// <summary>현재 등록 Player의 PlayerDeck을 우선 반환하고 구형 Scene은 비활성 객체 검색으로 보완한다.</summary>
@@ -982,45 +985,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             : Object.FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
     }
 
-    /// <summary>판매 후 저장 덱과 실제 PlayerDeck의 동일 카드 수를 최종 보유 수량 이하로 맞춘다.</summary>
-    private static void SynchronizePlayerCardData(int cardIndex, int remainingOwned)
-    {
-        int savedCount = 0;
-        foreach (int savedCard in DataConfig.cardData)
-            if (savedCard == cardIndex) savedCount++;
-        for (int i = DataConfig.cardData.Count - 1; i >= 0 && savedCount > remainingOwned; i--)
-        {
-            if (DataConfig.cardData[i] != cardIndex) continue;
-            DataConfig.cardData.RemoveAt(i);
-            savedCount--;
-        }
-
-        PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
-        if (playerDeck == null) return;
-        if (playerDeck.deckCardforUI != null)
-        {
-            int deckCount = 0;
-            foreach (int equippedCard in playerDeck.deckCardforUI)
-                if (equippedCard == cardIndex) deckCount++;
-            for (int i = playerDeck.deckCardforUI.Length - 1; i >= 0 && deckCount > remainingOwned; i--)
-            {
-                if (playerDeck.deckCardforUI[i] != cardIndex) continue;
-                playerDeck.deckCardforUI[i] = -1;
-                deckCount--;
-            }
-        }
-
-        if (remainingOwned <= 0) playerDeck.cardPool.Remove(cardIndex);
-        else playerDeck.cardPool[cardIndex] = remainingOwned;
-    }
-
     /// <summary>판매 결과를 상점 밖 일반 카드 인벤토리에도 즉시 전달한다.</summary>
     private static void RefreshLinkedCardInventories()
     {
         foreach (InventorySetting inventory in
                  Object.FindObjectsByType<InventorySetting>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            if (inventory != null) inventory.InitAll();
+            if (inventory != null) inventory.RefreshDeckEditorVisuals();
         }
     }
 
@@ -1100,7 +1071,10 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         if (ownedCardSlots != null)
         {
-            List<int> ownedCardIndices = new List<int>(DataConfig.CardsCount.Keys);
+            PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
+            List<int> ownedCardIndices = playerDeck != null
+                ? new List<int>(playerDeck.OwnedCards.Keys)
+                : new List<int>();
             ownedCardIndices.Sort();
             for (int i = 0; i < ownedCardSlots.Length; i++)
             {

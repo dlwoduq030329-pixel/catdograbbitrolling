@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Linq;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using Coffee.UIEffects;
 
 public class InventoryCard : MonoBehaviour,
@@ -11,30 +12,32 @@ public class InventoryCard : MonoBehaviour,
     IPointerUpHandler
 {
     [SerializeField]
-    int index;
+    [FormerlySerializedAs("index")]
+    int cardIndex;
     [SerializeField]
-    Sprite usingSP;
+    [FormerlySerializedAs("usingSP")]
+    Sprite equippedCopyIcon;
     [SerializeField]
-    Sprite noHaveSP;
+    [FormerlySerializedAs("noHaveSP")]
+    Sprite notOwnedIcon;
     [SerializeField]
-    Sprite haveSP;
+    [FormerlySerializedAs("haveSP")]
+    Sprite ownedCopyIcon;
     [SerializeField]
-    GameObject tagedCard;
-    [SerializeField]
-    GameObject CardInfo;
+    [FormerlySerializedAs("CardInfo")]
+    GameObject cardInfoPanel;
 
-    Image[] have;
-    Image Choose;
-    Image CardIMG;
-    InventorySetting es;
+    Image[] ownershipIndicators;
+    Image selectionHighlight;
+    Image cardArtwork;
+    InventorySetting inventoryController;
 
-    int usingCount;
     public int CardIndex
     {
         get
         {
-            initInfo();
-            return index;
+            CacheCardUiReferences();
+            return cardIndex;
         }
     }
 
@@ -49,52 +52,52 @@ public class InventoryCard : MonoBehaviour,
     // Start is called before the first frame update
     void Start()
     {
-        initInfo();
+        CacheCardUiReferences();
         if (DataPool.Instance == null || DataPool.Instance.cardDatabase == null)
         {
             Debug.LogError("인벤토리 카드 표시 실패: 원본 CardDatabase 참조가 없습니다.", this);
             return;
         }
 
-        if (index < 0 || index >= DataPool.Instance.cardDatabase.cards.Count)
+        if (cardIndex < 0 || cardIndex >= DataPool.Instance.cardDatabase.cards.Count)
         {
-            Debug.LogError($"인벤토리 카드 표시 실패: 인덱스 {index}가 DB 범위를 벗어났습니다.", this);
+            Debug.LogError($"인벤토리 카드 표시 실패: 인덱스 {cardIndex}가 DB 범위를 벗어났습니다.", this);
             return;
         }
 
-        CardData cardData = DataPool.Instance.cardDatabase.cards[index];
-        CardIMG.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
-        CardCostLabelView.Ensure(CardIMG.transform)?.SetCost(cardData.cost, cardData.rare);
+        CardData cardData = DataPool.Instance.cardDatabase.cards[cardIndex];
+        cardArtwork.sprite = CardArtResolver.ResolveDisplaySprite(cardData.myCardSprite);
+        CardCostLabelView.Ensure(cardArtwork.transform)?.SetCost(cardData.cost, cardData.rare);
 
     }
 
     private void Awake()
     {
-        es = GetComponentInParent<InventorySetting>();
+        inventoryController = GetComponentInParent<InventorySetting>();
 
         //Debug.Log(this.gameObject.name);
-        initInfo();
+        CacheCardUiReferences();
         //Apply();
         //
     }
 
-    public void initInfo()  
+    public void CacheCardUiReferences()
     {
-        if (Choose != null) return;
+        if (selectionHighlight != null) return;
 
         string temp = this.gameObject.name;
 
-        index = int.Parse(temp.Substring(4, 2));
+        cardIndex = int.Parse(temp.Substring(4, 2));
 
-        have = new Image[2];
+        ownershipIndicators = new Image[2];
 
         Image[] tempIMG = GetComponentsInChildren<Image>(true);
-        Choose = tempIMG[0];
-        CardIMG = tempIMG[1];
-        have[0] = tempIMG[2];
-        have[1] = tempIMG[3];
-        have[0].sprite = noHaveSP;
-        have[1].sprite = noHaveSP;
+        selectionHighlight = tempIMG[0];
+        cardArtwork = tempIMG[1];
+        ownershipIndicators[0] = tempIMG[2];
+        ownershipIndicators[1] = tempIMG[3];
+        ownershipIndicators[0].sprite = notOwnedIcon;
+        ownershipIndicators[1].sprite = notOwnedIcon;
 
     }
 
@@ -109,107 +112,87 @@ public class InventoryCard : MonoBehaviour,
     public void OnPointerEnter(PointerEventData eventData)
     {
         
-        Choose.gameObject.SetActive(true);
-        CardInfo.GetComponent<CardInfo>().CardInfoSet(index);
-        CardInfo.gameObject.SetActive(true);
+        selectionHighlight.gameObject.SetActive(true);
+        cardInfoPanel.GetComponent<CardInfo>().CardInfoSet(cardIndex);
+        cardInfoPanel.gameObject.SetActive(true);
         //CardInfo.GetComponent<CanvasGroup>().alpha = 1.0f;
     }
 
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        initInfo();
-        if (es == null) es = GetComponentInParent<InventorySetting>();
-        es?.TryAddCardToDeck(index);
+        CacheCardUiReferences();
+        if (inventoryController == null) inventoryController = GetComponentInParent<InventorySetting>();
+        inventoryController?.TryAddOwnedCardToDeckBeingEdited(cardIndex);
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (!DataConfig.CardsCount.ContainsKey(index)) return;
     }
     public void OnPointerExit(PointerEventData eventData)
     {
-        Choose.gameObject.SetActive(false);
-        CardInfo.gameObject.SetActive(false);
+        selectionHighlight.gameObject.SetActive(false);
+        cardInfoPanel.gameObject.SetActive(false);
         //CardInfo.GetComponent<CanvasGroup>().alpha = 0f;
     }
 
-    public void Apply()
+    public void RefreshOwnershipAndEquippedCount()
     {
-        initInfo();
+        CacheCardUiReferences();
 
-        if(es == null)
+        if(inventoryController == null)
         {
             //Debug.Log("es 없음");
-            es = GetComponentInParent<InventorySetting>();
+            inventoryController = GetComponentInParent<InventorySetting>();
 
             //return;
         }
 
         // 이전 보유/장착 Sprite가 남지 않도록 보유 여부를 검사하기 전에 두 칸을 항상 비운다.
         // 카드 수가 0이 되어 CardsCount 키가 제거된 경우에도 UI 게이지가 정확히 0장으로 보인다.
-        for (int i = 0; i < have.Length; i++)
+        for (int i = 0; i < ownershipIndicators.Length; i++)
         {
-            have[i].sprite = noHaveSP;
+            ownershipIndicators[i].sprite = notOwnedIcon;
         }
 
-        if (!es.returnHaveCard(index).hasCard)
+        (bool isOwned, int ownedCount) = inventoryController.GetOwnedCardDisplayState(cardIndex);
+        if (isOwned)
         {
-            int dicCount = es.returnHaveCard(index).value;
-            CardIMG.GetComponent<UIEffect>().toneFilter = ToneFilter.None;
+            cardArtwork.GetComponent<UIEffect>().toneFilter = ToneFilter.None;
 
-            for (int i = 0; i < Mathf.Min(dicCount, have.Length); i++)
+            for (int i = 0; i < Mathf.Min(ownedCount, ownershipIndicators.Length); i++)
             {
-                have[i].sprite = haveSP;
+                ownershipIndicators[i].sprite = ownedCopyIcon;
             }
-            int listCount = retunListValue(index);
+            int equippedCount = CountCopiesInDeckBeingEdited(cardIndex);
 
-            for (int i = 0; i < Mathf.Min(listCount, have.Length); i++)
+            for (int i = 0; i < Mathf.Min(equippedCount, ownershipIndicators.Length); i++)
             {
-                have[i].sprite = usingSP;
+                ownershipIndicators[i].sprite = equippedCopyIcon;
             }
 
 
         }
         else
         {
-            CardIMG.GetComponent<UIEffect>().toneFilter = ToneFilter.Grayscale;
+            cardArtwork.GetComponent<UIEffect>().toneFilter = ToneFilter.Grayscale;
         }
 
     }
 
-    public int returnDicValue(int cardIndex)
+    public int CountCopiesInDeckBeingEdited(int targetCardIndex)
     {
+        int[] deckBeingEdited = inventoryController.GetDeckBeingEdited();
 
-        return DataConfig.CardsCount[cardIndex];
-    }
-
-    public int retunListValue(int cardIndex)
-    {
-        int[] deckCard = es.deckCardArr();
-
-        int temp = 0;
-        for (int i = 0; i < deckCard.Length; i++)
+        int equippedCopyCount = 0;
+        for (int i = 0; i < deckBeingEdited.Length; i++)
         {
-            if (deckCard[i] == cardIndex)
+            if (deckBeingEdited[i] == targetCardIndex)
             {
-                temp++;
+                equippedCopyCount++;
             }
         }
-        //Debug.Log(cardIndex + "의 갯수 : " + temp);
-        usingCount = temp;
-        return temp;
-    }
-
-    public bool canChoose()
-    {
-        return false;
-    }
-
-
-    public void StoreUI()
-    {
-
+        return equippedCopyCount;
     }
 
 

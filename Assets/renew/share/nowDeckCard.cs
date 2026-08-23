@@ -50,7 +50,7 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
             return;
         }
 
-        int v = es.returnCardIndex(cardIndex);
+        int v = es.GetCardIndexFromDeckBeingEdited(cardIndex);
         CardDatabase database = DataPool.Instance != null ? DataPool.Instance.cardDatabase : null;
         if (v < 0)
         {
@@ -81,7 +81,7 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
     public void OnPointerClick(PointerEventData eventData)
     {
         if (es == null) es = GetComponentInParent<InventorySetting>(true);
-        es?.RemoveDeckCardAtSlot(cardIndex);
+        es?.RemoveCardFromDeckBeingEdited(cardIndex);
     }
 
 
@@ -97,7 +97,7 @@ public class nowDeckCard : MonoBehaviour, IPointerClickHandler
             changeCostLabel.Show();
             changeCostLabel.SetCost(cardData.cost, cardData.rare);
         }
-        es.ChangeCard(thisIndex, x);
+        es.ReplaceCardInDeckBeingEdited(thisIndex, x);
         //DataConfig.AddCard(cardIndex,x);
         //im.SaveDeck();
 

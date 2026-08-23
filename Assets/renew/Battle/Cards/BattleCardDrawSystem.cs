@@ -6,14 +6,14 @@ using UnityEngine;
 /// 선택한 손패 카드가 행동 확정 전까지 유지되도록 묶어 둔 요청이다.
 /// 확인 시에만 카드가 버림 더미로 이동하며 취소 시에는 아무 변화가 없다.
 /// </summary>
-public sealed class PendingBattleCardUse
+public sealed class CardUseWaitingForConfirmation
 {
     public int HandIndex { get; }
     public int CardIndex { get; }
     public BattleCardData CardData { get; }
     public BattleActionRequest ActionRequest { get; }
 
-    internal PendingBattleCardUse(
+    internal CardUseWaitingForConfirmation(
         int handIndex,
         int cardIndex,
         BattleCardData cardData,
@@ -28,7 +28,7 @@ public sealed class PendingBattleCardUse
 
 /// <summary>
 /// 플레이어 전투 덱, 손패, 버림 더미와 턴 시작 드로우를 관리한다.
-/// 카드 UI는 HandChanged 이벤트와 BeginCardUse/ConfirmCardUse API만 사용한다.
+/// 카드 UI는 HandChanged 이벤트와 카드 사용 대기 생성/확정 API만 사용한다.
 /// </summary>
 public class BattleCardDrawSystem : MonoBehaviour
 {
@@ -49,22 +49,20 @@ public class BattleCardDrawSystem : MonoBehaviour
     [InspectorName("모든 카드 소지")]
     [SerializeField] private bool ownAllCardsInDebugMode = true;
 
-    private readonly List<int> drawPile = new List<int>();
-    private readonly List<int> hand = new List<int>();
-    private readonly List<int> handCostReductions = new List<int>();
-    private readonly List<int> discardPile = new List<int>();
-    private readonly HashSet<int> generatedHandSlots = new HashSet<int>();
-    private readonly HashSet<int> protectedStartingCards = new HashSet<int>();
-    private bool initialized;
+    private readonly List<int> cardsWaitingToBeDrawn = new List<int>();
+    private readonly List<int> cardsInCurrentHand = new List<int>();
+    private readonly List<int> mpDiscountByHandSlot = new List<int>();
+    private readonly List<int> usedCardsWaitingForReshuffle = new List<int>();
+    private readonly HashSet<int> temporarilyGeneratedCardSlots = new HashSet<int>();
+    private bool battleCardCycleInitialized;
 
-    public IReadOnlyList<int> DrawPile => drawPile;
-    public IReadOnlyList<int> Hand => hand;
-    public IReadOnlyList<int> DiscardPile => discardPile;
+    public IReadOnlyList<int> CardsWaitingToBeDrawn => cardsWaitingToBeDrawn;
+    public IReadOnlyList<int> CardsInCurrentHand => cardsInCurrentHand;
+    public IReadOnlyList<int> UsedCardsWaitingForReshuffle => usedCardsWaitingForReshuffle;
     public int HandLimit => handLimit;
     public BattleCardDatabase Database => battleCardDatabase;
     public CardDatabase OriginalDatabase => originalCardDatabase;
-    public bool IsGeneratedCardSlot(int handIndex) => generatedHandSlots.Contains(handIndex);
-    public bool IsProtectedStartingCard(int cardIndex) => protectedStartingCards.Contains(cardIndex);
+    public bool IsGeneratedCardSlot(int handIndex) => temporarilyGeneratedCardSlots.Contains(handIndex);
 
     /// <summary>손패가 드로우되거나 카드 사용 확정으로 변경될 때 UI에 알린다.</summary>
     public event Action<IReadOnlyList<int>> HandChanged;
@@ -76,7 +74,7 @@ public class BattleCardDrawSystem : MonoBehaviour
         battleCardDatabase = database;
     }
 
-    /// <summary>친구 원본 CardDatabase를 인덱스 조회 원본으로 연결한다. 데이터 복제나 수정은 수행하지 않는다.</summary>
+    /// <summary>기존 CardDatabase를 카드 인덱스 조회 원본으로 연결한다. 데이터 복제나 수정은 수행하지 않는다.</summary>
     public void ConfigureOriginalDatabase(CardDatabase database)
     {
         originalCardDatabase = database;
@@ -104,38 +102,31 @@ public class BattleCardDrawSystem : MonoBehaviour
         }
     }
 
-    /// <summary>친구 PlayerDeck의 카드 인덱스 배열을 복사해 전투용 드로우 덱을 초기화한다.</summary>
-    public void InitializeDeck()
+    /// <summary>PlayerDeck에 장착된 카드 인덱스를 복사해 전투용 드로우 덱을 초기화한다.</summary>
+    public void InitializeBattleCardCycle()
     {
-        InitializeDeck(null);
+        InitializeBattleCardCycle(null);
     }
 
     /// <summary>등록된 실제 PlayerDeck을 우선 사용해 전투 덱과 디버그 보유량을 초기화한다.</summary>
-    public void InitializeDeck(PlayerDeck registeredPlayerDeck)
+    public void InitializeBattleCardCycle(PlayerDeck registeredPlayerDeck)
     {
-        drawPile.Clear();
-        hand.Clear();
-        handCostReductions.Clear();
-        discardPile.Clear();
-        generatedHandSlots.Clear();
-        protectedStartingCards.Clear();
+        cardsWaitingToBeDrawn.Clear();
+        cardsInCurrentHand.Clear();
+        mpDiscountByHandSlot.Clear();
+        usedCardsWaitingForReshuffle.Clear();
+        temporarilyGeneratedCardSlots.Clear();
 
         PlayerDeck sourceDeck = registeredPlayerDeck != null
             ? registeredPlayerDeck
             : FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
-        if (sourceDeck != null && sourceDeck.deckCardforUI != null)
-        {
-            foreach (int equippedCardIndex in sourceDeck.deckCardforUI)
-                if (equippedCardIndex >= 0) protectedStartingCards.Add(equippedCardIndex);
-        }
-
         if (ownAllCardsInDebugMode)
         {
-            GrantAllCardsForDebug(sourceDeck);
+            GrantEveryCardForShopTesting(sourceDeck);
         }
-        BuildDrawPileFromEquippedDeck(sourceDeck);
+        CopyEquippedCardsIntoDrawQueue(sourceDeck);
 
-        if (drawPile.Count == 0)
+        if (cardsWaitingToBeDrawn.Count == 0)
         {
             Debug.LogError(
                 "전투 덱 초기화 실패: PlayerDeck.deckCardforUI에 유효한 장착 카드가 없습니다. " +
@@ -145,11 +136,11 @@ public class BattleCardDrawSystem : MonoBehaviour
 
         if (shuffleAtBattleStart)
         {
-            Shuffle(drawPile);
+            Shuffle(cardsWaitingToBeDrawn);
         }
 
-        initialized = true;
-        DrawToHandLimit();
+        battleCardCycleInitialized = true;
+        DrawCardsUntilHandIsFull();
     }
 
     /// <summary>
@@ -157,7 +148,7 @@ public class BattleCardDrawSystem : MonoBehaviour
     /// 실제 손패 드로우 덱은 이 목록이 아니라 PlayerDeck.deckCardforUI 10칸만 사용합니다.
     /// 실제 저장 데이터는 변경하지 않고 현재 실행 중인 메모리 값만 변경합니다.
     /// </summary>
-    private void GrantAllCardsForDebug(PlayerDeck sourceDeck)
+    private void GrantEveryCardForShopTesting(PlayerDeck sourceDeck)
     {
         if (battleCardDatabase == null)
         {
@@ -176,20 +167,23 @@ public class BattleCardDrawSystem : MonoBehaviour
             int cardIndex = card.legacyCardIndex;
             if (sourceDeck != null)
             {
-                sourceDeck.cardPool[cardIndex] = 2;
+                sourceDeck.AddOwnedCard(cardIndex, PlayerDeck.MaximumOwnedCopiesPerCard);
+                DataConfig.CardsCount[cardIndex] = sourceDeck.GetOwnedCardCount(cardIndex);
             }
-
-            DataConfig.CardsCount[cardIndex] = 2;
+            else
+            {
+                DataConfig.CardsCount[cardIndex] = PlayerDeck.MaximumOwnedCopiesPerCard;
+            }
         }
 
         Debug.Log("디버그 카드 보유량 지급 완료: 유효 카드별 2장", this);
     }
 
     /// <summary>PlayerDeck의 장착 10칸에서 유효한 카드만 순서대로 전투 드로우 더미에 복사한다.</summary>
-    private void BuildDrawPileFromEquippedDeck(PlayerDeck sourceDeck)
+    private void CopyEquippedCardsIntoDrawQueue(PlayerDeck sourceDeck)
     {
-        if (sourceDeck == null || sourceDeck.deckCardforUI == null) return;
-        foreach (int cardIndex in sourceDeck.deckCardforUI)
+        if (sourceDeck == null || sourceDeck.EquippedCards == null) return;
+        foreach (int cardIndex in sourceDeck.EquippedCards)
         {
             if (cardIndex < 0 ||
                 BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase) == null ||
@@ -198,31 +192,31 @@ public class BattleCardDrawSystem : MonoBehaviour
             {
                 continue;
             }
-            drawPile.Add(cardIndex);
+            cardsWaitingToBeDrawn.Add(cardIndex);
         }
-        Debug.Log($"장착 덱 복사 완료: deckCardforUI 기준 {drawPile.Count}장", this);
+        Debug.Log($"장착 덱 복사 완료: deckCardforUI 기준 {cardsWaitingToBeDrawn.Count}장", this);
     }
 
     /// <summary>현재 손패가 최대 손패 수가 될 때까지 드로우한다.</summary>
-    public void DrawToHandLimit()
+    public void DrawCardsUntilHandIsFull()
     {
-        while (hand.Count < handLimit && TryDrawOne(out _))
+        while (cardsInCurrentHand.Count < handLimit && TryDrawOne(out _))
         {
         }
 
-        HandChanged?.Invoke(hand);
+        HandChanged?.Invoke(cardsInCurrentHand);
     }
 
     /// <summary>손패 위치의 카드를 전투 행동 요청으로 변환한다. 이 단계에서는 카드를 제거하지 않는다.</summary>
-    public bool BeginCardUse(int handIndex, out PendingBattleCardUse pendingUse)
+    public bool TryCreateCardUseWaitingForConfirmation(int handIndex, out CardUseWaitingForConfirmation pendingUse)
     {
         pendingUse = null;
-        if (handIndex < 0 || handIndex >= hand.Count)
+        if (handIndex < 0 || handIndex >= cardsInCurrentHand.Count)
         {
             return false;
         }
 
-        int cardIndex = hand[handIndex];
+        int cardIndex = cardsInCurrentHand[handIndex];
         if (cardIndex < 0)
         {
             return false;
@@ -240,7 +234,7 @@ public class BattleCardDrawSystem : MonoBehaviour
             return false;
         }
 
-        int reduction = handIndex < handCostReductions.Count ? handCostReductions[handIndex] : 0;
+        int reduction = handIndex < mpDiscountByHandSlot.Count ? mpDiscountByHandSlot[handIndex] : 0;
         if (reduction > 0)
         {
             actionRequest = new BattleActionRequest(
@@ -251,12 +245,12 @@ public class BattleCardDrawSystem : MonoBehaviour
                 actionRequest.Power);
         }
 
-        pendingUse = new PendingBattleCardUse(handIndex, cardIndex, cardData, actionRequest);
+        pendingUse = new CardUseWaitingForConfirmation(handIndex, cardIndex, cardData, actionRequest);
         return true;
     }
 
     /// <summary>카드 행동 확정 후 해당 카드 한 장을 손패에서 제거하고 버림 더미로 보낸다.</summary>
-    public bool ConfirmCardUse(PendingBattleCardUse pendingUse)
+    public bool MoveConfirmedCardToUsedPile(CardUseWaitingForConfirmation pendingUse)
     {
         if (pendingUse == null)
         {
@@ -264,7 +258,7 @@ public class BattleCardDrawSystem : MonoBehaviour
         }
 
         int handIndex = pendingUse.HandIndex;
-        if (handIndex < 0 || handIndex >= hand.Count || hand[handIndex] != pendingUse.CardIndex)
+        if (handIndex < 0 || handIndex >= cardsInCurrentHand.Count || cardsInCurrentHand[handIndex] != pendingUse.CardIndex)
         {
             return false;
         }
@@ -274,15 +268,15 @@ public class BattleCardDrawSystem : MonoBehaviour
         // 약초 버섯 등으로 생성된 보너스 카드는 장착 덱 소속이 아니므로, 버림 더미로 보내면
         // RecycleDiscardPile()을 통해 이후 턴에도 계속 드로우 덱을 돌며 나오게 된다.
         // 장착 덱 카드만 계속 순환하도록 보너스 카드는 사용 후 완전히 소멸시킨다.
-        bool wasGeneratedCard = generatedHandSlots.Contains(handIndex);
-        hand[handIndex] = -1;
-        generatedHandSlots.Remove(handIndex);
-        if (handIndex < handCostReductions.Count) handCostReductions[handIndex] = 0;
+        bool wasGeneratedCard = temporarilyGeneratedCardSlots.Contains(handIndex);
+        cardsInCurrentHand[handIndex] = -1;
+        temporarilyGeneratedCardSlots.Remove(handIndex);
+        if (handIndex < mpDiscountByHandSlot.Count) mpDiscountByHandSlot[handIndex] = 0;
         if (!wasGeneratedCard)
         {
-            discardPile.Add(pendingUse.CardIndex);
+            usedCardsWaitingForReshuffle.Add(pendingUse.CardIndex);
         }
-        HandChanged?.Invoke(hand);
+        HandChanged?.Invoke(cardsInCurrentHand);
         return true;
     }
 
@@ -290,34 +284,34 @@ public class BattleCardDrawSystem : MonoBehaviour
     public void SynchronizeOwnedCardCount(int cardIndex, int remainingOwned)
     {
         int excess = CountRuntimeCardCopies(cardIndex) - Mathf.Max(0, remainingOwned);
-        while (excess > 0 && drawPile.Remove(cardIndex)) excess--;
-        while (excess > 0 && discardPile.Remove(cardIndex)) excess--;
+        while (excess > 0 && cardsWaitingToBeDrawn.Remove(cardIndex)) excess--;
+        while (excess > 0 && usedCardsWaitingForReshuffle.Remove(cardIndex)) excess--;
 
         bool handChanged = false;
-        for (int i = hand.Count - 1; i >= 0 && excess > 0; i--)
+        for (int i = cardsInCurrentHand.Count - 1; i >= 0 && excess > 0; i--)
         {
-            if (hand[i] != cardIndex) continue;
-            hand[i] = -1;
-            if (i < handCostReductions.Count) handCostReductions[i] = 0;
-            generatedHandSlots.Remove(i);
+            if (cardsInCurrentHand[i] != cardIndex) continue;
+            cardsInCurrentHand[i] = -1;
+            if (i < mpDiscountByHandSlot.Count) mpDiscountByHandSlot[i] = 0;
+            temporarilyGeneratedCardSlots.Remove(i);
             handChanged = true;
             excess--;
         }
-        if (handChanged) HandChanged?.Invoke(hand);
+        if (handChanged) HandChanged?.Invoke(cardsInCurrentHand);
     }
 
     /// <summary>전투 런타임의 모든 더미와 손패에 존재하는 특정 카드 장수를 합산한다.</summary>
     private int CountRuntimeCardCopies(int cardIndex)
     {
         int count = 0;
-        foreach (int value in drawPile) if (value == cardIndex) count++;
-        foreach (int value in discardPile) if (value == cardIndex) count++;
-        foreach (int value in hand) if (value == cardIndex) count++;
+        foreach (int value in cardsWaitingToBeDrawn) if (value == cardIndex) count++;
+        foreach (int value in usedCardsWaitingForReshuffle) if (value == cardIndex) count++;
+        foreach (int value in cardsInCurrentHand) if (value == cardIndex) count++;
         return count;
     }
 
     /// <summary>소모된 버섯의 손패 자리에 무작위 카드를 넣고 이번 턴 MP 비용을 1 낮춘다.</summary>
-    public bool GenerateWeirdMushroomCard(PendingBattleCardUse consumedUse)
+    public bool GenerateWeirdMushroomCard(CardUseWaitingForConfirmation consumedUse)
     {
         if (consumedUse == null || battleCardDatabase == null) return false;
 
@@ -345,19 +339,19 @@ public class BattleCardDrawSystem : MonoBehaviour
         string selectedRarity = rarities[UnityEngine.Random.Range(0, rarities.Count)];
         List<int> candidates = candidatesByRarity[selectedRarity];
         int generatedIndex = candidates[UnityEngine.Random.Range(0, candidates.Count)];
-        int insertIndex = Mathf.Clamp(consumedUse.HandIndex, 0, Mathf.Max(0, hand.Count - 1));
-        if (insertIndex < hand.Count && hand[insertIndex] < 0)
+        int insertIndex = Mathf.Clamp(consumedUse.HandIndex, 0, Mathf.Max(0, cardsInCurrentHand.Count - 1));
+        if (insertIndex < cardsInCurrentHand.Count && cardsInCurrentHand[insertIndex] < 0)
         {
-            hand[insertIndex] = generatedIndex;
-            handCostReductions[insertIndex] = 1;
+            cardsInCurrentHand[insertIndex] = generatedIndex;
+            mpDiscountByHandSlot[insertIndex] = 1;
         }
         else
         {
-            hand.Insert(insertIndex, generatedIndex);
-            handCostReductions.Insert(insertIndex, 1);
+            cardsInCurrentHand.Insert(insertIndex, generatedIndex);
+            mpDiscountByHandSlot.Insert(insertIndex, 1);
         }
-        generatedHandSlots.Add(insertIndex);
-        HandChanged?.Invoke(hand);
+        temporarilyGeneratedCardSlots.Add(insertIndex);
+        HandChanged?.Invoke(cardsInCurrentHand);
         return true;
     }
 
@@ -365,21 +359,21 @@ public class BattleCardDrawSystem : MonoBehaviour
     private bool TryDrawOne(out int cardIndex)
     {
         cardIndex = -1;
-        if (drawPile.Count == 0)
+        if (cardsWaitingToBeDrawn.Count == 0)
         {
             RecycleDiscardPile();
         }
 
-        if (drawPile.Count == 0)
+        if (cardsWaitingToBeDrawn.Count == 0)
         {
             return false;
         }
 
-        int lastIndex = drawPile.Count - 1;
-        cardIndex = drawPile[lastIndex];
-        drawPile.RemoveAt(lastIndex);
-        hand.Add(cardIndex);
-        handCostReductions.Add(0);
+        int lastIndex = cardsWaitingToBeDrawn.Count - 1;
+        cardIndex = cardsWaitingToBeDrawn[lastIndex];
+        cardsWaitingToBeDrawn.RemoveAt(lastIndex);
+        cardsInCurrentHand.Add(cardIndex);
+        mpDiscountByHandSlot.Add(0);
         CardDrawn?.Invoke(cardIndex);
         return true;
     }
@@ -387,44 +381,45 @@ public class BattleCardDrawSystem : MonoBehaviour
     /// <summary>드로우 덱이 비었을 때 버림 더미를 옮겨 섞고 새로운 드로우 덱으로 만든다.</summary>
     private void RecycleDiscardPile()
     {
-        if (discardPile.Count == 0)
+        if (usedCardsWaitingForReshuffle.Count == 0)
         {
             return;
         }
 
-        drawPile.AddRange(discardPile);
-        discardPile.Clear();
-        Shuffle(drawPile);
+        cardsWaitingToBeDrawn.AddRange(usedCardsWaitingForReshuffle);
+        usedCardsWaitingForReshuffle.Clear();
+        Shuffle(cardsWaitingToBeDrawn);
     }
 
     /// <summary>첫 턴에는 덱을 초기화하고 이후 턴에는 남은 손패를 버린 뒤 새 손패를 뽑는다.</summary>
     private void HandlePlayerTurnStarted()
     {
-        if (!initialized)
+        if (!battleCardCycleInitialized)
         {
-            InitializeDeck();
+            InitializeBattleCardCycle();
             return;
         }
 
         DiscardRemainingHand();
-        DrawToHandLimit();
+        DrawCardsUntilHandIsFull();
     }
 
     /// <summary>턴 종료 후 남아 있던 손패를 버림 더미로 이동한다.</summary>
     private void DiscardRemainingHand()
     {
-        if (hand.Count == 0)
+        if (cardsInCurrentHand.Count == 0)
         {
             return;
         }
 
         // 손패에 남은 보너스(생성) 카드는 장착 덱 소속이 아니므로 버림 더미로 보내지 않는다.
         // 그대로 보내면 이후 턴에 장착하지 않은 카드가 계속 드로우되는 원인이 된다.
-        for (int i = 0; i < hand.Count; i++)
-            if (hand[i] >= 0 && !generatedHandSlots.Contains(i)) discardPile.Add(hand[i]);
-        hand.Clear();
-        handCostReductions.Clear();
-        generatedHandSlots.Clear();
+        for (int i = 0; i < cardsInCurrentHand.Count; i++)
+            if (cardsInCurrentHand[i] >= 0 && !temporarilyGeneratedCardSlots.Contains(i))
+                usedCardsWaitingForReshuffle.Add(cardsInCurrentHand[i]);
+        cardsInCurrentHand.Clear();
+        mpDiscountByHandSlot.Clear();
+        temporarilyGeneratedCardSlots.Clear();
     }
 
     /// <summary>전투 게임 관리자가 준비되어 있으면 턴 시작 이벤트를 중복 없이 연결한다.</summary>
