@@ -46,6 +46,15 @@ public enum BattleCardTargetType
     AllEnemies
 }
 
+/// <summary>카드 대상이 정해지는 방식을 효과 종류와 분리해 지정한다.</summary>
+public enum BattleCardTargetSelectionMode
+{
+    [InspectorName("플레이어가 직접 선택")]
+    Manual,
+    [InspectorName("사거리 내 최저 HP 적 자동 선택")]
+    LowestHealthEnemyInRange
+}
+
 /// <summary>카드 효과가 적용되는 범위 형태입니다.</summary>
 public enum BattleCardAreaType
 {
@@ -80,6 +89,9 @@ public class BattleCardData
     [Header("대상과 사거리")]
     [InspectorName("대상 종류")]
     public BattleCardTargetType targetType = BattleCardTargetType.Enemy;
+    [Tooltip("Teleport 같은 효과 종류와 무관하게, 실제 대상을 플레이어가 고를지 시스템이 자동 선택할지 지정합니다.")]
+    [InspectorName("대상 선택 방식")]
+    public BattleCardTargetSelectionMode targetSelectionMode = BattleCardTargetSelectionMode.Manual;
     [InspectorName("사용 사거리(칸)")]
     [Min(0)] public int rangeTiles = 1;
     [InspectorName("범위 형태")]

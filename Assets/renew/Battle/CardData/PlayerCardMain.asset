@@ -222,7 +222,7 @@ MonoBehaviour:
       distanceTiles: 3
       durationTurns: 0
       repeatCount: 1
-      effectCode: "LOWEST_HP_IN_RANGE"
+      effectCode: ""
       description: "스킬 범위 안에서 현재 체력이 가장 낮은 적과 인접한 빈 타일로 순간이동합니다."
       cancelCardOnFailure: 1
     - effectType: 0
@@ -235,6 +235,7 @@ MonoBehaviour:
       description: "자동 선택된 적에게 피해 2를 줍니다."
       cancelCardOnFailure: 0
     targetType: 2
+    targetSelectionMode: 1
     rangeTiles: 3
     areaType: 0
     areaSizeTiles: 0

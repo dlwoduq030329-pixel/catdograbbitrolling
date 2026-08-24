@@ -33,7 +33,7 @@ public sealed class BattleCardHandView : MonoBehaviour
         new BattleCardLongPressHandler[SlotCount];
 
     /// <summary>클릭한 카드의 행동 요청이 생성됐을 때 호출된다.</summary>
-    public event System.Action<int, CardUseWaitingForConfirmation> CardSelected;
+    public event System.Action<int, SelectedCardUseInfo> CardSelected;
 
     private void Awake()
     {
@@ -57,7 +57,7 @@ public sealed class BattleCardHandView : MonoBehaviour
     {
         if (drawSystem != null)
         {
-            drawSystem.HandChanged -= Refresh;
+            drawSystem.HandCardsChanged -= Refresh;
         }
 
         if (BattleGameManager.Instance != null)
@@ -150,7 +150,7 @@ public sealed class BattleCardHandView : MonoBehaviour
                 }
             }
 
-            SetGeneratedHighlight(button, drawSystem != null && drawSystem.IsGeneratedCardSlot(i));
+            SetGeneratedHighlight(button, drawSystem != null && drawSystem.IsTemporaryCardSlot(i));
 
         }
     }
@@ -210,8 +210,8 @@ public sealed class BattleCardHandView : MonoBehaviour
             return;
         }
 
-        if (drawSystem == null || handIndex < 0 || handIndex >= drawSystem.CardsInCurrentHand.Count ||
-            !HasEnoughMPForCard(drawSystem.CardsInCurrentHand[handIndex]))
+        if (drawSystem == null || handIndex < 0 || handIndex >= drawSystem.HandCards.Count ||
+            !HasEnoughMPForCard(drawSystem.HandCards[handIndex]))
         {
             Debug.Log("MP가 부족해 이 카드를 사용할 수 없습니다.", this);
             RefreshCurrentHand();
@@ -219,21 +219,21 @@ public sealed class BattleCardHandView : MonoBehaviour
         }
 
         if (drawSystem == null ||
-            !drawSystem.TryCreateCardUseWaitingForConfirmation(handIndex, out CardUseWaitingForConfirmation pendingUse))
+            !drawSystem.TryGetCardUseInfoFromHandSlot(handIndex, out SelectedCardUseInfo selectedCardInfo))
         {
             return;
         }
 
         ConnectPlayerActionController();
         if (playerActionController == null ||
-            !playerActionController.BeginCardUseConfirmation(pendingUse, drawSystem))
+            !playerActionController.BeginCardUseConfirmation(selectedCardInfo, drawSystem))
         {
             Debug.LogWarning("카드 사용 확인 단계를 시작하지 못했습니다.", this);
             return;
         }
 
-        CardSelected?.Invoke(handIndex, pendingUse);
-        Debug.Log($"카드 선택: {pendingUse.ActionRequest.DisplayName}", this);
+        CardSelected?.Invoke(handIndex, selectedCardInfo);
+        Debug.Log($"카드 선택: {selectedCardInfo.ActionInfo.DisplayName}", this);
     }
 
     private void RegisterButtonEvents()
@@ -265,13 +265,13 @@ public sealed class BattleCardHandView : MonoBehaviour
     private void ShowCardInfo(int handIndex)
     {
         if (cardInfoPresenter == null || drawSystem == null ||
-            handIndex < 0 || handIndex >= drawSystem.CardsInCurrentHand.Count)
+            handIndex < 0 || handIndex >= drawSystem.HandCards.Count)
         {
             return;
         }
 
         cardInfoPresenter.Show(
-            drawSystem.CardsInCurrentHand[handIndex],
+            drawSystem.HandCards[handIndex],
             drawSystem.OriginalDatabase,
             drawSystem.Database);
     }
@@ -289,14 +289,14 @@ public sealed class BattleCardHandView : MonoBehaviour
 
         if (drawSystem != null)
         {
-            drawSystem.HandChanged -= Refresh;
+            drawSystem.HandCardsChanged -= Refresh;
         }
 
         drawSystem = nextSystem;
         if (drawSystem != null)
         {
-            drawSystem.HandChanged -= Refresh;
-            drawSystem.HandChanged += Refresh;
+            drawSystem.HandCardsChanged -= Refresh;
+            drawSystem.HandCardsChanged += Refresh;
         }
     }
 
@@ -386,7 +386,7 @@ public sealed class BattleCardHandView : MonoBehaviour
 
     private void RefreshCurrentHand()
     {
-        Refresh(drawSystem != null ? drawSystem.CardsInCurrentHand : null);
+        Refresh(drawSystem != null ? drawSystem.HandCards : null);
     }
 
     private const string NoNumberResourceFolder = "UI/Cards/NoNumber/";

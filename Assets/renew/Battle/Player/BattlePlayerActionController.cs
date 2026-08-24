@@ -466,7 +466,7 @@ public class BattlePlayerActionController : MonoBehaviour
     /// 실제 카드 대상 선택 시작은 BattleUnitCardFlow.TryStartSelectedCardUse()에 위임한다.
     /// </summary>
     public bool BeginCardUseConfirmation(
-        CardUseWaitingForConfirmation cardUse,
+        SelectedCardUseInfo cardUse,
         BattleCardDrawSystem cardDrawSystem)
     {
         if (cardUse == null || cardDrawSystem == null || player == null ||

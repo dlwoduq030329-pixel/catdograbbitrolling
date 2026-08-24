@@ -23,7 +23,7 @@ internal static class BattleCardEffectPipeline
         public Func<Vector3, MapInfo> FindClosestTile;
         public Action<GameObject, BattleStatusType, int> ApplyStatus;
         public BattleCardDrawSystem DrawSystem;
-        public CardUseWaitingForConfirmation ConsumedCardUse;
+        public SelectedCardUseInfo ConsumedCardUse;
         public BattleRangeVisualizer RangeVisualizer;
         public Color PersistentAreaColor;
     }

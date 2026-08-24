@@ -96,7 +96,7 @@ public class BattleUnitCardFlow : MonoBehaviour
     /// → BattleCardActionController.TryStartCardUse().
     /// 이동 범위를 닫고 현재 턴의 카드 사용 가능 상태를 전달할 뿐, 카드 효과나 MP는 여기서 소비하지 않는다.
     /// </summary>
-    public bool TryStartSelectedCardUse(CardUseWaitingForConfirmation cardUse, BattleCardDrawSystem cardDrawSystem)
+    public bool TryStartSelectedCardUse(SelectedCardUseInfo cardUse, BattleCardDrawSystem cardDrawSystem)
     {
         owner.moveFlow.ClearMoveRange();
         bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;

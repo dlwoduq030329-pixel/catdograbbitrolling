@@ -957,7 +957,9 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (remainingOwned <= 0) DataConfig.CardsCount.Remove(index);
         else DataConfig.CardsCount[index] = remainingOwned;
         CopyEquippedDeckToLegacyCardData(playerDeck);
-        BattleGameManager.Instance?.CardDrawSystem?.SynchronizeOwnedCardCount(index, remainingOwned);
+        int remainingEquippedCopies = playerDeck.GetEquippedCopyCount(index);
+        BattleGameManager.Instance?.CardDrawSystem?
+            .RemoveRuntimeCardCopiesAboveEquippedCount(index, remainingEquippedCopies);
         DataConfig.playerMoney += refund;
         RefreshLinkedCardInventories();
         Debug.Log($"[Shop] 카드 판매: {card.name} / {refund}G / 남은 보유 {remainingOwned}장", this);
