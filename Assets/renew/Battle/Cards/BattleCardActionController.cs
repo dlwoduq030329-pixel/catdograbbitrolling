@@ -160,7 +160,7 @@ public sealed class BattleCardActionController : MonoBehaviour
 
         // 효과 파이프라인에는 Player, 대상, 타일, 카드 데이터와 외부 실행 함수를 하나의 문맥으로 전달한다.
         BattleCardEffectPipeline.Context effectContext = BuildEffectContext();
-        if (!BattleCardEffectPipeline.TryPrepare(
+        if (!BattleCardEffectPipeline.TryPrepareCardEffects(
                 effectContext,
                 out BattleCardEffectPipeline.PreparedUse preparedEffects,
                 out string failureReason))
@@ -180,7 +180,7 @@ public sealed class BattleCardActionController : MonoBehaviour
         GameObject resultTarget = selectedTarget;
         BattleActionRequest resultRequest = selectedCardInfo.ActionInfo;
         // 사전 검증된 효과만 실행하고, 이후 카드 행동이 끝났음을 상위 입력 흐름에 알린다.
-        BattleCardEffectPipeline.Execute(effectContext, preparedEffects);
+        BattleCardEffectPipeline.ApplyPreparedCardEffects(effectContext, preparedEffects);
         BattleActionResult result = new BattleActionResult(
             resultRequest, player, resultTarget, Array.Empty<MapInfo>(), 0, cardCost);
         ClearStateAndRange();
@@ -228,13 +228,13 @@ public sealed class BattleCardActionController : MonoBehaviour
             SelectedTile = selectedTargetTile,
             Card = selectedCardInfo.CardData,
             CardIndex = selectedCardInfo.CardIndex,
-            Request = selectedCardInfo.ActionInfo,
-            FindClosestTile = findClosestTile,
-            ApplyStatus = ApplyStatusToUnit,
-            RangeVisualizer = rangeVisualizer,
-            PersistentAreaColor = effectAreaColor,
-            DrawSystem = drawSystem,
-            ConsumedCardUse = selectedCardInfo
+            ActionInfo = selectedCardInfo.ActionInfo,
+            FindNearestTileAtPosition = findClosestTile,
+            ApplyStatusToTarget = ApplyStatusToUnit,
+            PersistentAreaVisualizer = rangeVisualizer,
+            PersistentAreaTileColor = effectAreaColor,
+            CardDrawSystem = drawSystem,
+            UsedCardInfo = selectedCardInfo
         };
     }
 

@@ -21062,6 +21062,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   turnEndButton: {fileID: 1462165883}
+  catTurnEndSprite: {fileID: 21300000, guid: 9a2c47e1b6d4401ea0c7c2a4f1e83b56, type: 3}
+  dogTurnEndSprite: {fileID: 21300000, guid: 4f7d19a3c2e64b8fae0d5c3b7a1f6082, type: 3}
+  bunnyTurnEndSprite: {fileID: 21300000, guid: 7e5b3a91c8d24f6e9a0b1c2d3e4f5a67, type: 3}
   endTurnKey: 101
 --- !u!114 &1943288768
 MonoBehaviour:

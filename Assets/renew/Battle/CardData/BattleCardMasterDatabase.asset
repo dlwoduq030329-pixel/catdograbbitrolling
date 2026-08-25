@@ -195,7 +195,7 @@ MonoBehaviour:
     effects:
     - effectType: 1
       effectTarget: 1
-      amount: 10
+      amount: 0
       distanceTiles: 0
       durationTurns: 0
       repeatCount: 1
@@ -265,6 +265,7 @@ MonoBehaviour:
       durationTurns: 0
       repeatCount: 1
       effectCode: SCARECROW
+      summonPrefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3, type: 3}
       description: "\uC9C0\uC815 \uD0C0\uC77C\uC5D0 \uD5C8\uC218\uC544\uBE44\uB97C
         \uC18C\uD658\uD569\uB2C8\uB2E4. HP\uB294 10\uC774\uBA70 \uD30C\uAD34\uB420 \uB54C\uAE4C\uC9C0 \uC720\uC9C0\uB429\uB2C8\uB2E4."
       cancelCardOnFailure: 1

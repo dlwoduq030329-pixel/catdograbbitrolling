@@ -17,7 +17,7 @@ public sealed class BattleScarecrowSummon : MonoBehaviour
 
     /// <summary>
     /// 레거시 행동을 끄고 BattleHealth와 HP Bar를 연결한 뒤 활성 허수아비 목록에 등록한다.
-    /// maxHealth는 현재 Bridge의 고정값이지만 최종 규칙은 소환 시점 Player 최대 HP의 1/3이다.
+    /// maxHealth는 카드 확정 시점 Player 최대 HP의 1/3로 계산되어 전달된다.
     /// </summary>
     public void Initialize(MapInfo tile, float maxHealth)
     {

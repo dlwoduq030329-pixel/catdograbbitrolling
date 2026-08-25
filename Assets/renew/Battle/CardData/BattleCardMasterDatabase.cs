@@ -82,6 +82,10 @@ public sealed class BattleCardEffectData
     [InspectorName("상태이상 또는 소환 코드")]
     public string effectCode;
 
+    [Tooltip("소환 효과가 생성할 Prefab입니다. Resources나 문자열 검색 없이 카드 데이터가 실제 생성 대상을 직접 참조합니다.")]
+    [InspectorName("소환 프리팹")]
+    public GameObject summonPrefab;
+
     [Tooltip("기획자와 개발자가 효과의 실제 동작을 바로 이해할 수 있도록 완성된 문장으로 작성합니다.")]
     [InspectorName("효과 설명")]
     [TextArea] public string description;

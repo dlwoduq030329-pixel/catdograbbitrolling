@@ -3,81 +3,86 @@ using UnityEngine;
 /// <summary>
 /// Battle 카드 실행 결과에 애니메이션과 레거시 VFX 연출만 연결한다.
 /// 실제 피해와 상태 변화는 BattleCardEffectPipeline이 담당한다.
-/// 카드 번호→문자열 코드→Resources Registry 우회는 VFX 직접 참조 전환 후 제거하고 이 코드는 순수 VFX Player로 축소한다.
+/// 카드 효과 파이프라인이 전달한 BattleCardData.presentation을 직접 읽으며 카드 번호 배열을 별도로 관리하지 않는다.
+/// Registry 조회는 직접 VFX Prefab이 비어 있는 이전 데이터만 지원하는 임시 폴백이다.
 /// </summary>
 public static class BattleLegacyCardPresentationBridge
 {
-    private static readonly string[] CardCodes =
-    {
-        "SWING", "BODYSLAM", "HIT_DOWN", "FACE_GUARD", "STALE_JERKY",
-        "WEIRD_MUSHROOM", "HEALING_POTION", "POISON_POTION", "SCARECROW",
-        "VITAL_STRIKE", "WILD_SLASH", "FINISHING_BLOW", "WHIRLWIND",
-        "POWER_STRIKE", "DIVINE_STRIKE", "HEALING_BREATH", "CONSECRATION",
-        "HEALING_TOUCH", "WEAPON_BLESSING", "HOLY_ARROW", "METEOR", "LIGHTNING",
-        "ICE_MAGIC", "GROUND_ERUPTION", "FIRE_BALL", "CURSE_MAGIC",
-        "RAIN_OF_ARROWS", "EXPLOSION"
-    };
-
-    /// <summary>Battle 카드 목록 번호를 같은 순서의 Legacy 영문 연출 코드로 바꾼다. 범위를 벗어나면 빈 문자열이다.</summary>
-    public static string ResolveCardCode(int cardIndex)
-    {
-        return cardIndex >= 0 && cardIndex < CardCodes.Length ? CardCodes[cardIndex] : string.Empty;
-    }
-
     /// <summary>
-    /// 카드 효과가 모두 적용된 뒤 Player 애니메이션과 VFX만 재생한다.
-    /// PlayerSkills가 있으면 Legacy 표현 API를 사용하고, 없으면 AnimationBridge와 VFX Registry를 fallback으로 사용한다.
+    /// 카드 효과가 모두 적용된 뒤 카드 데이터에 직접 연결된 Player 애니메이션과 VFX만 재생한다.
+    /// PlayerSkills는 이전 Animator 재생 호환에 사용하고, 직접 VFX가 없을 때만 이전 Prefab과 Registry를 확인한다.
     /// </summary>
     public static void Play(
         GameObject player,
         GameObject selectedTarget,
         MapInfo selectedTile,
-        string cardCode,
-        BattleCardCategory category)
+        BattleCardData cardData)
     {
-        if (player == null || string.IsNullOrWhiteSpace(cardCode)) return;
+        if (player == null || cardData == null || cardData.presentation == null)
+            return;
+
+        BattleCardPresentationData presentationData = cardData.presentation;
+        string animationStateName = presentationData.animationStateName;
 
         PlayerSkills legacy = player.GetComponentInChildren<PlayerSkills>(true);
-        GameObject visualPrefab = null;
-        if (legacy != null)
+        if (legacy != null && !string.IsNullOrWhiteSpace(animationStateName))
         {
-            legacy.PlayPresentationOnly(cardCode);
-            visualPrefab = legacy.GetPresentationPrefab(cardCode);
+            legacy.PlayPresentationOnly(animationStateName);
         }
-        else if (!BattleCharacterAnimationBridge.PlayState(player, cardCode) &&
-                 category == BattleCardCategory.Attack)
+        else if (!string.IsNullOrWhiteSpace(animationStateName) &&
+                 !BattleCharacterAnimationBridge.PlayState(player, animationStateName) &&
+                 cardData.category == BattleCardCategory.Attack)
         {
             BattleCharacterAnimationBridge.PlayAttack(player);
         }
 
+        // 카드 데이터의 직접 Prefab을 최우선으로 사용한다.
+        GameObject visualPrefab = presentationData.vfxPrefab;
+
+        // 아직 직접 데이터가 비어 있는 이전 카드만 PlayerSkills가 보관한 Prefab을 임시 사용한다.
+        if (visualPrefab == null && legacy != null && !string.IsNullOrWhiteSpace(animationStateName))
+            visualPrefab = legacy.GetPresentationPrefab(animationStateName);
+
+        // 모든 카드 데이터 마이그레이션과 Unity QA가 끝날 때까지만 Registry를 마지막 폴백으로 유지한다.
         if (visualPrefab == null)
         {
             BattleCardVfxRegistry registry = BattleCardVfxRegistry.Load();
-            visualPrefab = registry != null ? registry.Find(cardCode) : null;
+            visualPrefab = registry != null ? registry.Find(animationStateName) : null;
         }
 
-        // 지속 영역 VFX는 BattleHealingArea가 영역 수명과 함께 관리한다.
-        if (cardCode != "CONSECRATION")
-            SpawnVisualOnly(visualPrefab, ResolvePosition(
-                player, selectedTarget, selectedTile, cardCode), cardCode);
+        // 지속 영역 VFX는 BattleHealingArea가 영역의 실제 수명과 함께 관리하므로 여기서 중복 생성하지 않는다.
+        if (!HasPersistentAreaEffect(cardData))
+        {
+            SpawnVisualOnly(
+                visualPrefab,
+                ResolvePosition(player, selectedTarget, selectedTile, presentationData.vfxSpawnPosition),
+                presentationData);
+        }
     }
 
-    /// <summary>카드 코드별로 VFX를 Player, 선택 Enemy 또는 선택 타일 중 어느 위치에 생성할지 결정한다.</summary>
+    /// <summary>카드 데이터에 저장된 위치 규칙에 따라 VFX 생성 월드 좌표를 반환한다.</summary>
     private static Vector3 ResolvePosition(
-        GameObject player, GameObject target, MapInfo tile, string cardCode)
+        GameObject player,
+        GameObject selectedTarget,
+        MapInfo selectedTile,
+        BattleCardVfxSpawnPosition spawnPosition)
     {
-        switch (cardCode)
+        switch (spawnPosition)
         {
-            case "EXPLOSION":
-            case "CONSECRATION":
+            case BattleCardVfxSpawnPosition.Player:
                 return player.transform.position;
-            case "GROUND_ERUPTION":
-            case "METEOR":
-                return tile != null ? tile.transform.position :
-                    target != null ? target.transform.position : player.transform.position;
+            case BattleCardVfxSpawnPosition.SelectedTile:
+                return selectedTile != null
+                    ? selectedTile.transform.position
+                    : selectedTarget != null
+                        ? selectedTarget.transform.position
+                        : player.transform.position;
             default:
-                return target != null ? target.transform.position :
-                    tile != null ? tile.transform.position : player.transform.position;
+                return selectedTarget != null
+                    ? selectedTarget.transform.position
+                    : selectedTile != null
+                        ? selectedTile.transform.position
+                        : player.transform.position;
         }
     }
 
@@ -86,21 +91,35 @@ public static class BattleLegacyCardPresentationBridge
     /// ParticleSystem만 재생하고 2.5초 뒤 제거한다.
     /// </summary>
     private static void SpawnVisualOnly(
-        GameObject prefab, Vector3 position, string cardCode)
+        GameObject prefab,
+        Vector3 position,
+        BattleCardPresentationData presentationData)
     {
         if (prefab == null) return;
 
         GameObject instance = Object.Instantiate(prefab, position, prefab.transform.rotation);
-        if (cardCode == "ICE_MAGIC")
+        if (presentationData.activateAllVfxChildren)
         {
-            // 레거시 IceMagic.Init은 피해까지 실행하므로 호출하지 않고 시각 자식만 활성화한다.
+            // 일부 이전 VFX는 시각 파티클 자식이 기본 비활성 상태라 데이터 설정에 따라 모두 활성화한다.
             foreach (Transform child in instance.transform)
                 child.gameObject.SetActive(true);
         }
-        foreach (MonoBehaviour behaviour in instance.GetComponentsInChildren<MonoBehaviour>(true))
-            behaviour.enabled = false;
+        if (presentationData.disableRuntimeBehaviours)
+        {
+            // 이전 Prefab 내부의 피해·상태 스크립트를 꺼서 EffectPipeline과 효과가 중복되지 않게 한다.
+            foreach (MonoBehaviour behaviour in instance.GetComponentsInChildren<MonoBehaviour>(true))
+                behaviour.enabled = false;
+        }
         foreach (ParticleSystem particles in instance.GetComponentsInChildren<ParticleSystem>(true))
             particles.Play(true);
-        Object.Destroy(instance, 2.5f);
+        Object.Destroy(instance, Mathf.Max(0f, presentationData.vfxLifetimeSeconds));
+    }
+
+    /// <summary>CreateArea 효과가 있으면 VFX 수명을 지속 영역 컴포넌트가 관리해야 하므로 true를 반환한다.</summary>
+    private static bool HasPersistentAreaEffect(BattleCardData cardData)
+    {
+        return cardData.effects != null &&
+               cardData.effects.Exists(effect =>
+                   effect != null && effect.effectType == BattleCardEffectType.CreateArea);
     }
 }

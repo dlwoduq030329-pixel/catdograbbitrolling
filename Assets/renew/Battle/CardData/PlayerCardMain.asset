@@ -16,6 +16,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 0
+    presentation: {animationStateName: SWING, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 물리 피해 2를 줍니다."
     effects:
     - effectType: 0
@@ -35,6 +36,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 1
+    presentation: {animationStateName: BODYSLAM, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "대상에게 돌진한 뒤 피해를 주고 한 칸 밀어냅니다."
     effects:
     - effectType: 7
@@ -72,6 +74,7 @@ MonoBehaviour:
   - category: 2
     cardType: 0
     legacyCardIndex: 2
+    presentation: {animationStateName: HIT_DOWN, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "직선 2칸 범위의 적에게 물리 피해 2를 줍니다."
     effects:
     - effectType: 0
@@ -91,6 +94,7 @@ MonoBehaviour:
   - category: 1
     cardType: 2
     legacyCardIndex: 3
+    presentation: {animationStateName: FACE_GUARD, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "다음 플레이어 턴 시작 전까지 자신에게 보호막 5를 부여합니다."
     effects:
     - effectType: 2
@@ -110,6 +114,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 4
+    presentation: {animationStateName: STALE_JERKY, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "자신의 체력을 5 회복합니다."
     effects:
     - effectType: 1
@@ -129,6 +134,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 5
+    presentation: {animationStateName: WEIRD_MUSHROOM, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "같은 손패 자리에 무작위 카드를 생성하고 이번 턴 MP 비용을 1 감소시킵니다."
     effects:
     - effectType: 13
@@ -148,11 +154,12 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 6
+    presentation: {animationStateName: HEALING_POTION, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "자신의 체력을 10 회복합니다."
     effects:
     - effectType: 1
       effectTarget: 1
-      amount: 10
+      amount: 0
       distanceTiles: 0
       durationTurns: 0
       repeatCount: 1
@@ -167,6 +174,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 7
+    presentation: {animationStateName: POISON_POTION, vfxPrefab: {fileID: 7019049579504631621, guid: cb2025ec2c580db4da3bf7c5519a01cd, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 피해 2를 주고 독을 부여합니다."
     effects:
     - effectType: 0
@@ -195,7 +203,8 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 8
-    effectSummary: "인접한 빈 타일에 HP 10 허수아비를 소환하고 반대 방향으로 한 칸 후퇴합니다."
+    presentation: {animationStateName: SCARECROW, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 2, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
+    effectSummary: "인접한 빈 타일에 플레이어 최대 HP의 1/3인 허수아비를 소환하고 반대 방향으로 한 칸 후퇴합니다."
     effects:
     - effectType: 9
       effectTarget: 5
@@ -204,7 +213,8 @@ MonoBehaviour:
       durationTurns: 0
       repeatCount: 1
       effectCode: SCARECROW
-      description: "허수아비는 적을 도발하며 파괴될 때까지 유지됩니다. 후퇴할 수 없으면 소환만 실행합니다."
+      summonPrefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3, type: 3}
+      description: "허수아비는 플레이어 최대 HP의 1/3을 가지며, 적을 도발하고 파괴될 때까지 유지됩니다. 후퇴할 수 없으면 소환만 실행합니다."
       cancelCardOnFailure: 1
     targetType: 5
     rangeTiles: 1
@@ -214,6 +224,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 9
+    presentation: {animationStateName: VITAL_STRIKE, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "스킬 범위 안에서 현재 체력이 가장 낮은 적 근처로 순간이동한 뒤 공격합니다."
     effects:
     - effectType: 8
@@ -243,6 +254,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 10
+    presentation: {animationStateName: WILD_SLASH, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 기본 공격 피해를 5회 적용합니다."
     effects:
     - effectType: 0
@@ -262,6 +274,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 11
+    presentation: {animationStateName: FINISHING_BLOW, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "현재 HP가 최대 HP의 20% 미만인 일반 적을 처형합니다. 엘리트와 보스에게는 물리 피해 2만 줍니다."
     effects:
     - effectType: 11
@@ -282,6 +295,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 12
+    presentation: {animationStateName: WHIRLWIND, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "주변 적을 공격하고 한 칸 밀어냅니다."
     effects:
     - effectType: 0
@@ -310,6 +324,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 13
+    presentation: {animationStateName: POWER_STRIKE, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 물리 피해 2를 주고 기절을 부여합니다."
     effects:
     - effectType: 0
@@ -338,6 +353,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 14
+    presentation: {animationStateName: DIVINE_STRIKE, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 마법 피해 2를 줍니다."
     effects:
     - effectType: 0
@@ -357,6 +373,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 15
+    presentation: {animationStateName: HEALING_BREATH, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "자신에게 적용된 모든 상태이상을 제거합니다."
     effects:
     - effectType: 12
@@ -376,6 +393,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 16
+    presentation: {animationStateName: CONSECRATION, vfxPrefab: {fileID: 1703228994199647851, guid: 219d84934f94eb4429619a20d73ceff7, type: 3}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택 타일에 3턴 동안 유지되는 반경 회복 영역을 생성합니다."
     effects:
     - effectType: 10
@@ -395,6 +413,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 17
+    presentation: {animationStateName: HEALING_TOUCH, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "자신의 체력을 2 회복합니다."
     effects:
     - effectType: 1
@@ -414,6 +433,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 18
+    presentation: {animationStateName: WEAPON_BLESSING, vfxPrefab: {fileID: 0}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "현재 턴 동안 자신의 기본 공격 피해가 2 증가합니다."
     effects:
     - effectType: 14
@@ -433,6 +453,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 19
+    presentation: {animationStateName: HOLY_ARROW, vfxPrefab: {fileID: 2946841771896891860, guid: d56dde98a607e4440ad6c878eddb8c3d, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 마법 피해 2를 줍니다."
     effects:
     - effectType: 0
@@ -452,6 +473,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 20
+    presentation: {animationStateName: METEOR, vfxPrefab: {fileID: 971987903814131934, guid: 53cd3fabdb98be34fa536a5d636c025f, type: 3}, vfxSpawnPosition: 2, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택 지점 주변 2칸의 모든 적에게 마법 피해 2를 줍니다."
     effects:
     - effectType: 0
@@ -471,6 +493,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 21
+    presentation: {animationStateName: LIGHTNING, vfxPrefab: {fileID: 1541748658764091471, guid: ae2253472c6c98b4b9db88a9f918b45e, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택 대상 타격 후 가장 가까운 다른 적 최대 2명에게 연쇄 피해를 줍니다."
     effects:
     - effectType: 0
@@ -499,6 +522,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 22
+    presentation: {animationStateName: ICE_MAGIC, vfxPrefab: {fileID: 7833177356077189626, guid: 49eaff5f3db9c2945b7e3cb48e96bbae, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1, activateAllVfxChildren: 1}
     effectSummary: "선택한 지점 주변 3칸의 모든 적에게 마법 피해 2를 주고 동상을 부여합니다."
     effects:
     - effectType: 0
@@ -527,6 +551,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 23
+    presentation: {animationStateName: GROUND_ERUPTION, vfxPrefab: {fileID: 3871640448993451956, guid: c32e7091b3b23b0489ed0532605c7993, type: 3}, vfxSpawnPosition: 2, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택 지점 주변 2칸의 적에게 마법 피해 2를 주고 둔화를 부여합니다."
     effects:
     - effectType: 0
@@ -555,6 +580,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 24
+    presentation: {animationStateName: FIRE_BALL, vfxPrefab: {fileID: 8893179138501517367, guid: 8b1df6156334c6445aca60c080475c1c, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 피해 2를 주고 화상을 부여합니다."
     effects:
     - effectType: 0
@@ -583,6 +609,7 @@ MonoBehaviour:
   - category: 2
     cardType: 2
     legacyCardIndex: 25
+    presentation: {animationStateName: CURSE_MAGIC, vfxPrefab: {fileID: 989542983692251155, guid: bf456f9cbe44fd641b205876917c17b1, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "선택한 적에게 파쇄와 불안을 부여합니다."
     effects:
     - effectType: 3
@@ -611,6 +638,7 @@ MonoBehaviour:
   - category: 0
     cardType: 0
     legacyCardIndex: 26
+    presentation: {animationStateName: RAIN_OF_ARROWS, vfxPrefab: {fileID: 4165034617611478321, guid: 161e8583b80cb8e48924139d40b89d77, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     targetType: 2
     rangeTiles: 4
     areaType: 0
@@ -619,6 +647,7 @@ MonoBehaviour:
   - category: 0
     cardType: 1
     legacyCardIndex: 27
+    presentation: {animationStateName: EXPLOSION, vfxPrefab: {fileID: 2717540395455739778, guid: 752d40ddbe819b248971f8b3fd633a0c, type: 3}, vfxSpawnPosition: 0, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
     effectSummary: "플레이어 주변 2칸의 모든 적에게 마법 피해 5를 주고 자신은 1턴 취약해집니다."
     effects:
     - effectType: 0
