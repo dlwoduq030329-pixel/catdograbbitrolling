@@ -50,7 +50,7 @@ out Vector2 pos
             {
                 Debug.Log("im NULL");
             }
-            im.SetScroll(true);
+            im.SetInventoryVerticalScrollEnabled(true);
 
             this.gameObject.SetActive(false);
         }
@@ -62,7 +62,7 @@ out Vector2 pos
         canvas = GetComponentInParent<Canvas>();
         im = GetComponentInParent<InventorySetting>();
         cardSP = GetComponent<Image>();
-        im.SetScroll(false);
+        im.SetInventoryVerticalScrollEnabled(false);
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
      canvas.transform as RectTransform,
      Input.mousePosition,
@@ -86,7 +86,6 @@ out Vector2 pos
                 nowDeckCard nd = target.GetComponent<nowDeckCard>();
                 //nd.Test();
                 nd.ChangeSet(cardTempIndex);
-                im.InitAll();
                 SoundManager.Instance.ChangeCard();
                 return;
             }

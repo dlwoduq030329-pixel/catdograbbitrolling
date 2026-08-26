@@ -21,6 +21,19 @@ public class PlayerMPUI : MonoBehaviour
     [SerializeField, Tooltip("현재 MP와 최대 MP를 '현재 / 최대' 형식으로 표시할 선택적 TMP Text입니다. 연결하지 않으면 이미지만 갱신합니다.")]
     private TMP_Text playerManaValueText;
 
+    [Header("크리스탈형 MP 바 (하스스톤 스타일, 선택 사항)")]
+    [InspectorName("마나 크리스탈 이미지 목록")]
+    [SerializeField, Tooltip("MP_VerticalBar 프리팹의 Crystal_0..N Image들을 순서대로(0번=최하단) 연결합니다. 비워두면 기존 실린더 Fill 방식만 사용합니다.")]
+    private Image[] manaCrystalImages;
+
+    [InspectorName("채워진 크리스탈 스프라이트")]
+    [SerializeField]
+    private Sprite manaCrystalFilledSprite;
+
+    [InspectorName("빈 크리스탈 스프라이트")]
+    [SerializeField]
+    private Sprite manaCrystalEmptySprite;
+
     // 현재 UI가 관찰 중인 Player MP다. 교체 시 이전 이벤트를 먼저 해제하여 중복 갱신을 막는다.
     private BattleUnitMP observedPlayerMana;
 
@@ -84,6 +97,44 @@ public class PlayerMPUI : MonoBehaviour
         if (playerManaValueText != null)
         {
             playerManaValueText.text = $"{currentMana} / {maximumMana}";
+        }
+
+        UpdateManaCrystals(currentMana, maximumMana);
+    }
+
+    /// <summary>
+    /// 크리스탈 목록이 연결돼 있으면 인덱스가 최대 MP 미만인 크리스탈만 활성화하고,
+    /// 현재 MP보다 작은 인덱스는 채워진 스프라이트, 그 이상은 빈 스프라이트로 표시한다.
+    /// 최대 MP를 넘는 인덱스의 크리스탈은 비활성화해서 20칸짜리 바 중 실제 보유한 칸만 보이게 한다.
+    /// </summary>
+    private void UpdateManaCrystals(int currentMana, int maximumMana)
+    {
+        if (manaCrystalImages == null || manaCrystalImages.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < manaCrystalImages.Length; i++)
+        {
+            Image crystal = manaCrystalImages[i];
+            if (crystal == null)
+            {
+                continue;
+            }
+
+            bool withinMax = i < maximumMana;
+            crystal.gameObject.SetActive(withinMax);
+            if (!withinMax)
+            {
+                continue;
+            }
+
+            bool isFilled = i < currentMana;
+            Sprite targetSprite = isFilled ? manaCrystalFilledSprite : manaCrystalEmptySprite;
+            if (targetSprite != null)
+            {
+                crystal.sprite = targetSprite;
+            }
         }
     }
 }

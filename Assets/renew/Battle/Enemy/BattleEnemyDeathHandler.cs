@@ -5,7 +5,7 @@ using UnityEngine;
 /// Enemy 체력이 0이 되면 입력과 점유 판정에서 즉시 제외하고 가라앉는 연출 후 오브젝트를 비활성화한다.
 /// Scene을 다시 로드하지 않는 구조라 Destroy 대신 SetActive(false)로 남겨 다른 곳의 참조가
 /// missing 참조가 되지 않게 한다(2026-08-21 변경). 사망 보상과 드롭 처리는 후속 시스템에서 이 책임을 확장한다.
-/// 친구가 사망 VFX를 추가할 예정이므로 이번 변경에서는 연출을 더 손대지 않고 SetActive 전환만 반영했다.
+/// 사망 VFX는 후속 작업에서 추가할 예정이므로 현재는 연출을 확장하지 않고 SetActive 전환만 수행한다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyDeathHandler : MonoBehaviour

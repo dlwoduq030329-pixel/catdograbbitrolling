@@ -18,7 +18,6 @@ using UnityEngine.Serialization;
 [DisallowMultipleComponent]
 public class BattleGameManager : MonoBehaviour
 {
-    #region Inspector References
 
     public static BattleGameManager Instance { get; private set; }
 
@@ -89,9 +88,6 @@ public class BattleGameManager : MonoBehaviour
     [FormerlySerializedAs("battleStopped")]
     [SerializeField] private bool isBattleStopped;
 
-    #endregion
-
-    #region Runtime State And Events
 
     /// <summary>Player 등록이 끝난 뒤 카메라·Enemy 감지기 등에 생성된 Player 인스턴스를 전달한다.</summary>
     public event System.Action<GameObject> PlayerRegistered;
@@ -133,9 +129,6 @@ public class BattleGameManager : MonoBehaviour
     public bool CanUsePlayerCards =>
         !isBattleStopped && isPlayerTurnActive && hasRolledDiceThisTurn && !IsBattleBlockingUiOpen;
 
-    #endregion
-
-    #region Battle Blocking UI
 
     /// <summary>
     /// 상점·보상·상태창·턴 배너처럼 열린 동안 뒤쪽 전투를 조작하면 안 되는 UI가 열릴 때 호출한다.
@@ -176,9 +169,6 @@ public class BattleGameManager : MonoBehaviour
         SyncTurnUI();
     }
 
-    #endregion
-
-    #region Unity Lifecycle
 
     /// <summary>
     /// 씬이 로드될 때 전투 전체에서 사용할 단일 인스턴스를 확정하고 연결 시스템을 준비한다.
@@ -217,9 +207,6 @@ public class BattleGameManager : MonoBehaviour
         SyncTurnUI();
     }
 
-    #endregion
-
-    #region Turn Flow
 
     /// <summary>
     /// 턴 종료 버튼 또는 E 입력에서 호출한다. 전투 정지·전투 조작 차단 UI 표시·주사위 미사용 상태에서는 무시한다.
@@ -418,9 +405,6 @@ public class BattleGameManager : MonoBehaviour
         Debug.LogError("Enemy 준비 실패: BattleDataPool 또는 UnitRegistry 참조가 없습니다.", this);
     }
 
-    #endregion
-
-    #region Player Registration And Death
 
     /// <summary>
     /// 생성된 Player를 전투 시스템의 공식 Player로 등록한다.
@@ -453,6 +437,18 @@ public class BattleGameManager : MonoBehaviour
         CurrentPlayer = player;
         CurrentPlayerMP = playerMP;
         CurrentPlayerCombatData = combatData;
+
+        // SpawnPlayer가 Player Body의 CharactorStatus에 저장한 선택 인덱스를 UI 표현 컴포넌트에 전달한다.
+        // 캐릭터 이름이나 Prefab 이름을 검색하지 않으며 Player 등록 시 한 번만 버튼 이미지를 결정한다.
+        CharactorStatus playerCharacterStatus = player.GetComponentInParent<CharactorStatus>(true);
+        if (playerCharacterStatus != null)
+        {
+            turnButtonController?.ApplyTurnEndImageForCharacter(playerCharacterStatus.TribeIndex);
+        }
+        else
+        {
+            Debug.LogError("캐릭터별 턴 종료 이미지를 결정할 CharactorStatus가 없습니다.", player);
+        }
 
         // QA 모드에서만 밸런스와 무관한 최대 MP·이동 범위를 덮어써 기능 검증 시간을 줄인다.
         if (enableDebugQaBoost)
@@ -502,9 +498,6 @@ public class BattleGameManager : MonoBehaviour
         Instance = null;
     }
 
-    #endregion
-
-    #region Dice And Enemy Turn
 
     /// <summary>
     /// BattleDiceRollButton이 호출한다. Player 턴에 정확히 한 번만 1~6을 뽑고,
@@ -635,6 +628,5 @@ public class BattleGameManager : MonoBehaviour
         if (turnTransitionFade == null) Debug.LogError("턴 전환 LoadingUI 참조가 없습니다.", this);
     }
 
-    #endregion
 
 }

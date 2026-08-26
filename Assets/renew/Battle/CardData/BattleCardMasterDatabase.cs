@@ -19,7 +19,9 @@ public enum BattleCardEffectType
     [InspectorName("소환")] Summon,
     [InspectorName("지속 영역 생성")] CreateArea,
     [InspectorName("처형")] Execute,
-    [InspectorName("상태이상 제거")] Cleanse
+    [InspectorName("상태이상 제거")] Cleanse,
+    [InspectorName("무작위 카드 드로우")] DrawRandomCard,
+    [InspectorName("기본 공격 피해 증가")] IncreaseBasicAttackDamage
 }
 
 /// <summary>
@@ -79,6 +81,10 @@ public sealed class BattleCardEffectData
     [Tooltip("상태이상 이름, 변경할 능력치, 소환할 개체처럼 실행기가 추가로 구분해야 하는 값을 입력합니다. 예: 독, 화상, 공격속도증가, 허수아비")]
     [InspectorName("상태이상 또는 소환 코드")]
     public string effectCode;
+
+    [Tooltip("소환 효과가 생성할 Prefab입니다. Resources나 문자열 검색 없이 카드 데이터가 실제 생성 대상을 직접 참조합니다.")]
+    [InspectorName("소환 프리팹")]
+    public GameObject summonPrefab;
 
     [Tooltip("기획자와 개발자가 효과의 실제 동작을 바로 이해할 수 있도록 완성된 문장으로 작성합니다.")]
     [InspectorName("효과 설명")]

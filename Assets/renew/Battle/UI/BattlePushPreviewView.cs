@@ -80,7 +80,7 @@ public sealed class BattlePushPreviewView : MonoBehaviour
     /// </summary>
     public void ShowPushPredictions(IEnumerable<BattleCardMovementService.PushPlan> pushPlans)
     {
-        HidePushPredictions();
+        HideAllPushPreviews();
         if (pushPlans == null) return;
 
         foreach (BattleCardMovementService.PushPlan pushPlan in pushPlans)
@@ -94,7 +94,7 @@ public sealed class BattlePushPreviewView : MonoBehaviour
     }
 
     /// <summary>현재 카드 선택에 속한 예상 마커만 제거하며, 이미 실행된 충돌 결과 마커는 유지한다.</summary>
-    public void HidePushPredictions()
+    public void HideAllPushPreviews()
     {
         DestroyAndClearMarkers(activePredictionMarkers);
     }

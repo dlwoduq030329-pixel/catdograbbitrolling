@@ -460,10 +460,13 @@ public class BattlePlayerActionController : MonoBehaviour
         return playerCombatData != null ? playerCombatData.BasicAttackRangeTiles : 1;
     }
 
-    /// <summary>카드 사용 확인 단계를 열고 공용 확인·취소 버튼을 표시한다. 다른 행동이 진행
-    /// 중인지 라우팅 판단만 여기서 하고, 실제 시작 처리는 BattleUnitCardFlow에 위임한다.</summary>
+    /// <summary>
+    /// BattleCardHandView가 손패 클릭을 전달하는 카드 행동의 공개 진입점이다.
+    /// 이동·평타·다른 카드 행동과 충돌하지 않는지만 검사하고,
+    /// 실제 카드 대상 선택 시작은 BattleUnitCardFlow.TryStartSelectedCardUse()에 위임한다.
+    /// </summary>
     public bool BeginCardUseConfirmation(
-        PendingBattleCardUse cardUse,
+        SelectedCardUseInfo cardUse,
         BattleCardDrawSystem cardDrawSystem)
     {
         if (cardUse == null || cardDrawSystem == null || player == null ||
@@ -473,7 +476,7 @@ public class BattlePlayerActionController : MonoBehaviour
         }
 
         EnsureCardFlow();
-        return cardFlow.BeginUseConfirmation(cardUse, cardDrawSystem);
+        return cardFlow.TryStartSelectedCardUse(cardUse, cardDrawSystem);
     }
 
     /// <summary>이동 또는 공격 확정 단계의 안내 문구를 전투 확인 텍스트에 표시한다.</summary>

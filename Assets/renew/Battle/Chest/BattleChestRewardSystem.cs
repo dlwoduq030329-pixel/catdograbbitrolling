@@ -137,12 +137,15 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     {
         List<CardData> result = new List<CardData>();
         if (battleCardDatabase == null || originalCardDatabase == null) return result;
+        PlayerDeck playerDeck = GetRegisteredPlayerDeck();
         foreach (BattleCardData battleCard in battleCardDatabase.Cards)
         {
             if (battleCard == null || battleCard.legacyCardIndex < 0) continue;
-            int owned = DataConfig.CardsCount.TryGetValue(battleCard.legacyCardIndex, out int count) ? count : 0;
+            int owned = playerDeck != null
+                ? playerDeck.GetOwnedCardCount(battleCard.legacyCardIndex)
+                : DataConfig.CardsCount.TryGetValue(battleCard.legacyCardIndex, out int count) ? count : 0;
             CardData original = BattleCardConnector.FindOriginalCard(battleCard.legacyCardIndex, originalCardDatabase);
-            if (owned < 2 && original != null) result.Add(original);
+            if (owned < PlayerDeck.MaximumOwnedCopiesPerCard && original != null) result.Add(original);
         }
         return result;
     }
@@ -276,14 +279,32 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
                currentReward.Type == type && !openedTiles.Contains(currentTile);
     }
 
-    /// <summary>카드 보상을 실제로 지급한다(<c>DataConfig.AddDic</c> — 여기서 처음 실제 보유 카드 수가 늘어난다).</summary>
+    /// <summary>카드 보상을 PlayerDeck 원본에 지급하고 기존 저장·UI 호환 데이터에는 확정 수량만 복사한다.</summary>
     private void ClaimCardReward()
     {
         if (!CanClaim(BattleChestRewardType.Card) || currentReward.Card == null) return;
+        PlayerDeck playerDeck = GetRegisteredPlayerDeck();
+        if (playerDeck == null)
+        {
+            Debug.LogError("[Chest] 카드 보상 지급 실패: 등록된 PlayerDeck이 없습니다.", currentTile);
+            return;
+        }
+
         rewardReady = false;
-        DataConfig.AddDic(currentReward.Card.index, 1);
+        int cardIndex = currentReward.Card.index;
+        playerDeck.AddOwnedCard(cardIndex, 1);
+        DataConfig.CardsCount[cardIndex] = playerDeck.GetOwnedCardCount(cardIndex);
         Debug.Log($"[Chest] Card reward: {currentReward.Card.name}", currentTile);
         CompleteCurrentReward();
+    }
+
+    /// <summary>BattleGameManager에 등록된 Player 본체에서 영구 카드 데이터 컴포넌트를 가져온다.</summary>
+    private static PlayerDeck GetRegisteredPlayerDeck()
+    {
+        GameObject player = BattleGameManager.Instance != null
+            ? BattleGameManager.Instance.CurrentPlayer
+            : null;
+        return player != null ? player.GetComponentInParent<PlayerDeck>(true) : null;
     }
 
     /// <summary>골드 보상을 실제로 지급한다(<c>DataConfig.playerMoney</c>에 여기서 처음 더해진다).</summary>
