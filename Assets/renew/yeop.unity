@@ -1521,6 +1521,13 @@ MonoBehaviour:
   fogScaleMin: 8
   fogScaleMax: 6
   cloudInterval: 1
+  riverTerrainPrefab: {fileID: 0}
+  riverTerrainMaterial: {fileID: 2100000, guid: 8a46a737507a5c9418ddfb0223deda9d,
+    type: 2}
+  riverTerrainHeightmapResolution: 513
+  riverTerrainDepth: 3.5
+  riverTerrainSurfaceY: 1
+  riverTerrainEdgeHeight: -0.1
 --- !u!4 &132556181
 Transform:
   m_ObjectHideFlags: 0
@@ -2835,8 +2842,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b39c203b5127064a8105004038c8c02, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  manaFillImage: {fileID: 2135760235}
-  manaText: {fileID: 744068315}
+  playerManaFillImage: {fileID: 2135760235}
+  playerManaValueText: {fileID: 744068315}
 --- !u!114 &253345586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2849,12 +2856,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7911a945d982d19498fece58a9daa69a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useFixedMaxMP: 0
-  fixedMaxMP: 6
-  baseMP: 6
-  intelligence: 0
-  intelligencePerMP: 6
-  maxMPCap: 10
+  maxMP: 6
   currentMP: 0
 --- !u!1 &255221166
 GameObject:
@@ -3278,13 +3280,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ac4267532d34f4cac2c30bf2f2fbc99, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cardPanel: {fileID: 1959100153}
-  canvasGroup: {fileID: 0}
-  toggleKey: 9
-  ignoreWhenEditingUI: 1
-  hiddenOffset: {x: 0, y: -320}
-  slideDuration: 0.2
-  startHidden: 1
+  handPanelRect: {fileID: 1959100153}
+  handPanelInputGroup: {fileID: 0}
+  handPanelToggleKey: 9
+  ignoreShortcutWhileTyping: 1
+  hiddenPositionOffset: {x: 0, y: -320}
+  slideDurationSeconds: 0.2
+  hidePanelAtBattleStart: 1
 --- !u!1 &290650938
 GameObject:
   m_ObjectHideFlags: 0
@@ -14177,15 +14179,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 62190b30ab994fbeb13d54fd305f3a68, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerHitPrefab: {fileID: 7906924658965885828, guid: bfdca9969c7627b449a295757b1a4546,
+  playerHitVfxPrefab: {fileID: 7906924658965885828, guid: bfdca9969c7627b449a295757b1a4546,
     type: 3}
-  enemyHitPrefab: {fileID: 5283720812215250758, guid: 9ec3f275cbbe669419903198651bed34,
+  enemyHitVfxPrefab: {fileID: 5283720812215250758, guid: 9ec3f275cbbe669419903198651bed34,
     type: 3}
-  playerPositionOffset: {x: 0, y: 0.8, z: 0}
-  enemyPositionOffset: {x: 0, y: 0.8, z: 0}
-  playerScale: 1
-  enemyScale: 1
-  lifetimeSeconds: 2
+  playerHitVfxPositionOffset: {x: 0, y: 0.8, z: 0}
+  enemyHitVfxPositionOffset: {x: 0, y: 0.8, z: 0}
+  playerHitVfxScaleMultiplier: 1
+  enemyHitVfxScaleMultiplier: 1
+  playerHitVfxRotationMode: 0
+  enemyHitVfxRotationMode: 0
+  hitVfxCamera: {fileID: 0}
+  hitVfxLifetimeSeconds: 2
 --- !u!114 &1320935612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14219,7 +14224,7 @@ MonoBehaviour:
   dataPool: {fileID: 1320935616}
   unitRegistry: {fileID: 1320935615}
   mapRegistry: {fileID: 1320935614}
-  enemyTargetBroker: {fileID: 0}
+  enemyTargetSync: {fileID: 0}
   battleGameManager: {fileID: 1320935617}
   mapGenerator: {fileID: 1878672617}
   enemySpawner: {fileID: 1953980971}
@@ -14289,37 +14294,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bc6446a72425ed42b0da01d2c29ed96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  turnEndButton: {fileID: 346409590}
-  diceButton: {fileID: 1634481630}
+  CODE_EXPLAIN: 0
   turnButtonController: {fileID: 0}
-  turnDebugText: {fileID: 740006079}
-  diceDebugText: {fileID: 978987838}
-  turnDebugView: {fileID: 0}
-  playerHpDebugText: {fileID: 1514507244}
-  playerShieldDebugText: {fileID: 417840928}
-  playerBody: {fileID: 336689759}
-  playerMPUI: {fileID: 253345585}
+  diceRollButton: {fileID: 0}
+  cardPanelToggle: {fileID: 0}
+  overlayUi: {fileID: 0}
+  playerHealthBinding: {fileID: 0}
   playerActionController: {fileID: 2039362343}
-  battleCardDatabase: {fileID: 11400000, guid: de6fce783bfd3064585e9639fd5b4105, type: 2}
-  originalCardDatabase: {fileID: 11400000, guid: 15b1ab3ad3596bf4aa48ed36b6b8450b,
-    type: 2}
+  playerRuntimeBinder: {fileID: 0}
+  cardDrawSystem: {fileID: 0}
+  chestRewardSystem: {fileID: 0}
+  cardShopSystem: {fileID: 0}
   battleDataPool: {fileID: 1320935616}
   enemyTurnRunner: {fileID: 0}
-  playerHpPrefab: {fileID: 0}
-  playerPortraitStatusView: {fileID: 0}
-  portraitDamageDecreaseSpeed: 1.5
-  portraitHealingIncreaseSpeed: 3
-  combatLogText: {fileID: 646187946}
-  combatLogVisibleEntries: 6
-  mirrorCombatLogToConsole: 0
+  turnAnnouncementView: {fileID: 0}
+  turnTransitionFade: {fileID: 0}
   enableDebugQaBoost: 1
   debugPlayerMaxMP: 10
   debugMaxMoveRange: 6
-  totalTurn: 1
-  isPlayerTurn: 1
-  diceRolledThisTurn: 0
-  currentDiceValue: 0
-  battleStopped: 0
+  currentTurnNumber: 1
+  isPlayerTurnActive: 1
+  hasRolledDiceThisTurn: 0
+  currentDiceRoll: 0
+  isBattleStopped: 0
 --- !u!1 &1321896296
 GameObject:
   m_ObjectHideFlags: 0
@@ -16724,18 +16721,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1634481634}
   m_SourcePrefab: {fileID: 100100000, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3, type: 3}
---- !u!114 &1634481630 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5024729853957120080, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
-    type: 3}
-  m_PrefabInstance: {fileID: 1634481629}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1634481631}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1634481631 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7467978049751832983, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
@@ -16772,8 +16757,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84ce1de630ae3a9479ef8f6e70629731, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rollSlider: {fileID: 1634481632}
-  gaugeSpeed: 1
+  rollChargeGauge: {fileID: 1634481632}
+  gaugeTravelSpeedPerSecond: 1
 --- !u!1 &1635344155
 GameObject:
   m_ObjectHideFlags: 0
@@ -20330,12 +20315,7 @@ MonoBehaviour:
   enemyDatabase: {fileID: 11400000, guid: ce0f2132c8fa5264d8c778e5f2bd3565, type: 2}
   useRandomDatabaseEntry: 1
   databaseIndex: 0
-  enemyPrefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3,
-    type: 3}
-  rangedPhysicalIcon: {fileID: 21300000, guid: 2ab553e6fe250494dac041aca6564aba, type: 3}
-  rangedMagicIcon: {fileID: 21300000, guid: 6666e4254569cb54b86a9a2db39f6e25, type: 3}
-  meleePhysicalIcon: {fileID: 21300000, guid: df482e56435db644a841c85efb4eb9a6, type: 3}
-  meleeMagicIcon: {fileID: 21300000, guid: 07c2f512caa9bdb41927a5a9ef9fb239, type: 3}
+  typeIcons: []
   enemyCount: 5
   sanctuarySize: {x: 5, y: 5}
   defaultSpawnHeight: 0.5
@@ -20343,6 +20323,112 @@ MonoBehaviour:
   enemyTileFillRatio: 0.75
   allowEnemyUpscaling: 0
   minimumScaleMultiplier: 0.05
+--- !u!1 &1958757187
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1958757191}
+  - component: {fileID: 1958757190}
+  - component: {fileID: 1958757189}
+  - component: {fileID: 1958757188}
+  m_Layer: 0
+  m_Name: Plane
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!64 &1958757188
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958757187}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!23 &1958757189
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958757187}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: -876546973899608171, guid: dd97de70edf8a4141bee758a2efe7ff8, type: 3}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1958757190
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958757187}
+  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1958757191
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1958757187}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 100, y: -0.5, z: 100}
+  m_LocalScale: {x: 25, y: 1, z: 25}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1959100152
 GameObject:
   m_ObjectHideFlags: 0
@@ -20581,6 +20667,99 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1964425410
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1964425413}
+  - component: {fileID: 1964425412}
+  - component: {fileID: 1964425411}
+  m_Layer: 0
+  m_Name: testTerrian
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 2147483647
+  m_IsActive: 0
+--- !u!154 &1964425411
+TerrainCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1964425410}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_TerrainData: {fileID: 15600000, guid: 9f280ea943ca193469816eb25b36e953, type: 2}
+  m_EnableTreeColliders: 1
+--- !u!218 &1964425412
+Terrain:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1964425410}
+  m_Enabled: 1
+  serializedVersion: 6
+  m_TerrainData: {fileID: 15600000, guid: 9f280ea943ca193469816eb25b36e953, type: 2}
+  m_TreeDistance: 5000
+  m_TreeBillboardDistance: 50
+  m_TreeCrossFadeLength: 5
+  m_TreeMaximumFullLODCount: 50
+  m_DetailObjectDistance: 80
+  m_DetailObjectDensity: 1
+  m_HeightmapPixelError: 5
+  m_SplatMapDistance: 1000
+  m_HeightmapMinimumLODSimplification: 0
+  m_HeightmapMaximumLOD: 0
+  m_ShadowCastingMode: 2
+  m_DrawHeightmap: 1
+  m_DrawInstanced: 0
+  m_DrawTreesAndFoliage: 1
+  m_StaticShadowCaster: 0
+  m_IgnoreQualitySettings: 0
+  m_ReflectionProbeUsage: 1
+  m_MaterialTemplate: {fileID: 2100000, guid: 8a46a737507a5c9418ddfb0223deda9d, type: 2}
+  m_BakeLightProbesForTrees: 1
+  m_PreserveTreePrototypeLayers: 0
+  m_DeringLightProbesForTrees: 1
+  m_ReceiveGI: 1
+  m_ScaleInLightmap: 0.0256
+  m_LightmapParameters: {fileID: 15203, guid: 0000000000000000f000000000000000, type: 0}
+  m_GroupingID: 0
+  m_RenderingLayerMask: 1
+  m_AllowAutoConnect: 1
+  m_EnableHeightmapRayTracing: 1
+  m_EnableTreesAndDetailsRayTracing: 0
+  m_TreeMotionVectorModeOverride: 3
+--- !u!4 &1964425413
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1964425410}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1971419164
 GameObject:
   m_ObjectHideFlags: 0
@@ -21543,16 +21722,14 @@ MonoBehaviour:
   battleRangeVisualizer: {fileID: 0}
   battlePlayerRangeController: {fileID: 0}
   battlePlayerMover: {fileID: 0}
-  battleMovementController: {fileID: 0}
-  battleBasicAttackController: {fileID: 0}
-  battleCardActionController: {fileID: 0}
-  battleMovePreview: {fileID: 0}
   battleActionConfirmView: {fileID: 0}
   battlePlayerInputReader: {fileID: 0}
   battleUnitHoverHighlighter: {fileID: 0}
   battlePushPreviewView: {fileID: 0}
-  battleMoveThreatPreview: {fileID: 0}
   battleDataPool: {fileID: 1320935616}
+  moveFlow: {fileID: 0}
+  attackFlow: {fileID: 0}
+  cardFlow: {fileID: 0}
   secondsPerTile: 1
   moveSpeedMultiplier: 1
   colorPalette: {fileID: 11400000, guid: 4462fbc624cf4566ba1e828cd6587d96, type: 2}
@@ -21653,15 +21830,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7da83bca325d7a345993294439ff97df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerSelectCanvas: {fileID: 1580372429}
-  battleCanvas: {fileID: 1908329805}
-  mapGenerator: {fileID: 1878672617}
-  newmapGenerator: {fileID: 132556180}
+  characterSelectionCanvas: {fileID: 1580372429}
+  battleHudCanvas: {fileID: 1908329805}
+  legacyMapGenerator: {fileID: 1878672617}
+  renewMapGenerator: {fileID: 132556180}
   battleGameManager: {fileID: 1320935617}
-  transitionCamera: {fileID: 1259942498}
-  cameraStopThreshold: 0.01
-  cameraStableFrameCount: 5
-  cameraWaitTimeout: 10
+  spawnedPlayerProvider: {fileID: 0}
+  enemySpawner: {fileID: 0}
+  battleCamera: {fileID: 1259942498}
+  cameraStoppedDistanceThreshold: 0.01
+  requiredCameraStoppedFrames: 5
+  maximumCameraWaitSeconds: 10
 --- !u!1 &2052896674
 GameObject:
   m_ObjectHideFlags: 0
@@ -23978,89 +24157,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2146191762}
   m_CullTransparentMesh: 1
---- !u!33 &6814467861520629880
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7094806944686249319}
-  m_Mesh: {fileID: 8126986993360105784, guid: 66560fd8edd772f4f97ae96c099ede16, type: 3}
---- !u!1 &7094806944686249319
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7583501017758552029}
-  - component: {fileID: 6814467861520629880}
-  - component: {fileID: 8751951082186355890}
-  m_Layer: 0
-  m_Name: Water Plane
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &7583501017758552029
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7094806944686249319}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!23 &8751951082186355890
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7094806944686249319}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: bfd822d01b12dbc4a94dd10ce19c898d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -24080,4 +24176,5 @@ SceneRoots:
   - {fileID: 1858315694}
   - {fileID: 502897646}
   - {fileID: 549027084}
-  - {fileID: 7583501017758552029}
+  - {fileID: 1958757191}
+  - {fileID: 1964425413}

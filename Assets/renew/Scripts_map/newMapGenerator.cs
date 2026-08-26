@@ -88,7 +88,26 @@ public class NewMapGenerator : MonoBehaviour
     [SerializeField] int cloudInterval = 2;
 
     private Transform cloudParent;
+    [Header("River Terrain")]
+    [SerializeField]
+    private Terrain riverTerrainPrefab;
 
+    [SerializeField]
+    private Material riverTerrainMaterial;
+
+    [SerializeField]
+    private int riverTerrainHeightmapResolution = 513;
+
+    [SerializeField]
+    private float riverTerrainDepth = 8f;
+
+    [SerializeField]
+    private float riverTerrainSurfaceY = 0f;
+
+    [SerializeField]
+    private float riverTerrainEdgeHeight = -0.1f;
+
+    private Terrain generatedRiverTerrain;
 
     private void Awake()
     {
@@ -162,11 +181,377 @@ public class NewMapGenerator : MonoBehaviour
         }
 
         DrawGrid();
+        GenerateRiverTerrain();
         //GenerateFogCloud();
         // GenerateTerrain();
 
         Debug.Log(
             $"맵 생성 완료 / 대륙 블록 : {landBlockCount} / 시도 횟수 : {tryCount}"
+        );
+    }
+
+    private void GenerateRiverTerrain()
+    {
+        // 기존 River Terrain 제거
+        if (generatedRiverTerrain != null)
+        {
+            Destroy(
+                generatedRiverTerrain.gameObject
+            );
+        }
+
+
+        TerrainData terrainData =
+            new TerrainData();
+
+
+        terrainData.heightmapResolution =
+            riverTerrainHeightmapResolution;
+
+
+        // 전체 맵 크기와 동일하게 생성
+        float terrainWidth =
+            blockCountX * blockDistance +
+    blockDistance + ((blockDistance * 3f)*2);
+
+        float terrainLength =
+            blockCountZ * blockDistance +
+    blockDistance + ((blockDistance * 3f) * 2);
+
+
+        terrainData.size =
+            new Vector3(
+                terrainWidth,
+                riverTerrainDepth,
+                terrainLength
+            );
+
+
+        // River Heightmap 생성
+        GenerateRiverTerrainHeight(
+            terrainData
+        );
+
+
+        // Terrain 생성
+        GameObject terrainObject =
+            Terrain.CreateTerrainGameObject(
+                terrainData
+            );
+
+
+        terrainObject.name =
+            "Generated River Terrain";
+
+
+        terrainObject.transform.SetParent(
+            transform
+        );
+
+
+        // 기존 Grid 좌표와 맞춤
+        terrainObject.transform.position =
+            new Vector3(
+        -blockDistance * 0.5f,
+        riverTerrainSurfaceY -
+        riverTerrainDepth,
+        -blockDistance * 0.5f
+    );
+
+
+        generatedRiverTerrain =
+            terrainObject.GetComponent<Terrain>();
+
+
+        // Material 적용
+        if (riverTerrainMaterial != null)
+        {
+            generatedRiverTerrain.materialTemplate =
+                riverTerrainMaterial;
+        }
+
+
+        Debug.Log(
+            "River Terrain 생성 완료"
+        );
+    }
+
+    private void GenerateRiverTerrainHeight(
+       TerrainData terrainData)
+    {
+        int resolution =
+            terrainData.heightmapResolution;
+
+
+        float[,] heights =
+            new float[
+                resolution,
+                resolution
+            ];
+
+
+        // =====================================================
+        // 맵 외부 울퉁불퉁한 Terrain 설정
+        // =====================================================
+
+        float noiseScale = 0.08f;
+
+        float noiseHeight = 0.35f;
+
+
+        // 매번 같은 랜덤 지형이 아니라
+        // 생성할 때마다 다른 형태
+        float randomOffsetX =
+            Random.Range(
+                0f,
+                10000f
+            );
+
+        float randomOffsetZ =
+            Random.Range(
+                0f,
+                10000f
+            );
+
+
+        // =====================================================
+        // Heightmap 전체 순회
+        // =====================================================
+
+        for (int z = 0;
+             z < resolution;
+             z++)
+        {
+            for (int x = 0;
+                 x < resolution;
+                 x++)
+            {
+                float normalizedX =
+                    (float)x /
+                    (resolution - 1);
+
+                float normalizedZ =
+                    (float)z /
+                    (resolution - 1);
+
+
+                // =================================================
+                // Terrain 내부 좌표
+                // =================================================
+
+                float terrainX =
+                    normalizedX *
+                    terrainData.size.x;
+
+                float terrainZ =
+                    normalizedZ *
+                    terrainData.size.z;
+
+
+                // =================================================
+                // Terrain 위치가
+                // -blockDistance * 0.5f 로 이동했으므로
+                // 실제 Grid 좌표로 변환
+                // =================================================
+
+                float worldX =
+                    terrainX -
+                    blockDistance * 0.5f;
+
+                float worldZ =
+                    terrainZ -
+                    blockDistance * 0.5f;
+
+
+                int mapX =
+                    Mathf.RoundToInt(
+                        worldX /
+                        blockDistance
+                    );
+
+                int mapZ =
+                    Mathf.RoundToInt(
+                        worldZ /
+                        blockDistance
+                    );
+
+
+                // =================================================
+                // 맵 배열 내부인지 확인
+                // =================================================
+
+                bool isInsideMap =
+                    mapX >= 0 &&
+                    mapX < blockCountX &&
+                    mapZ >= 0 &&
+                    mapZ < blockCountZ;
+
+
+                // =================================================
+                // 맵 외부
+                //
+                // 실제 배열 범위 밖도 포함해서
+                // 울퉁불퉁하게 생성
+                // =================================================
+
+                if (!isInsideMap)
+                {
+                    float noise =
+                        Mathf.PerlinNoise(
+                            terrainX * noiseScale +
+                            randomOffsetX,
+
+                            terrainZ * noiseScale +
+                            randomOffsetZ
+                        );
+
+
+                    heights[z, x] =
+                        Mathf.Lerp(
+                            0.1f,
+                            1f,
+                            noise
+                        );
+
+                    continue;
+                }
+
+
+                TileType currentTile =
+                    mapblueprint[
+                        mapX,
+                        mapZ
+                    ];
+
+
+                // =================================================
+                // 맵 내부지만 실제 생성되지 않은 공간
+                //
+                // Empty도 맵 외부 지형처럼 처리
+                // =================================================
+
+                if (currentTile == TileType.Empty)
+                {
+                    float noise =
+                        Mathf.PerlinNoise(
+                            terrainX * noiseScale +
+                            randomOffsetX,
+
+                            terrainZ * noiseScale +
+                            randomOffsetZ
+                        );
+
+
+                    heights[z, x] =
+                        Mathf.Lerp(
+                            0.3f,
+                            1f,
+                            noise
+                        );
+
+                    continue;
+                }
+
+
+                // =================================================
+                // River
+                // =================================================
+
+                if (currentTile == TileType.River)
+                {
+                    float minDistance =
+                        float.MaxValue;
+
+
+                    for (int searchZ = 0;
+                         searchZ < blockCountZ;
+                         searchZ++)
+                    {
+                        for (int searchX = 0;
+                             searchX < blockCountX;
+                             searchX++)
+                        {
+                            if (mapblueprint[
+                                searchX,
+                                searchZ
+                            ] == TileType.River)
+                            {
+                                continue;
+                            }
+
+
+                            float targetX =
+                                searchX *
+                                blockDistance;
+
+                            float targetZ =
+                                searchZ *
+                                blockDistance;
+
+
+                            float distance =
+                                Vector2.Distance(
+                                    new Vector2(
+                                        worldX,
+                                        worldZ
+                                    ),
+                                    new Vector2(
+                                        targetX,
+                                        targetZ
+                                    )
+                            );
+
+
+                            minDistance =
+                                Mathf.Min(
+                                    minDistance,
+                                    distance
+                                );
+                        }
+                    }
+
+
+                    float maxDepthDistance =
+                        blockDistance * 2f;
+
+
+                    float depth01 =
+                        Mathf.Clamp01(
+                            minDistance /
+                            maxDepthDistance
+                        );
+
+
+                    depth01 =
+                        depth01 *
+                        depth01 *
+                        (3f - 2f * depth01);
+
+
+                    heights[z, x] =
+                        1f -
+                        depth01;
+
+                    continue;
+                }
+
+
+                // =================================================
+                // 실제 맵 타일
+                //
+                // Road / Store / Box / Exit 등
+                // 기존처럼 평평하게 유지
+                // =================================================
+
+                heights[z, x] = 0.8f;
+            }
+        }
+
+
+        terrainData.SetHeights(
+            0,
+            0,
+            heights
         );
     }
     private void GenerateFogCloud()
