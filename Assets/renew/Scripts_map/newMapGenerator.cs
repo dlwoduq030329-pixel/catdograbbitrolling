@@ -36,6 +36,10 @@ public class NewMapGenerator : MonoBehaviour
     [SerializeField] private GameObject boxPrefab;
     [SerializeField] private GameObject exitPrefab;
 
+    [Header("Tile Checker Material")]
+    [SerializeField] private Material brightTileMaterial;
+    [SerializeField] private Material darkTileMaterial;
+
     [Header("장애물 설정")]
     [SerializeField] private int disMoveableCount = 40;
 
@@ -55,39 +59,47 @@ public class NewMapGenerator : MonoBehaviour
 
     private bool generatorEnd = false;
 
-    [Header("Terrain 설정")]
-    [SerializeField] private Terrain terrainPrefab;
+    [Header("Map Height")]
+    [Tooltip("Height 1단계의 실제 높이. 가로 타일 1칸과 동일하게 blockDistance를 사용한다.")]
+    [SerializeField] private float heightStep = 3f;
 
-    [SerializeField] private int terrainHeightmapResolution = 513;
-    [SerializeField] private float terrainHeight = 30f;
+    [Tooltip("육지의 최대 Height Index. 0=River, 1~3=육지")]
+    [SerializeField] private int maxHeightIndex = 3;
 
-    [Header("Terrain Texture")]
-    [SerializeField] private TerrainLayer grassLayer;
-    [SerializeField] private TerrainLayer dirtLayer;
-    [SerializeField] private TerrainLayer rockLayer;
-    [SerializeField] private TerrainLayer sandLayer;
+    [Tooltip("인접 타일의 일반 이동 허용 최대 높이 차이")]
+    [SerializeField] private int maxWalkableHeightDifference = 1;
 
-    [Header("Terrain Noise")]
-    [SerializeField] private float terrainNoiseScale = 0.03f;
-    [SerializeField] private float terrainNoiseHeight = 15f;
+    [Range(0f, 1f)]
+    [SerializeField] private float heightRandomness = 0.25f;
 
-    private Terrain generatedTerrain;
+    [SerializeField] private int heightSmoothIterations = 3;
 
-    [Header("Terrain")]
-    [SerializeField] private Material terrainMaterial;
+    [Header("Outside Terrain")]
+    [Tooltip("맵 외부로 생성할 지형 폭")]
+    [SerializeField] private int outsideTerrainWidth = 6;
 
-    [Header("Cloud 설정")]
-    [SerializeField] private GameObject fogCloudPrefab;
+    [Tooltip("맵 외부 지형의 높이. 기본 3")]
+    [SerializeField] private int outsideTerrainHeightIndex = 3;
 
-    [SerializeField] private int fogDistance = 2;
+    [Header("Stacked Terrain")]
+    [Tooltip("아래층을 채우는 순수 지형 블록 프리팹. 비워두면 roadPrefab 사용")]
+    [SerializeField] private GameObject terrainBlockPrefab;
 
-    [SerializeField] private float fogHeight = 3f;
+    [Tooltip("Terrain Fill Prefab 하나가 가지는 기본 아래쪽 길이")]
+    [SerializeField] private int tileLength = 10;
 
-    [SerializeField] private float fogScaleMin = 0.9f;
-    [SerializeField] private float fogScaleMax = 1.3f;
-    [SerializeField] int cloudInterval = 2;
+    [Tooltip("Terrain Fill Prefab에 적용할 머티리얼")]
+    [SerializeField] private Material terrainFillMaterial;
 
-    private Transform cloudParent;
+    [Tooltip("Y축 길이에 따른 머티리얼 타일링 배율")]
+    [SerializeField] private float terrainFillTileScaleY = 1f;
+
+    private int[,] heightIndices;
+    private Transform stackedTerrainParent;
+
+
+
+
 
 
     private void Awake()
@@ -96,6 +108,7 @@ public class NewMapGenerator : MonoBehaviour
 
         mapblueprint = new TileType[blockCountX, blockCountZ];
         blocks = new MapInfo[blockCountX, blockCountZ];
+        heightIndices = new int[blockCountX, blockCountZ];
     }
 
 
@@ -135,6 +148,9 @@ public class NewMapGenerator : MonoBehaviour
             // 시작점
             GenerateStart();
 
+            // 높이 생성
+            GenerateHeight();
+
             // 강
             GenerateRiver();
 
@@ -161,7 +177,9 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
 
+        NormalizeHeightIndices();
         DrawGrid();
+        //GenerateRiverTerrain();
         //GenerateFogCloud();
         // GenerateTerrain();
 
@@ -169,150 +187,8 @@ public class NewMapGenerator : MonoBehaviour
             $"맵 생성 완료 / 대륙 블록 : {landBlockCount} / 시도 횟수 : {tryCount}"
         );
     }
-    private void GenerateFogCloud()
-    {
-        if (fogCloudPrefab == null)
-        {
-            Debug.LogWarning("Fog Cloud Prefab이 설정되지 않았습니다.");
-            return;
-        }
 
-        // 외곽선을 따라 몇 타일마다 구름을 하나씩 생성할지
-
-        HashSet<Vector2Int> landPositions =
-            new HashSet<Vector2Int>();
-
-        // ---------------------------------------------------------
-        // 1. 육지 위치 수집
-        // ---------------------------------------------------------
-
-        for (int x = 0; x < blockCountX; x++)
-        {
-            for (int z = 0; z < blockCountZ; z++)
-            {
-                if (mapblueprint[x, z] != TileType.Empty)
-                {
-                    landPositions.Add(
-                        new Vector2Int(x, z)
-                    );
-                }
-            }
-        }
-
-        if (landPositions.Count == 0)
-            return;
-
-
-        // ---------------------------------------------------------
-        // 2. 육지 외곽 타일 찾기
-        // ---------------------------------------------------------
-
-        List<Vector2Int> edgePositions =
-            new List<Vector2Int>();
-
-        Vector2Int[] directions =
-        {
-        Vector2Int.up,
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right
-    };
-
-
-        foreach (Vector2Int land in landPositions)
-        {
-            foreach (Vector2Int dir in directions)
-            {
-                if (!landPositions.Contains(land + dir))
-                {
-                    edgePositions.Add(land);
-                    break;
-                }
-            }
-        }
-
-
-        // ---------------------------------------------------------
-        // 3. 외곽선을 따라 일정 간격으로 Fog 생성
-        // ---------------------------------------------------------
-
-        HashSet<Vector2Int> fogPositions =
-            new HashSet<Vector2Int>();
-
-
-        for (int i = 0; i < edgePositions.Count; i += cloudInterval)
-        {
-            Vector2Int edge =
-                edgePositions[i];
-
-
-            // 이 외곽 타일에서 바깥 방향 찾기
-            foreach (Vector2Int dir in directions)
-            {
-                Vector2Int target =
-                    edge + dir;
-
-
-                // 육지라면 안쪽 방향이므로 무시
-                if (landPositions.Contains(target))
-                    continue;
-
-
-                // 구름 위치
-                fogPositions.Add(target);
-
-                break;
-            }
-        }
-
-
-        // ---------------------------------------------------------
-        // 4. Fog Cloud 생성
-        // ---------------------------------------------------------
-
-        foreach (Vector2Int pos in fogPositions)
-        {
-            Vector3 worldPos =
-                new Vector3(
-                    pos.x * blockDistance,
-                    fogHeight,
-                    pos.y * blockDistance
-                );
-
-
-            GameObject cloud =
-                Instantiate(
-                    fogCloudPrefab,
-                    worldPos,
-                    Quaternion.identity,
-                    transform
-                );
-
-
-            float scale =
-                Random.Range(
-                    fogScaleMin,
-                    fogScaleMax
-                );
-
-
-            cloud.transform.localScale =
-                Vector3.one * scale;
-
-
-            cloud.transform.rotation =
-                Quaternion.Euler(
-                    0f,
-                    Random.Range(0f, 360f),
-                    0f
-                );
-        }
-
-
-        Debug.Log(
-            $"Fog Cloud 생성 완료 / 개수 : {fogPositions.Count}"
-        );
-    }    // =========================================================
+    // =========================================================
     // 내부 맵 크기 계산
     // =========================================================
 
@@ -334,24 +210,20 @@ public class NewMapGenerator : MonoBehaviour
 
     private bool CheckPath()
     {
-        // 시작점과 출구가 이동 가능한지 먼저 확인
+        if (!IsInsideMap(startPos) || !IsInsideMap(exitPos))
+            return false;
+
         if (!IsWalkable(mapblueprint[startPos.x, startPos.y]))
             return false;
 
         if (!IsWalkable(mapblueprint[exitPos.x, exitPos.y]))
             return false;
 
-
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
-
-        bool[,] visited =
-            new bool[blockCountX, blockCountZ];
-
+        bool[,] visited = new bool[blockCountX, blockCountZ];
 
         queue.Enqueue(startPos);
-
         visited[startPos.x, startPos.y] = true;
-
 
         Vector2Int[] directions =
         {
@@ -361,45 +233,89 @@ public class NewMapGenerator : MonoBehaviour
             Vector2Int.right
         };
 
-
         while (queue.Count > 0)
         {
             Vector2Int current = queue.Dequeue();
 
-
-            // 출구 도착
             if (current == exitPos)
                 return true;
-
 
             foreach (Vector2Int dir in directions)
             {
                 Vector2Int next = current + dir;
 
-
-                // 맵 밖
-                if (!IsInsideMap(next))
+                if (!IsInsideMap(next) ||
+                    visited[next.x, next.y] ||
+                    !IsWalkable(mapblueprint[next.x, next.y]))
                     continue;
 
-
-                // 이미 방문
-                if (visited[next.x, next.y])
+                if (!CanMoveBetween(current, next))
                     continue;
-
-
-                // 이동 불가능
-                if (!IsWalkable(mapblueprint[next.x, next.y]))
-                    continue;
-
 
                 visited[next.x, next.y] = true;
-
                 queue.Enqueue(next);
             }
         }
 
-
         return false;
+    }
+
+    public bool CanMoveBetween(Vector2Int from, Vector2Int to)
+    {
+        if (!IsInsideMap(from) || !IsInsideMap(to))
+            return false;
+
+        if (!IsWalkable(mapblueprint[from.x, from.y]) ||
+            !IsWalkable(mapblueprint[to.x, to.y]))
+            return false;
+
+        int difference = Mathf.Abs(
+            heightIndices[to.x, to.y] -
+            heightIndices[from.x, from.y]);
+
+        return difference <= maxWalkableHeightDifference;
+    }
+
+    public int GetHeightIndex(Vector2Int pos)
+    {
+        if (!IsInsideMap(pos))
+            return 0;
+
+        return heightIndices[pos.x, pos.y];
+    }
+
+    public float GetWorldHeight(Vector2Int pos)
+    {
+        // 단차 1개 = 타일 1칸
+        return GetHeightIndex(pos) * blockDistance;
+    }
+
+    public int GetHeightDifference(Vector2Int from, Vector2Int to)
+    {
+        if (!IsInsideMap(from) || !IsInsideMap(to))
+            return 0;
+
+        return heightIndices[to.x, to.y] -
+               heightIndices[from.x, from.y];
+    }
+
+    public HeightTransition GetHeightTransition(
+        Vector2Int from,
+        Vector2Int to)
+    {
+        if (!IsInsideMap(from) || !IsInsideMap(to))
+            return HeightTransition.Invalid;
+
+        int difference =
+            heightIndices[to.x, to.y] -
+            heightIndices[from.x, from.y];
+
+        if (difference == 0) return HeightTransition.Flat;
+        if (difference == 1) return HeightTransition.StepUp;
+        if (difference == -1) return HeightTransition.StepDown;
+        if (difference > 1) return HeightTransition.Climb;
+
+        return HeightTransition.Drop;
     }
 
 
@@ -436,6 +352,7 @@ public class NewMapGenerator : MonoBehaviour
                 mapblueprint[x, z] = TileType.Empty;
 
                 blocks[x, z] = null;
+                heightIndices[x, z] = 0;
             }
         }
     }
@@ -444,6 +361,261 @@ public class NewMapGenerator : MonoBehaviour
     // =========================================================
     // 대륙 생성
     // =========================================================
+
+
+    // =========================================================
+    // Height Index
+    // =========================================================
+
+    private void GenerateHeight()
+    {
+        maxHeightIndex = 3;
+        outsideTerrainHeightIndex = 3;
+        maxWalkableHeightDifference =
+            Mathf.Max(0, maxWalkableHeightDifference);
+
+        for (int x = 0; x < blockCountX; x++)
+            for (int z = 0; z < blockCountZ; z++)
+                heightIndices[x, z] = -1;
+
+        // River = 0, 육지는 최소 1
+        heightIndices[startPos.x, startPos.y] = 1;
+
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+        queue.Enqueue(startPos);
+
+        Vector2Int[] directions =
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
+        };
+
+        while (queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            int currentHeight = heightIndices[current.x, current.y];
+
+            foreach (Vector2Int dir in directions)
+            {
+                Vector2Int next = current + dir;
+
+                if (!IsInsideMap(next) ||
+                    !IsHeightCandidate(next) ||
+                    heightIndices[next.x, next.y] >= 0)
+                    continue;
+
+                int nextHeight = currentHeight;
+
+                if (Random.value < heightRandomness)
+                    nextHeight += Random.value < 0.5f ? -1 : 1;
+
+                nextHeight = Mathf.Clamp(nextHeight, 1, 3);
+
+                heightIndices[next.x, next.y] = nextHeight;
+                queue.Enqueue(next);
+            }
+        }
+
+        // 누락된 육지 보정
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                Vector2Int pos = new Vector2Int(x, z);
+
+                if (IsHeightCandidate(pos) &&
+                    heightIndices[x, z] < 0)
+                {
+                    heightIndices[x, z] = FindNearestHeight(pos);
+                }
+            }
+        }
+
+        for (int i = 0; i < heightSmoothIterations; i++)
+            SmoothHeightIndices();
+
+        ClampNeighbourHeightDifference();
+        ForceRiverHeightZero();
+    }
+
+    private bool IsHeightCandidate(Vector2Int pos)
+    {
+        if (!IsInsideMap(pos))
+            return false;
+
+        TileType type = mapblueprint[pos.x, pos.y];
+
+        return type == TileType.Start ||
+               type == TileType.Road ||
+               type == TileType.Store ||
+               type == TileType.Box ||
+               type == TileType.Exit ||
+               type == TileType.DisMoveable;
+    }
+
+    private int FindNearestHeight(Vector2Int target)
+    {
+        int bestDistance = int.MaxValue;
+        int bestHeight = 1;
+
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                if (heightIndices[x, z] < 0)
+                    continue;
+
+                int distance =
+                    Mathf.Abs(x - target.x) +
+                    Mathf.Abs(z - target.y);
+
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestHeight = heightIndices[x, z];
+                }
+            }
+        }
+
+        return Mathf.Clamp(bestHeight, 1, 3);
+    }
+
+    private void SmoothHeightIndices()
+    {
+        int[,] result =
+            new int[blockCountX, blockCountZ];
+
+        Vector2Int[] directions =
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
+        };
+
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                Vector2Int pos = new Vector2Int(x, z);
+
+                if (!IsHeightCandidate(pos))
+                {
+                    result[x, z] = 0;
+                    continue;
+                }
+
+                int sum = heightIndices[x, z];
+                int count = 1;
+
+                foreach (Vector2Int dir in directions)
+                {
+                    Vector2Int next = pos + dir;
+
+                    if (!IsInsideMap(next) ||
+                        !IsHeightCandidate(next))
+                        continue;
+
+                    sum += heightIndices[next.x, next.y];
+                    count++;
+                }
+
+                result[x, z] =
+                    Mathf.Clamp(
+                        Mathf.RoundToInt((float)sum / count),
+                        1,
+                        3);
+            }
+        }
+
+        result[startPos.x, startPos.y] = 1;
+
+        for (int x = 0; x < blockCountX; x++)
+            for (int z = 0; z < blockCountZ; z++)
+                heightIndices[x, z] = result[x, z];
+    }
+
+    private void ClampNeighbourHeightDifference()
+    {
+        for (int iteration = 0; iteration < 10; iteration++)
+        {
+            bool changed = false;
+
+            for (int x = 0; x < blockCountX; x++)
+            {
+                for (int z = 0; z < blockCountZ; z++)
+                {
+                    Vector2Int current =
+                        new Vector2Int(x, z);
+
+                    if (!IsHeightCandidate(current))
+                        continue;
+
+                    Vector2Int[] directions =
+                    {
+                        Vector2Int.up,
+                        Vector2Int.down,
+                        Vector2Int.left,
+                        Vector2Int.right
+                    };
+
+                    foreach (Vector2Int dir in directions)
+                    {
+                        Vector2Int next = current + dir;
+
+                        if (!IsHeightCandidate(next))
+                            continue;
+
+                        int a = heightIndices[x, z];
+                        int b = heightIndices[next.x, next.y];
+
+                        if (Mathf.Abs(a - b) <=
+                            maxWalkableHeightDifference)
+                            continue;
+
+                        if (a < b)
+                        {
+                            heightIndices[next.x, next.y] =
+                                Mathf.Clamp(
+                                    a + maxWalkableHeightDifference,
+                                    1, 3);
+                        }
+                        else
+                        {
+                            heightIndices[x, z] =
+                                Mathf.Clamp(
+                                    b + maxWalkableHeightDifference,
+                                    1, 3);
+                        }
+
+                        changed = true;
+                    }
+                }
+            }
+
+            if (!changed)
+                break;
+        }
+    }
+
+    private void ForceRiverHeightZero()
+    {
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                if (mapblueprint[x, z] == TileType.River)
+                    heightIndices[x, z] = 0;
+                else if (IsHeightCandidate(new Vector2Int(x, z)))
+                    heightIndices[x, z] =
+                        Mathf.Clamp(heightIndices[x, z], 1, 3);
+                else
+                    heightIndices[x, z] = 0;
+            }
+        }
+    }
 
     private void GenerateRoad()
     {
@@ -593,6 +765,8 @@ public class NewMapGenerator : MonoBehaviour
 
         mapblueprint[startPos.x, startPos.y] =
             TileType.Start;
+
+        //playerBody.transform.position = mapblueprint[startPos.x, startPos.y].Gameobject.transform.position + new Vector3(0, 2.5f, 0);
     }
 
 
@@ -970,132 +1144,421 @@ public class NewMapGenerator : MonoBehaviour
     // 실제 맵 생성
     // =========================================================
 
-    private void DrawGrid()
+
+    // =========================================================
+    // 실제 단차 블록 쌓기
+    // =========================================================
+
+    private void EnsureStackedTerrainParent()
     {
-        // 기존 맵 제거
-        foreach (Transform child in transform)
+        if (stackedTerrainParent != null)
+            return;
+
+        GameObject parent =
+            new GameObject("Stacked Terrain Blocks");
+
+        parent.transform.SetParent(transform);
+        parent.transform.localPosition = Vector3.zero;
+
+        stackedTerrainParent = parent.transform;
+    }
+
+    private GameObject GetTerrainBlockPrefab()
+    {
+        return terrainBlockPrefab != null
+            ? terrainBlockPrefab
+            : roadPrefab;
+    }
+
+    /// <summary>
+    /// Height 0 = 1개
+    /// Height 1 = 2개
+    /// Height 2 = 3개
+    /// Height 3 = 4개
+    ///
+    /// 블록의 세로 단위는 blockDistance와 동일하다.
+    /// 따라서 한 단계의 단차가 정확히 타일 1칸이다.
+    /// </summary>
+    /// <summary>
+    /// 타일 하나당 Terrain Fill Prefab은 정확히 1개만 생성한다.
+    ///
+    /// tileLength = 10, blockDistance = 1이라고 하면
+    /// Height 0 : 길이 10
+    /// Height 1 : 길이 11
+    /// Height 2 : 길이 12
+    /// Height 3 : 길이 13
+    ///
+    /// 아래쪽 끝은 항상 -tileLength에 고정된다.
+    /// 따라서 Height가 올라갈수록 Fill 하나가 위쪽으로 길어진다.
+    /// </summary>
+    private void CreateStackedTerrain(
+        int x,
+        int z,
+        int heightIndex)
+    {
+        // 아래쪽을 채우는 전용 프리팹만 사용한다.
+        // roadPrefab / 다른 타일 프리팹으로 대체하지 않는다.
+        if (terrainBlockPrefab == null)
         {
-            Destroy(child.gameObject);
+            Debug.LogWarning(
+                "Terrain Block Prefab이 지정되지 않았습니다."
+            );
+
+            return;
         }
 
+        EnsureStackedTerrainParent();
+
+        heightIndex =
+            Mathf.Clamp(
+                heightIndex,
+                0,
+                3);
+
+        // 0 높이의 타일에서도 tileLength만큼 아래로 내려간다.
+        // 높이가 1이면 tileLength + 1단차,
+        // 높이가 2면 tileLength + 2단차,
+        // 높이가 3이면 tileLength + 3단차.
+        float totalLength =
+            tileLength +
+            (heightIndex * blockDistance);
+
+        // 현재 타일의 상단 기준 Y.
+        // River는 항상 0, 육지는 HeightIndex * blockDistance.
+        float topY =
+            heightIndex * blockDistance;
+
+        // Pivot이 중앙인 프리팹이므로 일단 전체 길이의 중앙에 배치한다.
+        float centerY =
+            topY -
+            (totalLength * 0.5f) -
+            (blockDistance * 0.5f);
+
+        GameObject block =
+            Instantiate(
+                terrainBlockPrefab,
+                new Vector3(
+                    x * blockDistance,
+                    centerY,
+                    z * blockDistance
+                ),
+                Quaternion.identity,
+                stackedTerrainParent
+            );
+
+        block.name =
+            $"TerrainFill_{x}_{z}_H{heightIndex}";
+
+        StretchTerrainFill(
+            block,
+            totalLength);
+
+        // ApplyTerrainFillMaterial(
+        //   block,
+        //  totalLength);
+    }
+
+    private void StretchTerrainFill(
+        GameObject block,
+        float targetLength)
+    {
+        Renderer renderer =
+            block.GetComponentInChildren<Renderer>();
+
+        if (renderer == null)
+            return;
+
+        // 프리팹의 원래 월드 Y 길이를 먼저 저장한다.
+        float currentLength =
+            renderer.bounds.size.y;
+
+        if (currentLength <= 0.0001f)
+            return;
+
+        // 기존 scale 변수명은 그대로 유지한다.
+        Vector3 scale =
+            block.transform.localScale;
+
+        scale.y *=
+            targetLength / currentLength;
+
+        block.transform.localScale =
+            scale;
+
+        /*
+         * 중요:
+         * Terrain Fill Prefab의 Pivot은 중앙이라고 가정한다.
+         *
+         * 단순히
+         *     transform.position.y = topY - targetLength * 0.5f
+         * 로 끝내면 프리팹의 Renderer 중심/오프셋 때문에
+         * 위쪽 또는 아래쪽이 반 칸씩 어긋날 수 있다.
+         *
+         * 따라서 Scale을 적용한 "실제 Renderer bounds"를 다시 가져온 뒤
+         * bounds.max.y가 정확히 topY에 오도록 오브젝트 전체를 이동한다.
+         *
+         * 이 방식이면 Pivot이 중앙이어도 실제 보이는 지형의
+         * 상단/하단이 정확히 맞는다.
+         */
+
+        renderer =
+            block.GetComponentInChildren<Renderer>();
+
+        float topY =
+            block.transform.position.y +
+            targetLength * 0.5f;
+
+        float boundsOffset =
+            topY - renderer.bounds.max.y;
+
+        Vector3 position =
+            block.transform.position;
+
+        position.y += boundsOffset;
+
+        block.transform.position =
+            position;
+    }
+
+    private void ApplyTerrainFillMaterial(
+        GameObject block,
+        float targetLength)
+    {
+        Renderer[] renderers =
+            block.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer renderer in renderers)
+        {
+            Material material;
+
+            if (terrainFillMaterial != null)
+            {
+                material =
+                    new Material(terrainFillMaterial);
+            }
+            else
+            {
+                material =
+                    renderer.material;
+            }
+
+            renderer.material = material;
+
+            Vector2 tiling =
+                material.mainTextureScale;
+
+            float baseLength =
+                Mathf.Max(1, tileLength);
+
+            tiling.y =
+                (targetLength / baseLength) *
+                terrainFillTileScaleY;
+
+            material.mainTextureScale =
+                tiling;
+        }
+    }
+
+    private void DrawStackedTerrain()
+    {
+        if (terrainBlockPrefab == null)
+        {
+            Debug.LogWarning(
+                "Terrain Block Prefab이 지정되지 않았습니다."
+            );
+
+            return;
+        }
 
         for (int x = 0; x < blockCountX; x++)
         {
             for (int z = 0; z < blockCountZ; z++)
             {
+                TileType type =
+                    mapblueprint[x, z];
+
+                if (type == TileType.Empty)
+                    continue;
+
+                int height =
+                    Mathf.Clamp(
+                        heightIndices[x, z],
+                        0,
+                        3);
+
+                // 타일 하나당 Terrain Block Prefab은 정확히 1개만 생성한다.
+                CreateStackedTerrain(
+                    x,
+                    z,
+                    height);
+            }
+        }
+    }
+
+    private void DrawGrid()
+    {
+        foreach (Transform child in transform)
+            Destroy(child.gameObject);
+
+        stackedTerrainParent = null;
+
+        // 1. 먼저 아래쪽 빈 공간을 전부 블록으로 채운다.
+        DrawStackedTerrain();
+
+        // 2. 논리 타일/상단 오브젝트 생성.
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                int heightIndex =
+                    Mathf.Clamp(
+                        heightIndices[x, z],
+                        0,
+                        3);
+
+                float worldY =
+                    heightIndex * blockDistance;
+
                 Vector3 pos =
                     new Vector3(
                         x * blockDistance,
-                        0,
-                        z * blockDistance
-                    );
-
+                        worldY,
+                        z * blockDistance);
 
                 GameObject prefab = null;
 
-
                 switch (mapblueprint[x, z])
                 {
-                    // Empty = 바다
-                    // 현재는 바다 프리팹을 따로 생성하지 않음
                     case TileType.Empty:
                         prefab = null;
                         break;
 
-
                     case TileType.Start:
-                        prefab = roadPrefab;
-                        break;
-
-
                     case TileType.Road:
                         prefab = roadPrefab;
                         break;
 
-
                     case TileType.River:
                         prefab = riverPrefab;
+                        worldY = 0f;
+                        pos.y = 0f;
                         break;
-
 
                     case TileType.Store:
                         prefab = storePrefab;
                         break;
 
-
                     case TileType.Box:
                         prefab = boxPrefab;
                         break;
 
-
                     case TileType.Exit:
                         prefab = exitPrefab;
                         break;
-
 
                     case TileType.DisMoveable:
                         prefab = disMoveablePrefab;
                         break;
                 }
 
-
                 if (prefab == null)
                     continue;
-
 
                 GameObject obj =
                     Instantiate(
                         prefab,
                         pos,
                         Quaternion.identity,
-                        transform
-                    );
+                        transform);
 
+                // 맵의 실제 X/Z 좌표를 기준으로 밝은색/어두운색을 지그재그 적용.
+                // Road, Start, Store, Box, Exit, DisMoveable 모두 동일한 규칙을 사용한다.
+                // River는 기존 강 머티리얼을 유지한다.
+                if (mapblueprint[x, z] != TileType.Empty &&
+                    mapblueprint[x, z] != TileType.River)
+                {
+                    Material tileMaterial =
+                        ((x + z) % 2 == 0)
+                            ? brightTileMaterial
+                            : darkTileMaterial;
+
+                    if (tileMaterial != null)
+                    {
+                        Renderer rootRenderer =
+                            obj.GetComponent<Renderer>();
+
+                        if (rootRenderer != null)
+                        {
+                            rootRenderer.material =
+                                tileMaterial;
+                        }
+                        else
+                        {
+                            Renderer childRenderer =
+                                obj.GetComponentInChildren<Renderer>();
+
+                            if (childRenderer != null)
+                                childRenderer.material =
+                                    tileMaterial;
+                        }
+                    }
+                }
 
                 MapInfo info =
                     obj.GetComponent<MapInfo>();
 
-
                 if (info == null)
                 {
                     Debug.LogError(
-                        $"{prefab.name} 프리팹에 MapInfo가 없습니다."
-                    );
-
+                        $"{prefab.name} 프리팹에 MapInfo가 없습니다.");
                     continue;
                 }
-
 
                 info.Init(
                     new Vector2Int(x, z),
                     mapblueprint[x, z],
-                    pos
-                );
-
+                    pos,
+                    heightIndex,
+                    worldY);
 
                 blocks[x, z] = info;
             }
         }
 
-
-        // 인접 타일 연결
         ConnectNeighbours();
 
-
-        // 플레이어를 시작 위치에 배치
         Vector3 playerPos =
             new Vector3(
                 startPos.x * blockDistance,
-                0,
-                startPos.y * blockDistance
-            );
+                GetWorldHeight(startPos),
+                startPos.y * blockDistance);
 
-
-        playerBody.transform.position =
-            playerPos;
-
+        if (playerBody != null)
+            playerBody.transform.position = playerPos;
 
         generatorEnd = true;
+    }
+
+    private void NormalizeHeightIndices()
+    {
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                TileType type = mapblueprint[x, z];
+
+                if (type == TileType.River)
+                    heightIndices[x, z] = 0;
+                else if (IsHeightCandidate(new Vector2Int(x, z)))
+                    heightIndices[x, z] =
+                        Mathf.Clamp(
+                            heightIndices[x, z],
+                            1,
+                            3);
+                else
+                    heightIndices[x, z] = 0;
+            }
+        }
     }
 
 
@@ -1112,6 +1575,31 @@ public class NewMapGenerator : MonoBehaviour
     // =========================================================
     // 인접 타일 연결
     // =========================================================
+
+
+    public bool InvokeMovementEvent(
+        Vector2Int from,
+        Vector2Int to)
+    {
+        if (!IsInsideMap(from) || !IsInsideMap(to))
+            return false;
+
+        MapInfo fromInfo = blocks[from.x, from.y];
+        MapInfo toInfo = blocks[to.x, to.y];
+
+        if (fromInfo == null || toInfo == null)
+            return false;
+
+        return fromInfo.TryInvokeMoveEvent(toInfo);
+    }
+
+    public MapInfo GetMapInfo(Vector2Int pos)
+    {
+        if (!IsInsideMap(pos))
+            return null;
+
+        return blocks[pos.x, pos.y];
+    }
 
     private void ConnectNeighbours()
     {
@@ -1149,148 +1637,5 @@ public class NewMapGenerator : MonoBehaviour
     }
 
 
-    // =========================================================
-    // Terrain
-    // =========================================================
 
-    private void GenerateTerrain()
-    {
-        if (generatedTerrain != null)
-        {
-            Destroy(
-                generatedTerrain.gameObject
-            );
-        }
-
-
-        TerrainData terrainData =
-            new TerrainData();
-
-
-        terrainData.heightmapResolution =
-            terrainHeightmapResolution;
-
-
-        float terrainWidth =
-            blockCountX * blockDistance;
-
-
-        float terrainLength =
-            blockCountZ * blockDistance;
-
-
-        terrainData.size =
-            new Vector3(
-                terrainWidth + blockDistance,
-                terrainHeight,
-                terrainLength + blockDistance
-            );
-
-
-        terrainData.terrainLayers =
-            new TerrainLayer[]
-            {
-                grassLayer,
-                dirtLayer,
-                rockLayer,
-                sandLayer
-            };
-
-
-        GenerateTerrainHeight(
-            terrainData
-        );
-
-
-        GameObject terrainObject =
-            Terrain.CreateTerrainGameObject(
-                terrainData
-            );
-
-
-        terrainObject.name =
-            "Generated Terrain";
-
-
-        terrainObject.transform.SetParent(
-            transform
-        );
-
-
-        terrainObject.transform.position =
-            new Vector3(
-                -blockDistance * 0.5f,
-                0,
-                -blockDistance * 0.5f
-            );
-
-
-        generatedTerrain =
-            terrainObject.GetComponent<Terrain>();
-
-
-        Debug.Log(
-            "Terrain 생성 완료"
-        );
-    }
-
-
-    private void GenerateTerrainHeight(
-        TerrainData terrainData)
-    {
-        int resolution =
-            terrainData.heightmapResolution;
-
-
-        float[,] heights =
-            new float[
-                resolution,
-                resolution
-            ];
-
-
-        for (int z = 0; z < resolution; z++)
-        {
-            for (int x = 0; x < resolution; x++)
-            {
-                float normalizedX =
-                    (float)x /
-                    (resolution - 1);
-
-
-                float normalizedZ =
-                    (float)z /
-                    (resolution - 1);
-
-
-                float noise =
-                    Mathf.PerlinNoise(
-                        normalizedX *
-                        terrainNoiseScale *
-                        100f,
-
-                        normalizedZ *
-                        terrainNoiseScale *
-                        100f
-                    );
-
-
-                float height =
-                    noise *
-                    (terrainNoiseHeight /
-                     terrainHeight);
-
-
-                heights[z, x] =
-                    height;
-            }
-        }
-
-
-        terrainData.SetHeights(
-            0,
-            0,
-            heights
-        );
-    }
 }

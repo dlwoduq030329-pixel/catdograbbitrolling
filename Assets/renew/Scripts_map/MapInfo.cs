@@ -1,37 +1,40 @@
+using System;
 using UnityEngine;
+
+/// <summary>
+/// 타일 사이의 높이 변화
+/// </summary>
+public enum HeightTransition
+{
+    Invalid,
+    Flat,
+    StepUp,
+    StepDown,
+    Climb,
+    Drop
+}
 
 /// <summary>
 /// 맵의 각 타일이 가지는 정보
 /// </summary>
 public class MapInfo : MonoBehaviour
 {
-    /// <summary>
-    /// 맵 상에서의 좌표
-    /// </summary>
     public Vector2Int Index { get; private set; }
-
-    /// <summary>
-    /// 현재 타일 타입
-    /// </summary>
     public TileType Type { get; private set; }
-
-    /// <summary>
-    /// 월드 좌표
-    /// </summary>
     public Vector3 WorldPos { get; private set; }
 
     /// <summary>
-    /// 상하좌우 인접 타일
-    /// 맵 생성이 모두 끝난 후 연결해준다.
+    /// River=0, 육지=1~3
     /// </summary>
+    public int HeightIndex { get; private set; }
+
+    public float WorldHeight { get; private set; }
+
     public MapInfo Up;
     public MapInfo Down;
     public MapInfo Left;
     public MapInfo Right;
 
-    /// <summary>
-    /// 이동 가능한 타일인지
-    /// </summary>
     public bool IsWalkable
     {
         get
@@ -43,27 +46,78 @@ public class MapInfo : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 타일 초기화
-    /// </summary>
-    public void Init(Vector2Int index, TileType type, Vector3 worldPos)
+    public event Action<MapInfo, MapInfo> OnFlatMove;
+    public event Action<MapInfo, MapInfo> OnStepUp;
+    public event Action<MapInfo, MapInfo> OnStepDown;
+    public event Action<MapInfo, MapInfo> OnClimb;
+    public event Action<MapInfo, MapInfo> OnDrop;
+
+    public void Init(
+        Vector2Int index,
+        TileType type,
+        Vector3 worldPos)
+    {
+        Init(
+            index,
+            type,
+            worldPos,
+            type == TileType.River ? 0 : 1,
+            type == TileType.River ? 0f : worldPos.y);
+    }
+
+    public void Init(
+        Vector2Int index,
+        TileType type,
+        Vector3 worldPos,
+        int heightIndex,
+        float worldHeight)
     {
         Index = index;
         Type = type;
         WorldPos = worldPos;
+
+        HeightIndex =
+            type == TileType.River
+                ? 0
+                : Mathf.Clamp(heightIndex, 1, 3);
+
+        WorldHeight =
+            type == TileType.River
+                ? 0f
+                : worldHeight;
     }
 
-    /// <summary>
-    /// 타일 타입 변경
-    /// </summary>
     public void SetType(TileType type)
     {
         Type = type;
+
+        if (type == TileType.River)
+        {
+            HeightIndex = 0;
+            WorldHeight = 0f;
+        }
     }
 
-    /// <summary>
-    /// 인접 타일 연결
-    /// </summary>
+    public void SetHeight(
+        int heightIndex,
+        float worldHeight)
+    {
+        HeightIndex =
+            Type == TileType.River
+                ? 0
+                : Mathf.Clamp(heightIndex, 1, 3);
+
+        WorldHeight =
+            Type == TileType.River
+                ? 0f
+                : worldHeight;
+
+        Vector3 position = transform.position;
+        position.y = WorldHeight;
+        transform.position = position;
+        WorldPos = position;
+    }
+
     public void SetNeighbour(
         MapInfo up,
         MapInfo down,
@@ -74,5 +128,68 @@ public class MapInfo : MonoBehaviour
         Down = down;
         Left = left;
         Right = right;
+    }
+
+    public int GetHeightDifference(MapInfo next)
+    {
+        if (next == null)
+            return 0;
+
+        return next.HeightIndex - HeightIndex;
+    }
+
+    public HeightTransition GetTransitionTo(MapInfo next)
+    {
+        if (next == null)
+            return HeightTransition.Invalid;
+
+        int difference =
+            next.HeightIndex - HeightIndex;
+
+        if (difference == 0)
+            return HeightTransition.Flat;
+
+        if (difference == 1)
+            return HeightTransition.StepUp;
+
+        if (difference == -1)
+            return HeightTransition.StepDown;
+
+        if (difference > 1)
+            return HeightTransition.Climb;
+
+        return HeightTransition.Drop;
+    }
+
+    public bool TryInvokeMoveEvent(MapInfo next)
+    {
+        if (next == null || !next.IsWalkable)
+            return false;
+
+        switch (GetTransitionTo(next))
+        {
+            case HeightTransition.Flat:
+                OnFlatMove?.Invoke(this, next);
+                return true;
+
+            case HeightTransition.StepUp:
+                OnStepUp?.Invoke(this, next);
+                return true;
+
+            case HeightTransition.StepDown:
+                OnStepDown?.Invoke(this, next);
+                return true;
+
+            case HeightTransition.Climb:
+                OnClimb?.Invoke(this, next);
+                return true;
+
+            case HeightTransition.Drop:
+                OnDrop?.Invoke(this, next);
+                return true;
+
+            default:
+                return false;
+        }
     }
 }
