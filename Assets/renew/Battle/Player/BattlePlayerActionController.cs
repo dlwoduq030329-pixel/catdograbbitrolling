@@ -60,7 +60,7 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("기본 공격 플로우 모듈")]
     [SerializeField] private BattleUnitAttackFlow attackFlow;
     [InspectorName("카드 플로우 모듈")]
-    [SerializeField] private BattleUnitCardFlow cardFlow;
+    [SerializeField] private BattlePlayerCardFlow cardFlow;
 
     [Header("이동 연출 시간")]
     [InspectorName("타일당 기본 이동 시간")]
@@ -103,7 +103,7 @@ public class BattlePlayerActionController : MonoBehaviour
 
     private bool IsBasicAttackActive => attackFlow != null && attackFlow.IsActive;
 
-    /// <summary>이동 실행 코루틴 또는 기본 공격 실행이 진행 중인지. BattleUnitCardFlow의 우클릭 대상
+    /// <summary>이동 실행 코루틴 또는 기본 공격 실행이 진행 중인지. BattlePlayerCardFlow의 카드 대상
     /// 선택 처리에서도 같은 판단이 필요해 internal로 열어뒀다.</summary>
     internal bool IsAnyActionMoving =>
         (moveFlow != null && moveFlow.IsMoving) ||
@@ -463,7 +463,7 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>
     /// BattleCardHandView가 손패 클릭을 전달하는 카드 행동의 공개 진입점이다.
     /// 이동·평타·다른 카드 행동과 충돌하지 않는지만 검사하고,
-    /// 실제 카드 대상 선택 시작은 BattleUnitCardFlow.TryStartSelectedCardUse()에 위임한다.
+    /// 실제 카드 대상 선택 시작은 BattlePlayerCardFlow.TryStartSelectedCardUse()에 위임한다.
     /// </summary>
     public bool BeginCardUseConfirmation(
         SelectedCardUseInfo cardUse,
@@ -559,7 +559,7 @@ public class BattlePlayerActionController : MonoBehaviour
         attackFlow.Attach(this);
     }
 
-    /// <summary>카드 플로우 전담 컴포넌트(BattleUnitCardFlow)를 확보하고 소유자 참조를 연결한다.</summary>
+    /// <summary>Player 카드 입력 플로우 전담 컴포넌트(BattlePlayerCardFlow)를 확보하고 소유자 참조를 연결한다.</summary>
     private void EnsureCardFlow()
     {
         cardFlow = BattleComponentResolver.GetOrAdd(gameObject, cardFlow);

@@ -1,18 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// BattlePlayerActionController에서 분리한 "카드 사용" 행동 플로우 전용 컴포넌트다.
-/// 카드 사용 시작(TryStartSelectedCardUse), 우클릭 대상 선택
-/// (HandleTargetRightClick), 확인 UI 요청/확정/취소를 전담하는 BattleCardActionController의
-/// 이벤트를 받아 처리한다.
+/// Player 전용 카드 입력 흐름을 BattlePlayerActionController에서 분리한 컴포넌트다.
+/// 손패에서 선택한 카드의 사용 시작, 마우스로 지정한 대상 전달, 같은 대상 재클릭을 통한 확정,
+/// 취소와 결과 이벤트 전달을 담당한다. 실제 MP·효과·사거리 계산은 BattleCardActionController에 위임한다.
 ///
-/// BattleUnitMoveFlow/BattleUnitAttackFlow와 마찬가지로 "Inspector에서 세팅하는 값"은 없고
-/// (BattleCardActionController 자체가 GetOrAdd로 자동 부착되는 컴포넌트라 Scene에 저장된 실제
-/// 데이터가 없었다), 순수하게 카드 사용 로직만 담당한다 — 용병단처럼 조작 가능한 유닛이 여러
-/// 개가 되어도 유닛마다 이 컴포넌트 하나씩만 붙이면 카드 로직은 그대로 재사용 가능하도록 만든
-/// 것이 분리 목적이다.
+/// 이 컴포넌트는 Player의 손패와 직접 조작을 전제로 하므로 용병과 Enemy가 재사용하지 않는다.
+/// 용병은 이동·기본 공격만 사용하고 Enemy는 별도 AI Skill 흐름에서 공용 효과 실행 계층만 사용한다.
 /// </summary>
-public class BattleUnitCardFlow : MonoBehaviour
+public class BattlePlayerCardFlow : MonoBehaviour
 {
     private BattlePlayerActionController owner;
 
@@ -41,7 +37,6 @@ public class BattleUnitCardFlow : MonoBehaviour
         if (battleCardActionController != null)
         {
             battleCardActionController.TargetSelectionRequested -= HandleTargetSelectionRequested;
-            battleCardActionController.ConfirmationRequested -= HandleConfirmationRequested;
             battleCardActionController.Confirmed -= HandleConfirmed;
             battleCardActionController.Cancelled -= HandleCancelled;
             battleCardActionController.RangeVisibilityChanged -= owner.SetRangeVisible;
@@ -53,6 +48,8 @@ public class BattleUnitCardFlow : MonoBehaviour
     {
         owner.EnsureBattleRangeVisualizer();
         owner.EnsureBattlePushPreviewView();
+        // Push View가 월드 위치를 화면 좌표로 바꾸므로 전투 Camera도 View에 직접 연결한다.
+        owner.battlePushPreviewView.ConfigurePreviewDependencies(owner.mainCamera);
 
         battleCardActionController = BattleComponentResolver.GetOrAdd(gameObject, battleCardActionController);
         battleCardActionController.Configure(
@@ -61,10 +58,9 @@ public class BattleUnitCardFlow : MonoBehaviour
             owner.colorPalette.CardRangeTileColor,
             owner.colorPalette.CardEffectAreaTileColor,
             owner.FindClosestMapTile,
-            owner.mainCamera,
+            owner.battlePlayerMapContext.Tiles,
             owner.battlePushPreviewView);
         battleCardActionController.TargetSelectionRequested += HandleTargetSelectionRequested;
-        battleCardActionController.ConfirmationRequested += HandleConfirmationRequested;
         battleCardActionController.Confirmed += HandleConfirmed;
         battleCardActionController.Cancelled += HandleCancelled;
         battleCardActionController.RangeVisibilityChanged += owner.SetRangeVisible;
@@ -93,7 +89,7 @@ public class BattleUnitCardFlow : MonoBehaviour
     /// 호출 경로: BattleCardHandView.SelectCard()
     /// → BattlePlayerActionController.BeginCardUseConfirmation()
     /// → 이 함수
-    /// → BattleCardActionController.TryStartCardUse().
+    /// → BattleCardActionController.TryBeginSelectedCardFlow().
     /// 이동 범위를 닫고 현재 턴의 카드 사용 가능 상태를 전달할 뿐, 카드 효과나 MP는 여기서 소비하지 않는다.
     /// </summary>
     public bool TryStartSelectedCardUse(SelectedCardUseInfo cardUse, BattleCardDrawSystem cardDrawSystem)
@@ -101,7 +97,7 @@ public class BattleUnitCardFlow : MonoBehaviour
         owner.moveFlow.ClearMoveRange();
         bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;
         return battleCardActionController != null &&
-               battleCardActionController.TryStartCardUse(cardUse, cardDrawSystem, canUseCards);
+               battleCardActionController.TryBeginSelectedCardFlow(cardUse, cardDrawSystem, canUseCards);
     }
 
     /// <summary>카드 대상 유형에 맞는 적 또는 타일을 우클릭으로 선택한다.</summary>
@@ -122,7 +118,7 @@ public class BattleUnitCardFlow : MonoBehaviour
             owner.TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
         {
             MapInfo enemyTile = owner.FindClosestMapTile(enemy.transform.position);
-            if (battleCardActionController.TryStoreTargetAndOpenConfirmation(enemy.gameObject, enemyTile))
+            if (battleCardActionController.TrySelectTargetAndEnterConfirmation(enemy.gameObject, enemyTile))
             {
                 return;
             }
@@ -130,7 +126,7 @@ public class BattleUnitCardFlow : MonoBehaviour
 
         if (targetType == BattleCardTargetType.Tile &&
             owner.TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
-            battleCardActionController.TryStoreTargetAndOpenConfirmation(tile.gameObject, tile))
+            battleCardActionController.TrySelectTargetAndEnterConfirmation(tile.gameObject, tile))
         {
             return;
         }
@@ -143,8 +139,6 @@ public class BattleUnitCardFlow : MonoBehaviour
         owner.SetMoveButtonGroupVisible(false);
         owner.SetActionConfirmText(message);
     }
-
-    private void HandleConfirmationRequested(string message) => owner.ShowActionConfirmationUI(message);
 
     private void HandleConfirmed(BattleActionResult result)
     {
