@@ -71,6 +71,61 @@ public class EnemyTurnActor : MonoBehaviour
         attackDamageType = data.attackDamageType;
     }
 
+    /// <summary>
+    /// Player가 후보 타일로 이동했다고 가정했을 때 이 Enemy가 다음 턴에 선택할 행동을 계산한다.
+    /// 실제 TakeTurn과 동일한 행동 트리·현재 MP·이동 비용·공격 비용·점유 타일을 사용하므로,
+    /// Preview 전용 추정 공식과 실제 AI 판단이 서로 달라지는 문제를 막는다.
+    /// 이 함수는 상태이상 턴을 소비하거나 이동·공격을 실행하지 않는다.
+    /// </summary>
+    public bool TryPredictResponseToPlayerTile(MapInfo hypotheticalPlayerTile, out EnemyTurnPlan plan)
+    {
+        plan = null;
+        if (hypotheticalPlayerTile == null)
+        {
+            return false;
+        }
+
+        ResolveComponents();
+        ResolveBattleDataPool();
+
+        // 어그로를 기억하거나 감지한 Player만 예측 대상으로 사용한다.
+        // 허수아비 도발은 Player 이동 위험 표시와 별도 규칙이므로 여기서는 일반 대상을 읽는다.
+        Transform playerTarget = ResolveNormalTarget();
+        if (playerTarget == null || characterMP == null)
+        {
+            return false;
+        }
+
+        BattleEnemyControlState controlState = GetComponent<BattleEnemyControlState>();
+        if (controlState != null && controlState.StunTurns > 0)
+        {
+            // 기절 중인 Enemy는 다음 자기 턴에 행동하지 않으므로 공격·추격 표시를 만들지 않는다.
+            return false;
+        }
+
+        IReadOnlyList<MapInfo> mapTiles = mapContext.GetMapTiles(battleDataPool);
+        MapInfo enemyTile = MapPathfinder.FindClosestTile(transform.position, mapTiles);
+        HashSet<MapInfo> occupiedTiles = mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
+        if (!EnemyTurnPlanner.TryCreatePlan(
+                this,
+                behaviorTree,
+                playerTarget,
+                enemyTile,
+                hypotheticalPlayerTile,
+                occupiedTiles,
+                attackRangeTiles,
+                characterMP.CurrentMP,
+                GetMoveCostPerTile(),
+                GetBasicAttackCost(0),
+                out plan))
+        {
+            return false;
+        }
+
+        // 속박은 공격은 허용하지만 이동은 막는다. 실제 TakeTurn과 같은 규칙으로 Move 예측만 제거한다.
+        return controlState == null || controlState.RootTurns <= 0 || !plan.WillChase;
+    }
+
     /// <summary>적 행동에 필요한 감지, 인식, 경로 표시 참조와 공용 행동 트리를 준비한다.
     /// detector는 GetComponentInChildren로 찾는다 — EnemyDetector가 루트가 아니라 "eyePoint"를 가진
     /// 자식 오브젝트에 붙는 프리팹 구조를 전제로 하기 때문이다(EnemySpawner.cs의 EnemyDetector 확보 로직과 동일한 이유).</summary>
@@ -89,6 +144,7 @@ public class EnemyTurnActor : MonoBehaviour
     /// </summary>
     public IEnumerator TakeTurn(BattleCameraRig cameraRig)
     {
+        // [1. 턴 실행 준비] 런타임 참조와 공용 Registry를 확보하고 지난 턴의 행동 여부를 초기화한다.
         ResolveComponents();
         ResolveBattleDataPool();
         ActedThisTurn = false;
@@ -96,6 +152,7 @@ public class EnemyTurnActor : MonoBehaviour
         bool isRooted = false;
         if (controlState != null)
         {
+            // 상태 지속 턴은 Enemy 자신의 공식 턴 시작 시 한 번만 소비한다. Preview는 이 함수를 호출하지 않는다.
             controlState.ConsumeTurn(out bool isStunned, out isRooted);
             if (isStunned)
             {
@@ -107,6 +164,7 @@ public class EnemyTurnActor : MonoBehaviour
 
         for (int evaluation = 0; evaluation < maxTreeEvaluationsPerTurn; evaluation++)
         {
+            // [2. 현재 상태 재판단] 이동 후 남은 MP로 공격할 수 있으므로 한 행동이 끝날 때마다 새 계획을 만든다.
             Transform target = ResolveTarget();
             if (target == null)
             {
@@ -119,42 +177,54 @@ public class EnemyTurnActor : MonoBehaviour
             MapInfo targetTile = MapPathfinder.FindClosestTile(target.position, mapTiles);
             HashSet<MapInfo> occupiedTiles =
                 mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
+            int moveCostPerTile = GetMoveCostPerTile();
+            int basicAttackCost = GetBasicAttackCost(basicAttackCount);
 
-            if (!MapPathfinder.TryFindShortestPath(startTile, targetTile, occupiedTiles, out List<MapInfo> path) &&
-                BattleScarecrowSummon.IsScarecrow(target))
+            bool planCreated = EnemyTurnPlanner.TryCreatePlan(
+                this,
+                behaviorTree,
+                target,
+                startTile,
+                targetTile,
+                occupiedTiles,
+                attackRangeTiles,
+                characterMP.CurrentMP,
+                moveCostPerTile,
+                basicAttackCost,
+                out EnemyTurnPlan currentPlan);
+
+            if (!planCreated && BattleScarecrowSummon.IsScarecrow(target))
             {
                 // 허수아비에 접근할 수 없으면 도발 때문에 턴을 버리지 않고 원래 Player를 노린다.
                 target = ResolveNormalTarget();
                 targetTile = target != null ? MapPathfinder.FindClosestTile(target.position, mapTiles) : null;
+                planCreated = EnemyTurnPlanner.TryCreatePlan(
+                    this,
+                    behaviorTree,
+                    target,
+                    startTile,
+                    targetTile,
+                    occupiedTiles,
+                    attackRangeTiles,
+                    characterMP.CurrentMP,
+                    moveCostPerTile,
+                    basicAttackCost,
+                    out currentPlan);
             }
 
-            if (target == null ||
-                !MapPathfinder.TryFindShortestPath(startTile, targetTile, occupiedTiles, out path))
+            if (!planCreated)
             {
                 Debug.LogWarning($"{name}: 플레이어까지 이어지는 경로를 찾지 못했습니다.", this);
                 pathDebugView?.Clear();
                 yield break;
             }
 
-            pathDebugView?.DrawPath(transform.position, path);
-
-            int moveCostPerTile = GetMoveCostPerTile();
-            int basicAttackCost = GetBasicAttackCost(basicAttackCount);
-            EnemyAIContext context = new EnemyAIContext(
-                transform,
-                target,
-                startTile,
-                targetTile,
-                path,
-                attackRangeTiles,
-                characterMP.CurrentMP,
-                moveCostPerTile,
-                basicAttackCost);
-
-            behaviorTree.Evaluate(context);
+            // 디버그 경로, 실제 이동과 공격 분기가 모두 같은 계획 객체를 읽는다.
+            pathDebugView?.DrawPath(transform.position, currentPlan.Path);
             int mpBeforeAction = characterMP.CurrentMP;
 
-            switch (context.Decision)
+            // [3. 계획 실행] Planner는 계산만 했으므로 여기서 결정 종류에 맞는 Executor 작업을 호출한다.
+            switch (currentPlan.Decision)
             {
                 case EnemyAIDecision.Move:
                     if (isRooted)
@@ -164,10 +234,10 @@ public class EnemyTurnActor : MonoBehaviour
                     }
                     yield return BeginActionFocus(cameraRig);
                     yield return actionExecutor.MoveAlongPath(
-                        path,
-                        startTile,
-                        attackRangeTiles,
-                        moveCostPerTile);
+                        currentPlan.Path,
+                        currentPlan.StartTile,
+                        currentPlan.AttackRangeTiles,
+                        currentPlan.MoveMPCostPerTile);
                     break;
 
                 case EnemyAIDecision.Attack:
@@ -201,7 +271,7 @@ public class EnemyTurnActor : MonoBehaviour
                     yield break;
             }
 
-            if (context.Decision == EnemyAIDecision.Move && afterActionSeconds > 0f)
+            if (currentPlan.Decision == EnemyAIDecision.Move && afterActionSeconds > 0f)
                 yield return new WaitForSecondsRealtime(afterActionSeconds);
 
             // 행동이 MP를 소비하지 않으면 같은 판단이 무한 반복될 수 있으므로 턴을 종료한다.

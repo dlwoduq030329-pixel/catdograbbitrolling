@@ -595,7 +595,7 @@ public class BattleGameManager : MonoBehaviour
     {
         if (playerActionController != null)
         {
-            playerActionController.ResetTurnMoveState();
+            playerActionController.ResetPlayerTurnActions();
         }
     }
 

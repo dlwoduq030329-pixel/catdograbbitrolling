@@ -11,6 +11,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
 {
     private enum TileColorLayer
     {
+        // 아래 숫자 순서가 그대로 색상 합성 순서다.
+        // 뒤에 있는 레이어일수록 앞에서 계산된 색 위에 다시 섞이므로 화면에서 더 강하게 보인다.
         GeneralRange = 0,
         CardRange = 1,
         Selected = 2,
@@ -19,6 +21,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
 
     private readonly struct TileColorOverlay
     {
+        // Color는 덧씌울 강조색이고, BlendStrength는 원본/이전 결과와 이 색을 섞는 비율이다.
+        // 0이면 이전 색을 그대로 유지하고, 1이면 이 강조색으로 완전히 바뀐다.
         public readonly Color Color;
         public readonly float BlendStrength;
 
@@ -108,6 +112,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
     /// <summary>
     /// 카드 사거리 계산기가 반환한 여러 타일을 카드 전용 색상 레이어로 표시한다.
     /// 어떤 타일이 범위에 포함되는지는 판단하지 않고 전달받은 계산 결과만 화면에 반영한다.
+    /// ShowCardRangeTile()이 타일 하나를 처리하는 함수라면 이 함수는 그 함수를 목록 전체에 반복 호출하는
+    /// 편의 함수다. 별도의 사거리 계산이나 색상 규칙은 포함하지 않는다.
     /// </summary>
     public void ShowCardRangeTiles(IEnumerable<MapInfo> tiles, Color color)
     {
@@ -122,6 +128,7 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
     /// <summary>
     /// 마우스로 선택했거나 행동 확정을 기다리는 타일을 Selected 레이어로 표시한다.
     /// 일반/카드 범위보다 나중에 합성되므로 선택 위치가 범위 색상에 가려지지 않는다.
+    /// 타일 색상만 담당하며 경로선이나 화살표 GameObject를 생성하는 함수는 아니다.
     /// </summary>
     public void ShowSelectedTile(MapInfo tile, Color color)
     {
@@ -145,22 +152,30 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
     /// </summary>
     public void ShowLandedTileForDuration(MapInfo tile, Color color, float duration)
     {
+        // 새 이동이 끝나기 전에 이전 착지 강조 시간이 남아 있으면 이전 예약 복구를 취소한다.
+        // 두 Coroutine이 서로 다른 시점에 landedTile을 지우는 경쟁 상태를 막기 위한 처리다.
         if (landedHighlightRoutine != null)
         {
             StopCoroutine(landedHighlightRoutine);
         }
 
+        // 이전과 다른 타일에 도착했다면 이전 타일의 착지 레이어만 즉시 제거한다.
+        // 이동/카드/선택 레이어는 ClearTileLayer가 보존한다.
         if (landedTile != null && landedTile != tile)
         {
             ClearTileLayer(landedTile, TileColorLayer.Landed);
         }
 
+        // 현재 도착 타일을 기록하고, 즉시 강조한 뒤 duration초 후 제거하는 Coroutine을 예약한다.
         landedTile = tile;
         ShowLandedTile(tile, color);
         landedHighlightRoutine = StartCoroutine(RestoreLandedTileAfterDelay(Mathf.Max(0f, duration)));
     }
 
-    /// <summary>원본 색상을 보존한 채 지정 비율로 강조 색상을 혼합해 적용한다.</summary>
+    /// <summary>
+    /// 외부 코드가 별도 레이어 구분 없이 타일 하나를 강조할 때 사용하는 공용 진입점이다.
+    /// 내부에서는 GeneralRange 레이어로 등록되며, 실제 최종 색상 계산은 ApplyActiveLayers()가 담당한다.
+    /// </summary>
     public void SetTileColor(MapInfo tile, Color color, float blendStrength)
     {
         SetTileColorForLayer(tile, color, blendStrength, TileColorLayer.GeneralRange);
@@ -184,6 +199,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
 
         foreach (Renderer renderer in tile.GetComponentsInChildren<Renderer>(true))
         {
+            // MapInfo 자체뿐 아니라 자식 Mesh까지 한 타일의 외형으로 취급한다.
+            // _Color 속성이 없는 Shader에는 이 방식으로 색을 적용할 수 없으므로 건너뛴다.
             Material material = renderer != null ? renderer.sharedMaterial : null;
             if (material == null || !material.HasProperty("_Color"))
             {
@@ -200,6 +217,7 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
                     renderer,
                     out Dictionary<TileColorLayer, TileColorOverlay> rendererLayers))
             {
+                // 이 Renderer가 처음 강조될 때만 레이어 보관용 내부 Dictionary를 만든다.
                 rendererLayers = new Dictionary<TileColorLayer, TileColorOverlay>();
                 activeColorLayers.Add(renderer, rendererLayers);
             }
@@ -210,7 +228,11 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
         }
     }
 
-    /// <summary>한 타일의 Renderer 색상을 캐시된 원본 값으로 복구한다.</summary>
+    /// <summary>
+    /// 한 타일에 등록된 모든 강조 레이어를 제거하고 캐시된 원본 색상으로 복구한다.
+    /// 특정 레이어만 지우는 함수가 아니므로 이동·카드·선택·착지 표시가 모두 사라진다.
+    /// 카드 범위만 지우려면 ClearCardRangeTiles()를 사용해야 한다.
+    /// </summary>
     public void RestoreTileColor(MapInfo tile)
     {
         if (tile == null)
@@ -222,6 +244,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
         {
             if (renderer != null)
             {
+                // 이 Renderer에 겹쳐 있던 모든 표시 목적을 제거한다.
+                // 레이어가 사라진 상태에서 다시 계산하면 ApplyActiveLayers가 원본색을 적용한다.
                 activeColorLayers.Remove(renderer);
                 ApplyActiveLayers(renderer);
             }
@@ -237,7 +261,10 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
         ClearLayerFromAllRenderers(TileColorLayer.CardRange);
     }
 
-    /// <summary>이 모듈이 변경한 모든 타일을 원본 색상으로 되돌리고 임시 강조를 종료한다.</summary>
+    /// <summary>
+    /// 이 모듈에 등록된 모든 색상 레이어를 한꺼번에 제거하고 캐시된 원본색을 다시 적용한다.
+    /// 현재 실행 중인 착지 Coroutine 자체는 중단하지 않지만, 레이어 목록을 먼저 비우므로 화면색은 즉시 복구된다.
+    /// </summary>
     public void RestoreAllTileColors()
     {
         activeColorLayers.Clear();
@@ -249,31 +276,47 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
 
     private IEnumerator RestoreLandedTileAfterDelay(float duration)
     {
+        // 이동 완료 피드백을 플레이어가 인지할 수 있는 시간만큼 유지한다.
+        // WaitForSeconds는 게임 시간 배율의 영향을 받으므로 Time.timeScale이 0이면 복구도 대기한다.
         yield return new WaitForSeconds(duration);
 
         if (landedTile != null)
         {
+            // 착지 표시만 제거한다. 같은 타일의 이동/카드 범위는 남긴 뒤 최종 색을 다시 계산한다.
             ClearTileLayer(landedTile, TileColorLayer.Landed);
         }
 
+        // 현재 착지 표시가 끝났음을 기록해 다음 이동이 새 Coroutine을 정상적으로 시작하게 한다.
         landedTile = null;
         landedHighlightRoutine = null;
     }
 
+    /// <summary>
+    /// 지정 타일에서 한 종류의 색상 레이어만 제거한다.
+    /// 다른 레이어가 남아 있으면 원본색으로 바로 돌아가지 않고 남은 색들을 다시 합성한다.
+    /// </summary>
     private void ClearTileLayer(MapInfo tile, TileColorLayer layer)
     {
         if (tile == null) return;
         foreach (Renderer renderer in tile.GetComponentsInChildren<Renderer>(true))
         {
             if (renderer == null || !activeColorLayers.TryGetValue(renderer, out var layers)) continue;
+            // 제거 후 아무 레이어도 남지 않은 Renderer는 바깥 Dictionary에서도 정리한다.
             layers.Remove(layer);
             if (layers.Count == 0) activeColorLayers.Remove(renderer);
+            // 남은 레이어 또는 원본색을 즉시 화면에 반영한다.
             ApplyActiveLayers(renderer);
         }
     }
 
+    /// <summary>
+    /// 현재 관리 중인 모든 Renderer에서 지정 종류의 레이어만 제거한다.
+    /// ClearCardRangeTiles()처럼 특정 표시 시스템을 전체 종료할 때 사용한다.
+    /// 순회 중 Dictionary를 수정해야 하므로 Key 목록을 별도 List로 복사한 뒤 처리한다.
+    /// </summary>
     private void ClearLayerFromAllRenderers(TileColorLayer layer)
     {
+        // activeColorLayers.Keys를 직접 순회하며 항목을 삭제하면 컬렉션 변경 예외가 발생한다.
         List<Renderer> renderers = new List<Renderer>(activeColorLayers.Keys);
         foreach (Renderer renderer in renderers)
         {
@@ -287,6 +330,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
     /// <summary>
     /// 저장된 원본색에서 시작해 일반 범위→카드 범위→선택→착지 순으로 색을 혼합한다.
     /// MaterialPropertyBlock을 사용하므로 renderer.material 접근으로 Material 복사본을 만들지 않는다.
+    /// SetTileColorForLayer()가 "어떤 레이어가 활성 상태인지 저장"하는 함수라면,
+    /// 이 함수는 저장된 레이어 전체를 읽어 "지금 화면에 보여줄 최종 색 하나를 계산하고 적용"한다.
     /// </summary>
     private void ApplyActiveLayers(Renderer renderer)
     {
@@ -294,6 +339,7 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
 
         if (activeColorLayers.TryGetValue(renderer, out var layers))
         {
+            // enum 숫자 순서가 곧 합성 우선순위다. 일반 범위 위에 카드, 선택, 착지색을 차례대로 섞는다.
             for (TileColorLayer layer = TileColorLayer.GeneralRange;
                  layer <= TileColorLayer.Landed;
                  layer++)
@@ -303,6 +349,8 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
             }
         }
 
+        // Renderer에 이미 설정된 다른 PropertyBlock 값은 보존하고 _Color 항목만 교체한다.
+        // sharedMaterial을 변경하지 않으므로 같은 Material을 쓰는 다른 타일까지 함께 변하지 않는다.
         renderer.GetPropertyBlock(colorPropertyBlock);
         colorPropertyBlock.SetColor("_Color", finalColor);
         renderer.SetPropertyBlock(colorPropertyBlock);

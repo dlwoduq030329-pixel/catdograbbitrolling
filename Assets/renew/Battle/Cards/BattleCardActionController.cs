@@ -411,7 +411,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// <summary>
     /// 대상 선택을 끝내고 Player 클릭으로 카드 사용을 확정할 수 있는 대기 상태로 전환한다.
     /// 밀치기·돌진 카드라면 확정 전에 예상 이동 결과를 갱신한다.
-    /// 기존 확인/취소 버튼 UI는 호출하지 않는다. Player 클릭 입력은 BattlePlayerActionController.ConfirmMove()
+    /// 기존 확인/취소 버튼 UI는 호출하지 않는다. Player 클릭 입력은 BattlePlayerActionController.ConfirmCurrentPlayerAction()
     /// → BattlePlayerCardFlow.Confirm() → TryConfirmCardUse() 순서로 이 대기 상태를 확정한다.
     /// </summary>
     private void EnterCardUseConfirmationState()

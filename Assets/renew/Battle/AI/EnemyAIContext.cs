@@ -39,17 +39,20 @@ public sealed class EnemyAIContext
         int moveMPCost,
         int basicAttackMPCost)
     {
-        // EnemyTurnActor가 탐색과 비용 계산을 먼저 끝낸 뒤 그 결과를 한 묶음으로 전달한다.
+        // EnemyTurnPlanner가 경로 탐색과 비용 입력 준비를 먼저 끝낸 뒤 그 결과를 한 묶음으로 전달한다.
         // 행동 트리 노드는 Scene 검색이나 Component 조회 없이 이 스냅샷만 읽어 결정을 기록해야 한다.
+        // Self/Target은 행동 주체와 대상, CurrentTile/TargetTile/Path는 공간 관계를 설명한다.
         Self = self;
         Target = target;
         CurrentTile = currentTile;
         TargetTile = targetTile;
         Path = path;
+        // 비용과 사거리는 행동 트리가 비교할 때 음수·0 예외가 섞이지 않도록 Context 경계에서 한 번 정규화한다.
         AttackRangeTiles = Mathf.Max(1, attackRangeTiles);
         CurrentMP = Mathf.Max(0, currentMP);
         MoveMPCost = Mathf.Max(1, moveMPCost);
         BasicAttackMPCost = Mathf.Max(0, basicAttackMPCost);
+        // Tree 평가 전에는 아직 어떤 행동도 선택되지 않았다. DecideActionNode만 이 값을 변경한다.
         Decision = EnemyAIDecision.None;
     }
 }

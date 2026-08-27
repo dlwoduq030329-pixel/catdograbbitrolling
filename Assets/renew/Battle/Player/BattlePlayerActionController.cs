@@ -197,7 +197,7 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>현재 선택된 목적지가 유효하면 실제 이동 Coroutine을 시작한다.</summary>
-    public void ConfirmMove()
+    public void ConfirmCurrentPlayerAction()
     {
         if (cardFlow.IsAwaitingConfirmation)
         {
@@ -216,9 +216,9 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>새 Player 턴에 주사위, 이동 사용, 선택, 표시 상태를 전부 초기화한다.</summary>
-    public void ResetTurnMoveState()
+    public void ResetPlayerTurnActions()
     {
-        // R 토글은 사용자가 직접 끄거나(CancelMoveSelection의 완전 닫힘 분기) 명시적으로 끄기 전까지는
+        // R 토글은 사용자가 직접 끄거나(CancelCurrentPlayerAction의 완전 닫힘 분기) 명시적으로 끄기 전까지는
         // 턴이 바뀌어도 유지한다. 여기서는 상태만 초기화하고 필요하면 마지막에 다시 켠다.
         turnActionState.Reset();
         EnsureMoveFlow();
@@ -243,7 +243,7 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         if (!IsAnyActionMoving)
         {
-            CancelMoveSelection();
+            CancelCurrentPlayerAction();
         }
     }
 
@@ -268,7 +268,7 @@ public class BattlePlayerActionController : MonoBehaviour
             if (moveFlow.IsAwaitingConfirmation)
             {
                 Debug.Log($"플레이어 클릭으로 이동 확정: {moveFlow.PendingTarget?.name}", clickedPlayer);
-                ConfirmMove();
+                ConfirmCurrentPlayerAction();
                 return;
             }
 
@@ -313,7 +313,7 @@ public class BattlePlayerActionController : MonoBehaviour
             // 범위 밖 클릭 시 목적지 선택만 취소하고 이동 가능 범위를 다시 표시한다.
             if (!clickedReachableTile && !rangeToggleActive)
             {
-                CancelMoveSelection();
+                CancelCurrentPlayerAction();
             }
         }
     }
@@ -344,7 +344,7 @@ public class BattlePlayerActionController : MonoBehaviour
         if (rangeVisible)
         {
             rangeToggleActive = false;
-            CancelMoveSelection();
+            CancelCurrentPlayerAction();
         }
         else
         {
@@ -465,7 +465,7 @@ public class BattlePlayerActionController : MonoBehaviour
     /// 이동·평타·다른 카드 행동과 충돌하지 않는지만 검사하고,
     /// 실제 카드 대상 선택 시작은 BattlePlayerCardFlow.TryStartSelectedCardUse()에 위임한다.
     /// </summary>
-    public bool BeginCardUseConfirmation(
+    public bool TryStartCardUseFromHand(
         SelectedCardUseInfo cardUse,
         BattleCardDrawSystem cardDrawSystem)
     {
@@ -475,7 +475,17 @@ public class BattlePlayerActionController : MonoBehaviour
             return false;
         }
 
-        EnsureCardFlow();
+        // CardFlow 생성과 이벤트 연결은 Awake/SetPlayer에서 이미 끝나야 한다.
+        // 카드 클릭마다 EnsureCardFlow를 호출하면 Attach가 이벤트를 해제·재구독하므로,
+        // 실행 진입점에서는 연결을 다시 만들지 않고 준비된 흐름만 사용한다.
+        if (cardFlow == null)
+        {
+            Debug.LogError(
+                "카드 사용 불가: BattlePlayerCardFlow가 초기화되지 않았습니다.",
+                this);
+            return false;
+        }
+
         return cardFlow.TryStartSelectedCardUse(cardUse, cardDrawSystem);
     }
 
@@ -489,7 +499,7 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>
     /// 확정 대기 단계에서는 이동 범위 단계로 돌아가고, 범위 단계에서는 표시를 완전히 닫는다.
     /// </summary>
-    public void CancelMoveSelection()
+    public void CancelCurrentPlayerAction()
     {
         if (IsCardActionActive)
         {
@@ -575,8 +585,8 @@ public class BattlePlayerActionController : MonoBehaviour
             quitMoveButton,
             moveButtonGroup,
             actionConfirmText,
-            ConfirmMove,
-            CancelMoveSelection);
+            ConfirmCurrentPlayerAction,
+            CancelCurrentPlayerAction);
 
         confirmMoveButton = battleActionConfirmView.ConfirmButton;
         quitMoveButton = battleActionConfirmView.CancelButton;
