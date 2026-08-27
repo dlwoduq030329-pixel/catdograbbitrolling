@@ -9,18 +9,15 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattleCardActionController : MonoBehaviour
 {
-    private readonly HashSet<MapInfo> rangeTiles = new HashSet<MapInfo>();
-    private GameObject player;
-    private BattleUnitMP playerMP;
-    private BattleStatusEffects playerStatusEffects;
-    private BattleRangeVisualizer rangeVisualizer;
-    private Color rangeColor;
-    private Color effectAreaColor;
-    private Func<Vector3, MapInfo> findClosestTile;
-    private Camera battleCamera;
-    private BattlePushPreviewView pushPreviewView;
+    // 기능 인덱스는 아래 함수 리뷰에서도 동일하게 사용한다.
+    // [1] 카드 행동 진행 상태      [2] Player 전투 자원
+    // [3] 대상 사거리 계산·표시   [4] 화면 입력과 대상 탐색
+    // [5] 카드 결과 미리보기      [6] 손패·덱 소비
+    // [7] 외부 UI·Coordinator 통지
+
+    // [1] 카드 행동 진행 상태
+    // 현재 사용하려는 카드와 선택된 대상을 보관한다. 선택 → 확인 → 실행 → 초기화 흐름의 중심 상태다.
     private SelectedCardUseInfo selectedCardInfo;
-    private BattleCardDrawSystem drawSystem;
     private GameObject selectedTarget;
     private MapInfo selectedTargetTile;
 
@@ -28,71 +25,142 @@ public sealed class BattleCardActionController : MonoBehaviour
     public bool IsAwaitingConfirmation { get; private set; }
     /// <summary>카드 대상 선택 또는 사용 확인이 진행 중인지 반환한다.</summary>
     public bool IsActionActive => IsSelectingTarget || IsAwaitingConfirmation;
+    /// <summary>현재 선택한 카드가 요구하는 대상 종류를 반환한다. 진행 중인 카드가 없으면 None이다.</summary>
     public BattleCardTargetType TargetType => selectedCardInfo != null
         ? selectedCardInfo.CardData.targetType
         : BattleCardTargetType.None;
 
+    // [2] Player 전투 자원
+    // 카드 사용 주체와 MP·상태이상 참조다. MP 비용 검사와 상태이상에 따른 비용 보정에 사용한다.
+    private GameObject player;
+    private BattleUnitMP playerMP;
+    private BattleStatusEffects playerStatusEffects;
+
+    // [3] 대상 사거리 계산·표시
+    // 계산된 유효 타일을 저장하고, 일반 사거리와 효과 범위의 색상 표시·복구에 사용한다.
+    private readonly HashSet<MapInfo> rangeTiles = new HashSet<MapInfo>();
+    private BattleRangeVisualizer rangeVisualizer;
+    private Color rangeColor;
+    private Color effectAreaColor;
+    private Func<Vector3, MapInfo> findClosestTile;
+    private IReadOnlyList<MapInfo> allMapTiles;
+
+    // [5] 카드 결과 미리보기
+    // 밀치기·충돌·낙사처럼 카드 확정 전에 보여줘야 하는 결과를 표시한다.
+    private BattlePushPreviewView pushPreviewView;
+
+    // [6] 손패·덱 소비
+    // 카드 사용이 확정되면 사용한 손패 카드를 버린 카드 더미로 이동하도록 요청한다.
+    private BattleCardDrawSystem drawSystem;
+
+    // [7] 외부 UI·Coordinator 통지
+    // Controller가 UI를 직접 만들거나 조작하지 않고 단계 변화와 결과만 외부에 알린다.
     public event Action<string> TargetSelectionRequested;
-    public event Action<string> ConfirmationRequested;
     public event Action<BattleActionResult> Confirmed;
     public event Action Cancelled;
     public event Action<bool> RangeVisibilityChanged;
 
-    /// <summary>카드 대상 판정에 필요한 Player, 맵, 범위 표시와 완료 이벤트를 연결한다.</summary>
+    /// <summary>
+    /// 카드 사용 흐름에 필요한 외부 참조를 Player 등록 시 한 번 연결한다.
+    /// [2] Player와 전투 자원, [3] 등록된 맵 타일과 사거리 표시,
+    /// [5] 밀치기 결과 Preview를 받아 이후 카드 선택·확정 과정에서 재사용한다.
+    /// 이 함수는 카드 사용을 시작하거나 UI를 표시하지 않고 참조 연결만 수행한다.
+    /// </summary>
     public void Configure(
         GameObject targetPlayer,
         BattleRangeVisualizer visualizer,
         Color cardRangeColor,
         Color cardEffectAreaColor,
         Func<Vector3, MapInfo> tileFinder,
-        Camera camera,
+        IReadOnlyList<MapInfo> registeredMapTiles,
         BattlePushPreviewView previewView)
     {
+        // [2] 카드 사용 주체를 보관한다. 이후 Self 대상 지정과 효과 실행 Context의 Player로 사용한다.
         player = targetPlayer;
-        // 카드 선택·확정마다 GetComponent를 반복하지 않도록 Player 등록 시 한 번 보관한다.
-        // MP 수치는 BattleUnitMP 인스턴스 내부에서 바뀌므로 같은 참조의 CurrentMP를 읽으면 항상 최신 값이다.
+
+        // [2] 카드 선택·확정마다 GetComponent를 반복하지 않도록 Player 등록 시 한 번 보관한다.
+        // MP 값은 같은 BattleUnitMP 인스턴스에서 변경되므로 CurrentMP를 읽으면 항상 최신 수치다.
         playerMP = targetPlayer != null ? targetPlayer.GetComponent<BattleUnitMP>() : null;
-        // 동상으로 카드 MP 비용을 보정할 때마다 GetComponent하지 않도록 Player 등록 시 함께 보관한다.
+
+        // [2] 동상처럼 카드 MP 비용을 변경하는 상태이상을 계산하기 위해 함께 보관한다.
         playerStatusEffects = targetPlayer != null ? targetPlayer.GetComponent<BattleStatusEffects>() : null;
+
+        // [3] 계산된 카드 사거리와 효과 범위를 실제 타일 색상으로 표시하는 전용 컴포넌트다.
         rangeVisualizer = visualizer;
+
+        // [3] 일반 대상 선택 사거리와 광역 효과 예상 범위를 서로 다른 색으로 구분한다.
         rangeColor = cardRangeColor;
         effectAreaColor = cardEffectAreaColor;
+
+        // [3] Player·Enemy의 월드 위치를 현재 MapInfo로 변환할 때 호출하는 타일 검색 함수다.
+        // Controller가 맵 보관 방식을 직접 알지 않도록 함수 참조만 전달받는다.
         findClosestTile = tileFinder;
-        battleCamera = camera;
+        // 지속 영역 Preview도 Scene 검색 없이 공식 Map 목록만 계산기에 전달한다.
+        allMapTiles = registeredMapTiles;
+
+        // [5] 밀치기 카드의 이동·충돌·낙사 예상 결과를 카드 확정 전에 표시한다.
         pushPreviewView = previewView;
-        pushPreviewView?.ConfigurePreviewDependencies(battleCamera);
     }
 
-    /// <summary>손패 카드 요청을 검증하고 대상 선택 및 확인 대기 상태를 시작한다. 실제 효과는 아직 적용하지 않는다.</summary>
-    public bool TryStartCardUse(SelectedCardUseInfo cardUse, BattleCardDrawSystem cardDrawSystem, bool canUseCards)
+    /// <summary>
+    /// 손패에서 선택한 카드가 현재 사용을 시작할 수 있는지 검사하고 대상 선택 또는 확인 단계로 진입한다.
+    /// [1] 진행 중인 다른 카드 행동과 기본 참조를 검사하고 선택 카드를 저장한다.
+    /// [2] 상태이상이 반영된 MP 비용을 계산해 현재 MP로 사용할 수 있는지 검사한다.
+    /// [3] 카드의 대상 선택 규칙에 따라 자동 대상을 찾거나 수동 대상 사거리를 표시한다.
+    /// [6] 확정 후 정확한 손패 카드를 소비할 DrawSystem을 함께 저장한다.
+    /// 이 단계에서는 MP·손패를 소비하거나 카드 효과를 실행하지 않는다.
+    /// </summary>
+    public bool TryBeginSelectedCardFlow(
+        SelectedCardUseInfo selectedHandCard,
+        BattleCardDrawSystem sourceCardDrawSystem,
+        bool cardsCanBeUsedThisTurn)
     {
-        if (cardUse == null || cardUse.CardData == null || cardDrawSystem == null || player == null ||
-            IsSelectingTarget || IsAwaitingConfirmation || !canUseCards)
+        // [1][6] 요청 데이터와 카드 출처가 없거나 다른 카드 행동이 진행 중이면 새 흐름을 시작하지 않는다.
+        if (selectedHandCard == null || selectedHandCard.CardData == null ||
+            sourceCardDrawSystem == null || player == null ||
+            IsSelectingTarget || IsAwaitingConfirmation || !cardsCanBeUsedThisTurn)
         {
             return false;
         }
 
-        int cardCost = GetModifiedCardCost(cardUse.ActionInfo.MPCost, cardUse.CardData);
-        if (playerMP == null || !playerMP.CanSpend(cardCost))
+        // [2] MP가 부족한 카드의 대상 선택과 Preview를 열지 않도록 시작 시점에 먼저 검사한다.
+        // 확정 시점에는 선택 도중 상태이상이나 MP가 바뀌었을 가능성 때문에 비용을 다시 검사한다.
+        int requiredMp = CalculateCardMpCostAfterStatusEffects(
+            selectedHandCard.ActionInfo.MPCost,
+            selectedHandCard.CardData);
+        if (playerMP == null || !playerMP.CanSpend(requiredMp))
         {
-            Debug.Log($"카드 사용 불가: 행동력이 {cardCost} 필요합니다.", this);
+            Debug.Log($"카드 사용 불가: 행동력이 {requiredMp} 필요합니다.", this);
             return false;
         }
 
-        selectedCardInfo = cardUse;
-        drawSystem = cardDrawSystem;
-        if (BattleCardTargetSelectionRules.UsesLowestHealthEnemyAutoTarget(selectedCardInfo.CardData))
+        // [1] 확정·취소까지 유지해야 하는 현재 카드 사용 정보를 저장한다.
+        selectedCardInfo = selectedHandCard;
+        // [6] 확정 성공 시 같은 손패 슬롯의 카드를 사용 완료 처리할 원본 DrawSystem이다.
+        drawSystem = sourceCardDrawSystem;
+
+        // [3] 자동 대상 카드라면 사거리 안에서 HP가 가장 낮은 Enemy를 즉시 선택한다.
+        if (BattleCardTargetSelectionRules.UsesAutomaticLowestHealthEnemyTarget(selectedCardInfo.CardData))
         {
-            if (!TrySelectLowestHealthEnemyInRange(out selectedTarget, out selectedTargetTile))
+            if (!BattleCardTargetSelector.TryFindLowestHealthEnemyInRange(
+                    player,
+                    selectedCardInfo.ActionInfo.RangeTiles,
+                    findClosestTile,
+                    out selectedTarget,
+                    out selectedTargetTile))
             {
-                OpenTargetSelection();
+                // 자동으로 찾을 Enemy가 없어도 카드 선택은 취소하지 않는다.
+                // 수동 대상 선택 상태로 들어가 사거리 정보는 Player에게 계속 보여준다.
+                EnterTargetSelectionState();
                 return true;
             }
 
-            OpenConfirmation();
+            // 유효한 자동 대상이 정해진 경우에만 카드 사용 확인 단계로 이동한다.
+            EnterCardUseConfirmationState();
             return true;
         }
 
+        // [1][3] 외부 대상이 필요 없는 카드는 Player 자신을 대상으로 저장하고 바로 확인 단계로 이동한다.
         BattleCardTargetType targetType = selectedCardInfo.CardData.targetType;
         if (targetType == BattleCardTargetType.None ||
             targetType == BattleCardTargetType.Self ||
@@ -102,29 +170,44 @@ public sealed class BattleCardActionController : MonoBehaviour
             selectedTarget = player;
             selectedTargetTile = findClosestTile(player.transform.position);
             ShowEffectAreaPreview(selectedTargetTile);
-            OpenConfirmation();
+            EnterCardUseConfirmationState();
         }
         else
         {
-            OpenTargetSelection();
+            // Enemy 또는 Tile처럼 Player가 직접 골라야 하는 카드는 사거리 표시와 대상 선택 상태를 연다.
+            EnterTargetSelectionState();
         }
 
         return true;
     }
 
-    /// <summary>현재 카드의 대상 유형과 사거리 규칙에 맞는 대상인지 확인하고 유효한 선택만 보관한다.</summary>
-    public bool TryStoreTargetAndOpenConfirmation(GameObject target, MapInfo targetTile)
+    /// <summary>
+    /// Player가 선택한 대상이 현재 카드의 표시 사거리 안에 있는지 검사하고 카드 사용 확인 단계로 전환한다.
+    /// [1] 선택 대상과 대상 타일을 진행 상태에 저장하고 대상 선택 단계를 종료한다.
+    /// [3] 단일 범위가 아닌 카드라면 선택 타일을 중심으로 실제 효과 범위를 추가 표시한다.
+    /// [5] 확인 단계 진입 과정에서 밀치기 결과 Preview를 갱신한다.
+    /// 확인 버튼 UI는 제거했으므로 별도 UI 이벤트를 보내지 않는다. 이후 Player 클릭이
+    /// BattlePlayerActionController → BattlePlayerCardFlow를 거쳐 실제 카드 사용을 확정한다.
+    /// </summary>
+    public bool TrySelectTargetAndEnterConfirmation(GameObject chosenTarget, MapInfo chosenTargetTile)
     {
-        if (!IsSelectingTarget || target == null || targetTile == null || !rangeTiles.Contains(targetTile))
+        // [1][3] 대상 선택 중이 아니거나 선택한 대상이 계산된 카드 사거리 밖이면 상태를 변경하지 않는다.
+        if (!IsSelectingTarget || chosenTarget == null || chosenTargetTile == null ||
+            !rangeTiles.Contains(chosenTargetTile))
         {
             return false;
         }
 
-        selectedTarget = target;
-        selectedTargetTile = targetTile;
+        // [1] 확정과 효과 실행 단계가 같은 대상을 사용하도록 GameObject와 MapInfo를 함께 저장한다.
+        selectedTarget = chosenTarget;
+        selectedTargetTile = chosenTargetTile;
         IsSelectingTarget = false;
+
+        // [3] 카드 사용 가능 사거리가 아니라, 확정 시 실제 효과가 퍼질 영역을 별도 색상으로 표시한다.
         ShowEffectAreaPreview(selectedTargetTile);
-        OpenConfirmation();
+
+        // [1][5][7] 선택을 끝내고 Preview와 외부 확인 입력을 준비한다.
+        EnterCardUseConfirmationState();
         return true;
     }
 
@@ -138,88 +221,110 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// </summary>
     public bool TryConfirmCardUse()
     {
-        if (!CanAttemptConfirmation())
+        if (!HasRequiredStateForCardConfirmation())
         {
             return false;
         }
 
-        bool targetWasSelectedAutomatically =
-            BattleCardTargetSelectionRules.UsesLowestHealthEnemyAutoTarget(selectedCardInfo.CardData);
-        if (!CanUseCurrentlySelectedTarget(targetWasSelectedAutomatically))
+        // [1][3] 자동 대상 카드는 시스템이 이미 유효한 Enemy를 골랐으므로 수동 선택용 rangeTiles 검사를 생략한다.
+        bool cardUsesAutomaticEnemyTargeting =
+            BattleCardTargetSelectionRules.UsesAutomaticLowestHealthEnemyTarget(selectedCardInfo.CardData);
+        if (!IsSelectedCardTargetStillValid(cardUsesAutomaticEnemyTargeting))
         {
-            OpenTargetSelection();
+            EnterTargetSelectionState();
             return false;
         }
 
-        // 카드 선택 이후 동상 같은 상태가 변했을 수 있으므로 시작 때의 비용을 재사용하지 않고 다시 계산한다.
-        if (!TryGetCurrentCardCost(out int cardCost))
+        // [2] 카드 선택 이후 동상 같은 상태가 변했을 수 있으므로 시작 때의 비용을 재사용하지 않고 다시 계산한다.
+        if (!TryCalculateAffordableCardMpCost(out int requiredMp))
         {
-            Debug.LogWarning($"카드 사용 불가: MP {cardCost}이 필요합니다.", this);
+            Debug.LogWarning($"카드 사용 불가: MP {requiredMp}이 필요합니다.", this);
             return false;
         }
 
         // 효과 파이프라인에는 Player, 대상, 타일, 카드 데이터와 외부 실행 함수를 하나의 문맥으로 전달한다.
-        BattleCardEffectPipeline.Context effectContext = BuildEffectContext();
+        BattleCardEffectPipeline.Context effectContext = CreateCardEffectExecutionContext();
         if (!BattleCardEffectPipeline.TryPrepareCardEffects(
                 effectContext,
-                out BattleCardEffectPipeline.PreparedUse preparedEffects,
+                out BattleCardEffectPipeline.PreparedUse preparedCardEffects,
                 out string failureReason))
         {
             Debug.LogWarning($"카드 사용 불가: {failureReason}", this);
-            if (RequiresExternalTarget() && !targetWasSelectedAutomatically)
-                OpenTargetSelection();
+            // 수동 대상 카드의 실패는 다른 대상을 고르면 해결될 수 있으므로 대상 선택 상태로 되돌린다.
+            if (CurrentCardNeedsWorldTargetSelection() && !cardUsesAutomaticEnemyTargeting)
+                EnterTargetSelectionState();
             return false;
         }
 
-        // 효과 실행 전 자원 소비를 확정한다. 이 단계가 실패하면 실제 피해·회복·이동은 발생하지 않는다.
-        if (!TrySpendMpAndMoveCardOutOfHand(cardCost))
+        // [2][6] 효과 실행 전 MP와 손패 소비를 확정한다. 실패하면 피해·회복·이동은 발생하지 않는다.
+        if (!TrySpendMpAndDiscardUsedCard(requiredMp))
         {
             return false;
         }
 
-        GameObject resultTarget = selectedTarget;
-        BattleActionRequest resultRequest = selectedCardInfo.ActionInfo;
+        // 상태 초기화 전에 완료 결과에 필요한 카드 대상과 행동 정보를 별도 지역 변수로 보존한다.
+        GameObject usedCardTarget = selectedTarget;
+        BattleActionRequest completedCardAction = selectedCardInfo.ActionInfo;
         // 사전 검증된 효과만 실행하고, 이후 카드 행동이 끝났음을 상위 입력 흐름에 알린다.
-        BattleCardEffectPipeline.ApplyPreparedCardEffects(effectContext, preparedEffects);
-        BattleActionResult result = new BattleActionResult(
-            resultRequest, player, resultTarget, Array.Empty<MapInfo>(), 0, cardCost);
+        BattleCardEffectPipeline.ApplyPreparedCardEffects(effectContext, preparedCardEffects);
+        BattleActionResult completedCardResult = new BattleActionResult(
+            completedCardAction, player, usedCardTarget, Array.Empty<MapInfo>(), 0, requiredMp);
         ClearStateAndRange();
-        Confirmed?.Invoke(result);
+        Confirmed?.Invoke(completedCardResult);
         return true;
     }
 
-    /// <summary>확정 단계 진입에 필요한 카드, 드로우 시스템과 Player 참조가 남아 있는지 확인한다.</summary>
-    private bool CanAttemptConfirmation()
+    /// <summary>
+    /// [1][6] Player 클릭으로 카드 사용을 확정하기 위한 최소 진행 상태와 참조가 모두 남아 있는지 확인한다.
+    /// 카드 효과나 대상 생존 여부를 검사하는 함수가 아니다. 확인 대기 상태, 선택 카드, 카드가 나온
+    /// DrawSystem, 카드 사용자 Player 중 하나라도 없으면 이후 비용 소비와 결과 생성이 불가능하므로 중단한다.
+    /// </summary>
+    private bool HasRequiredStateForCardConfirmation()
     {
         return IsAwaitingConfirmation && selectedCardInfo != null && drawSystem != null && player != null;
     }
 
-    /// <summary>확정 직전에도 선택 대상이 살아 있고 기존 사거리 안에 있는지 다시 확인한다.</summary>
-    private bool CanUseCurrentlySelectedTarget(bool targetWasSelectedAutomatically)
+    /// <summary>
+    /// [1][3] 수동으로 선택한 외부 대상이 확정 시점에도 선택 정보·활성 상태·카드 사거리를 유지하는지 검사한다.
+    /// Self·AllEnemies처럼 외부 대상이 필요 없는 카드와 시스템이 자동 대상을 정한 카드는 이 검사를 생략한다.
+    /// 여기서는 모든 카드에 공통인 GameObject 활성 상태만 검사한다. 실제 BattleHealth 존재 여부와 사망 여부,
+    /// 회복 가능 여부처럼 효과 종류마다 다른 조건은 EffectPipeline의 준비 단계에서 한 번만 검사한다.
+    /// </summary>
+    private bool IsSelectedCardTargetStillValid(bool cardUsesAutomaticEnemyTargeting)
     {
-        if (!RequiresExternalTarget() || targetWasSelectedAutomatically)
+        if (!CurrentCardNeedsWorldTargetSelection() || cardUsesAutomaticEnemyTargeting)
         {
             return true;
         }
 
-        return selectedTarget != null && selectedTargetTile != null &&
-               selectedTarget.activeInHierarchy && rangeTiles.Contains(selectedTargetTile);
+        // 선택 대상과 타일이 삭제되지 않았고, 대상 GameObject가 Scene에서 활성 상태이며,
+        // 처음 계산한 카드 대상 사거리 안에 남아 있어야 수동 선택 결과를 확정할 수 있다.
+        return selectedTarget != null &&
+               selectedTargetTile != null &&
+               selectedTarget.activeInHierarchy &&
+               rangeTiles.Contains(selectedTargetTile);
     }
 
     /// <summary>
     /// 현재 적용 중인 동상(Frostbite)의 공격 비용 +1을 반영해 최종 카드 MP를 다시 계산한다.
     /// 카드 선택 후 확정 전까지 상태가 변경될 수 있으므로 확정 시점에 캐시된 Player MP로 다시 검사한다.
     /// </summary>
-    private bool TryGetCurrentCardCost(out int cardCost)
+    private bool TryCalculateAffordableCardMpCost(out int requiredMp)
     {
-        cardCost = selectedCardInfo != null
-            ? GetModifiedCardCost(selectedCardInfo.ActionInfo.MPCost, selectedCardInfo.CardData)
+        requiredMp = selectedCardInfo != null
+            ? CalculateCardMpCostAfterStatusEffects(
+                selectedCardInfo.ActionInfo.MPCost,
+                selectedCardInfo.CardData)
             : 0;
-        return playerMP != null && playerMP.CanSpend(cardCost);
+        return playerMP != null && playerMP.CanSpend(requiredMp);
     }
 
-    /// <summary>선택된 카드와 대상을 카드 효과 파이프라인이 읽을 실행 문맥으로 묶는다.</summary>
-    private BattleCardEffectPipeline.Context BuildEffectContext()
+    /// <summary>
+    /// 선택된 카드, Player, 대상, 타일과 카드 효과 실행에 필요한 외부 기능을
+    /// EffectPipeline이 한 번에 읽을 수 있는 실행 입력 객체로 묶는다.
+    /// 이 함수는 효과를 검증하거나 실행하지 않고 현재 카드 사용 상태를 복사해 전달할 뿐이다.
+    /// </summary>
+    private BattleCardEffectPipeline.Context CreateCardEffectExecutionContext()
     {
         return new BattleCardEffectPipeline.Context
         {
@@ -243,18 +348,21 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// 버섯 카드만의 효과가 아니며, 이 처리가 없으면 일반 카드도 사용 후 손패에 그대로 남는다.
     /// MP 차감 뒤 손패 상태가 달라져 카드 이동이 실패하면 차감 전 MP를 즉시 복구한다.
     /// </summary>
-    private bool TrySpendMpAndMoveCardOutOfHand(int cardCost)
+    private bool TrySpendMpAndDiscardUsedCard(int requiredMp)
     {
-        int mpBeforeCardUse = playerMP.CurrentMP;
-        if (!playerMP.TrySpend(cardCost))
+        // [2] 손패 소비가 실패할 경우 MP까지 원래 값으로 돌리기 위해 차감 전 수치를 보관한다.
+        int mpBeforeCardPayment = playerMP.CurrentMP;
+        if (!playerMP.TrySpend(requiredMp))
         {
-            Debug.LogWarning($"카드 사용 확정 중 MP {cardCost} 차감에 실패했습니다.", this);
+            Debug.LogWarning($"카드 사용 확정 중 MP {requiredMp} 차감에 실패했습니다.", this);
             return false;
         }
 
         if (!drawSystem.TryMoveUsedCardToDiscardPile(selectedCardInfo))
         {
-            playerMP.SetCurrentMP(mpBeforeCardUse);
+            // [2][6] DrawSystem은 검사에 실패하면 손패를 변경하지 않으므로 카드 복구는 필요 없다.
+            // 먼저 성공했던 MP 차감만 되돌린 뒤 카드 선택·사거리·Preview 상태를 전부 취소한다.
+            playerMP.SetCurrentMP(mpBeforeCardPayment);
             Debug.LogError("손패 상태가 변경되어 카드 소비에 실패했습니다. 차감된 MP를 복구했습니다.", this);
             CancelAll();
             return false;
@@ -264,12 +372,20 @@ public sealed class BattleCardActionController : MonoBehaviour
     }
 
     /// <summary>카드를 소비하지 않고 선택 대상, 사거리 표시와 확인 대기 상태를 제거한다.</summary>
+    /// <summary>
+    /// 외부 취소 입력이 호출하는 공개 진입점이다. 진행 중인 카드 선택, 저장 대상,
+    /// 사거리와 밀치기 Preview를 실제로 정리하는 작업은 CancelAll()에 위임한다.
+    /// </summary>
     public void Cancel()
     {
         CancelAll();
     }
 
     /// <summary>턴 전환 시 완료되지 않은 카드 행동과 표시 상태를 안전하게 초기화한다.</summary>
+    /// <summary>
+    /// Player 턴 시작·종료처럼 턴이 전환될 때 이전 턴에 남은 카드 선택 상태와 모든 Preview를 제거한다.
+    /// 사용 카드나 MP를 되돌리는 함수가 아니며, 아직 확정되지 않은 화면·진행 상태만 초기화한다.
+    /// </summary>
     public void ResetTurn()
     {
         ClearStateAndRange();
@@ -280,145 +396,81 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// 최초 카드 선택 또는 확정 실패 후 재선택에 공통으로 사용하며, 이전 Push 미리보기와 저장 대상을
     /// 지운 뒤 카드 사거리를 다시 표시한다.
     /// </summary>
-    private void OpenTargetSelection()
+    private void EnterTargetSelectionState()
     {
         pushPreviewView?.HideAllPushPreviews();
         IsAwaitingConfirmation = false;
         IsSelectingTarget = true;
         selectedTarget = null;
         selectedTargetTile = null;
-        CalculateAndShowCardTargetRange();
+        RefreshCardTargetSelectionRange();
         TargetSelectionRequested?.Invoke(
             $"{selectedCardInfo.ActionInfo.DisplayName}: 사거리 안의 대상을 우클릭하세요.");
     }
 
     /// <summary>
-    /// 대상 선택을 끝내고 카드 사용 확인 대기 상태로 전환한다.
-    /// 밀치기·돌진 카드라면 확정 전에 예상 이동 결과를 갱신하고,
-    /// 상위 UI가 확인 안내를 표시하도록 ConfirmationRequested 이벤트를 보낸다.
+    /// 대상 선택을 끝내고 Player 클릭으로 카드 사용을 확정할 수 있는 대기 상태로 전환한다.
+    /// 밀치기·돌진 카드라면 확정 전에 예상 이동 결과를 갱신한다.
+    /// 기존 확인/취소 버튼 UI는 호출하지 않는다. Player 클릭 입력은 BattlePlayerActionController.ConfirmCurrentPlayerAction()
+    /// → BattlePlayerCardFlow.Confirm() → TryConfirmCardUse() 순서로 이 대기 상태를 확정한다.
     /// </summary>
-    private void OpenConfirmation()
+    private void EnterCardUseConfirmationState()
     {
-        // 대상은 이미 저장되었으므로 추가 클릭을 막고 확인 입력만 받는다.
+        // [1] 대상은 이미 저장되었으므로 대상 선택을 닫고 Player 클릭 확정만 기다린다.
         IsSelectingTarget = false;
         IsAwaitingConfirmation = true;
 
-        // Push가 없는 카드는 기존 Preview를 숨기고, Push가 있으면 예상 충돌 위치를 표시한다.
+        // [5] Push가 없는 카드는 기존 Preview를 숨기고, Push가 있으면 예상 충돌 위치를 표시한다.
         RefreshPushPreview();
-
-        // Self 회복·보호막은 대상 이름 대신 자연스러운 자기 사용 확인 문구를 사용한다.
-        bool isSelfRecovery = selectedCardInfo != null && selectedCardInfo.CardData != null &&
-            selectedCardInfo.CardData.targetType == BattleCardTargetType.Self &&
-            (BattleCardEffectDataQuery.ContainsEffect(selectedCardInfo.CardData, BattleCardEffectType.Heal) ||
-             BattleCardEffectDataQuery.ContainsEffect(selectedCardInfo.CardData, BattleCardEffectType.Shield));
-        ConfirmationRequested?.Invoke(isSelfRecovery
-            ? $"{selectedCardInfo.ActionInfo.DisplayName}을(를) 사용하시겠습니까?"
-            : $"{selectedCardInfo.ActionInfo.DisplayName} 카드를 사용하시겠습니까?");
     }
 
     /// <summary>
     /// 대상 선택이 끝난 뒤 선택 타일 또는 Player 타일을 중심으로 카드의 실제 영향 범위를 표시한다.
-    /// 카드 사용 가능 사거리를 보여주는 CalculateAndShowCardTargetRange()와 달리, 이 함수는 카드가 확정됐을 때
+    /// 카드 사용 가능 사거리를 보여주는 RefreshCardTargetSelectionRange()와 달리, 이 함수는 카드가 확정됐을 때
     /// 피해·회복·지속 영역이 적용될 타일을 미리 보여준다.
     /// </summary>
-    private void ShowEffectAreaPreview(MapInfo center)
+    private void ShowEffectAreaPreview(MapInfo effectCenterTile)
     {
-        // Single은 포션만 뜻하지 않는다. 단일 Enemy·Player·타일 하나에만 적용되어
-        // 주변 타일 Preview가 필요 없는 모든 카드는 여기서 끝낸다.
-        if (selectedCardInfo == null || selectedCardInfo.CardData == null || center == null ||
+        if (selectedCardInfo == null || selectedCardInfo.CardData == null || effectCenterTile == null ||
             selectedCardInfo.CardData.areaType == BattleCardAreaType.Single)
             return;
 
-        // CreateArea는 사용 즉시 끝나는 범위 효과가 아니라 여러 턴 남는 바닥 영역이다.
-        // 현재 치유 영역 데이터가 정사각형 배치를 사용하므로 별도 분기하지만,
-        // 표시 모양을 effectType으로 결정하는 결합은 areaType 확장 시 제거할 기술부채다.
-        if (BattleCardEffectDataQuery.ContainsEffect(selectedCardInfo.CardData, BattleCardEffectType.CreateArea))
-        {
-            int squareRadius = Mathf.Max(1, selectedCardInfo.CardData.areaSizeTiles);
-            // TODO(CARD-RANGE-01): 등록된 맵 타일 목록을 직접 받아 매 Preview의 FindObjectsByType을 제거한다.
-            foreach (MapInfo tile in FindObjectsByType<MapInfo>(FindObjectsSortMode.None))
-            {
-                if (tile == null) continue;
-                Vector2Int offset = tile.Index - center.Index;
-                if (Mathf.Abs(offset.x) > squareRadius || Mathf.Abs(offset.y) > squareRadius) continue;
-                rangeVisualizer?.ShowCardRangeTile(tile, effectAreaColor);
-            }
-            RangeVisibilityChanged?.Invoke(true);
-            return;
-        }
-
-        // Line 범위 방향을 계산하기 위해 Player가 서 있는 시작 타일을 함께 보관한다.
-        MapInfo origin = findClosestTile != null && player != null
+        // Controller는 효과 범위의 계산 공식을 갖지 않는다. 현재 카드와 선택 결과만 전달하고,
+        // 실제 BFS·Cross·Line·지속 영역 모양 판정은 공용 타일 계산기에 맡긴다.
+        MapInfo cardUserTile = findClosestTile != null && player != null
             ? findClosestTile(player.transform.position)
             : null;
-        int size = Mathf.Max(1, selectedCardInfo.CardData.areaSizeTiles);
-        Queue<MapInfo> queue = new Queue<MapInfo>();
-        Dictionary<MapInfo, int> distances = new Dictionary<MapInfo, int>();
-        queue.Enqueue(center);
-        distances[center] = 0;
+        bool usesPersistentSquareArea = BattleCardEffectDataQuery.ContainsEffect(
+            selectedCardInfo.CardData,
+            BattleCardEffectType.CreateArea);
+        HashSet<MapInfo> effectAreaTiles = BattleTileRangeCalculator.FindCardEffectAreaTiles(
+            effectCenterTile,
+            cardUserTile,
+            selectedCardInfo.CardData.areaType,
+            selectedCardInfo.CardData.areaSizeTiles,
+            usesPersistentSquareArea,
+            usesPersistentSquareArea ? allMapTiles : null);
 
-        // 중심 타일부터 상하좌우로 BFS 탐색하며 areaSizeTiles 거리 안의 후보를 수집한다.
-        // 실제 표시 여부는 아래 IsEffectPreviewTile()이 Cross·Line·일반 범위 규칙으로 걸러낸다.
-        while (queue.Count > 0)
-        {
-            MapInfo tile = queue.Dequeue();
-            int distance = distances[tile];
-            if (IsEffectPreviewTile(tile, center, origin, distance, size))
-            {
-                rangeVisualizer?.ShowCardRangeTile(tile, effectAreaColor);
-            }
-
-            if (distance >= size) continue;
-            foreach (MapInfo neighbour in BattleTileRangeCalculator.GetNeighbours(tile))
-            {
-                if (neighbour == null || distances.ContainsKey(neighbour)) continue;
-                distances[neighbour] = distance + 1;
-                queue.Enqueue(neighbour);
-            }
-        }
-
-        RangeVisibilityChanged?.Invoke(true);
-    }
-
-    private bool IsEffectPreviewTile(
-        MapInfo tile, MapInfo center, MapInfo origin, int distance, int size)
-    {
-        if (tile == null || distance > size) return false;
-        switch (selectedCardInfo.CardData.areaType)
-        {
-            case BattleCardAreaType.Cross:
-                // 중심 타일과 같은 가로 또는 세로 축에 있는 타일만 남겨 십자 형태를 만든다.
-                Vector2Int crossOffset = tile.Index - center.Index;
-                return crossOffset.x == 0 || crossOffset.y == 0;
-            case BattleCardAreaType.Line:
-                // Player→선택 대상의 주축을 고른 뒤 그 축과 같은 직선상의 타일만 표시한다.
-                if (origin == null) return false;
-                Vector2Int direction = center.Index - origin.Index;
-                Vector2Int lineOffset = tile.Index - center.Index;
-                return Mathf.Abs(direction.x) >= Mathf.Abs(direction.y)
-                    ? lineOffset.y == 0
-                    : lineOffset.x == 0;
-            default:
-                // 별도 모양 규칙이 없는 범위 카드는 BFS 거리 안의 모든 타일을 표시한다.
-                return true;
-        }
+        // 색상 합성과 원본색 복구는 Visualizer 책임이다. Controller는 계산 결과만 전달한다.
+        rangeVisualizer?.ShowCardRangeTiles(effectAreaTiles, effectAreaColor);
+        RangeVisibilityChanged?.Invoke(effectAreaTiles.Count > 0);
     }
 
     /// <summary>
     /// 현재 Player 타일에서 카드 사거리 안의 선택 가능 타일을 계산한 뒤 화면에 표시한다.
-    /// 계산은 CalculateCardTargetableTiles(), 색상 표시는 ShowCardTargetableTiles()에 위임하며,
-    /// 이 함수는 두 단계를 순서대로 연결하고 결과를 rangeTiles에 보관하는 역할만 한다.
+    /// 계산은 BattleTileRangeCalculator, 색상 표시는 BattleRangeVisualizer에 위임하며,
+    /// 이 함수는 두 전문 컴포넌트를 순서대로 호출하고 결과를 선택 상태에 보관하는 역할만 한다.
     /// </summary>
-    private void CalculateAndShowCardTargetRange()
+    private void RefreshCardTargetSelectionRange()
     {
         // 이전 카드 Preview가 바꿨던 색상과 선택 가능 목록을 먼저 비운다.
         rangeVisualizer?.ClearCardRangeTiles();
         rangeTiles.Clear();
 
-        MapInfo startTile = findClosestTile != null && player != null
+        MapInfo playerCurrentTile = findClosestTile != null && player != null
             ? findClosestTile(player.transform.position)
             : null;
-        if (startTile == null)
+        if (playerCurrentTile == null)
         {
             Debug.LogError(
                 "카드 사거리 계산 실패: Player가 서 있는 MapInfo 타일을 찾지 못했습니다. " +
@@ -428,64 +480,22 @@ public sealed class BattleCardActionController : MonoBehaviour
             return;
         }
 
-        HashSet<MapInfo> calculatedTargetableTiles = CalculateCardTargetableTiles(
-            startTile,
+        HashSet<MapInfo> tilesWithinTargetRange = BattleTileRangeCalculator.FindCardTargetTiles(
+            playerCurrentTile,
             selectedCardInfo.ActionInfo.RangeTiles);
-        rangeTiles.UnionWith(calculatedTargetableTiles);
-        ShowCardTargetableTiles(rangeTiles);
+        // HashSet.UnionWith은 중복 타일을 만들지 않고 이번 계산 결과를 Controller의 현재 선택 가능 목록에 합친다.
+        rangeTiles.UnionWith(tilesWithinTargetRange);
+        rangeVisualizer?.ShowCardRangeTiles(rangeTiles, rangeColor);
         RangeVisibilityChanged?.Invoke(true);
     }
 
     /// <summary>
-    /// 시작 타일에서 상하좌우로 이동한 칸 수가 카드 사거리 이하인 타일을 계산한다.
-    /// Player가 서 있는 시작 타일은 일반 Enemy·Tile 대상 카드가 자신을 선택하지 않도록 결과에서 제외한다.
-    /// 타일 색상이나 UI 상태는 변경하지 않는 순수 사거리 계산 단계다.
+    /// [1][3] 현재 카드가 Player 자신이나 전체 대상이 아니라 Scene의 Enemy·Character·Tile 하나를
+    /// 선택 대상으로 요구하는지 반환한다. true인 카드는 선택 대상과 대상 타일을 저장하고 사거리 검사를 거친다.
+    /// 현재 Ally는 TryBeginSelectedCardFlow()에서 Player 자신으로 처리되므로 포함하지 않는다.
+    /// 용병 등 실제 아군 선택 기능을 추가할 때 Ally 입력 탐색을 구현한 뒤 이 조건에도 포함해야 한다.
     /// </summary>
-    private static HashSet<MapInfo> CalculateCardTargetableTiles(MapInfo startTile, int rangeInTiles)
-    {
-        HashSet<MapInfo> targetableTiles = new HashSet<MapInfo>();
-        Queue<MapInfo> queue = new Queue<MapInfo>();
-        Dictionary<MapInfo, int> distances = new Dictionary<MapInfo, int>();
-        queue.Enqueue(startTile);
-        distances[startTile] = 0;
-
-        while (queue.Count > 0)
-        {
-            MapInfo current = queue.Dequeue();
-            int distance = distances[current];
-            if (distance > 0)
-            {
-                targetableTiles.Add(current);
-            }
-
-            if (distance >= rangeInTiles)
-                continue;
-
-            foreach (MapInfo neighbour in BattleTileRangeCalculator.GetNeighbours(current))
-            {
-                if (neighbour == null || distances.ContainsKey(neighbour))
-                    continue;
-                distances[neighbour] = distance + 1;
-                queue.Enqueue(neighbour);
-            }
-        }
-
-        return targetableTiles;
-    }
-
-    /// <summary>
-    /// 계산이 끝난 선택 가능 타일의 기존 색상을 저장하고 카드 사거리 색상을 적용한다.
-    /// 대상 선택 판정 데이터는 변경하지 않으며 화면 표현만 담당한다.
-    /// </summary>
-    private void ShowCardTargetableTiles(IEnumerable<MapInfo> targetableTiles)
-    {
-        foreach (MapInfo tile in targetableTiles)
-        {
-            rangeVisualizer?.ShowCardRangeTile(tile, rangeColor);
-        }
-    }
-
-    private bool RequiresExternalTarget()
+    private bool CurrentCardNeedsWorldTargetSelection()
     {
         BattleCardTargetType targetType = TargetType;
         return targetType == BattleCardTargetType.Enemy ||
@@ -493,17 +503,23 @@ public sealed class BattleCardActionController : MonoBehaviour
                targetType == BattleCardTargetType.Tile;
     }
 
-    private int GetModifiedCardCost(int baseCost, BattleCardData card)
+    /// <summary>
+    /// [2] 카드 데이터의 기본 MP 비용에 Player 상태이상 비용 규칙을 적용해 최종 비용을 반환한다.
+    /// 현재는 공격 카드에만 동상(Frostbite)의 공격 비용 +1을 적용하고 다른 카드 분류는 기본 비용을 유지한다.
+    /// </summary>
+    private int CalculateCardMpCostAfterStatusEffects(int baseMpCost, BattleCardData cardData)
     {
         // 현재는 동상(Frostbite)이 공격 카드와 기본 공격의 MP 비용을 1 증가시킨다.
         // 공격 카드가 아니거나 Player에게 상태이상 저장소가 없으면 데이터의 기본 비용을 그대로 사용한다.
-        return playerStatusEffects != null && card != null && card.category == BattleCardCategory.Attack
-            ? playerStatusEffects.ModifyAttackCost(baseCost)
-            : baseCost;
+        return playerStatusEffects != null &&
+               cardData != null &&
+               cardData.category == BattleCardCategory.Attack
+            ? playerStatusEffects.ModifyAttackCost(baseMpCost)
+            : baseMpCost;
     }
 
     /// <summary>
-    /// 카드 Pipeline이 요청한 상태이상을 대상 Unit의 공용 상태 저장소에 적용한다.
+    /// [2] 카드 Pipeline이 요청한 상태이상을 대상 Unit의 공용 상태 저장소에 적용한다.
     /// BattleStatusEffects는 독·화상·동상 같은 공용 상태를 저장하고, BattleEnemyControlState는
     /// 실제 행동을 막아야 하는 기절·속박을 별도로 적용한다. 두 저장소의 중복은 상태 시스템 통합 전 기술부채다.
     /// </summary>
@@ -539,122 +555,7 @@ public sealed class BattleCardActionController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Player 중심 카드 효과 범위 안에 있는 살아 있는 Enemy를 Push Preview 대상으로 수집한다.
-    /// 실제 Push 적용이 아니라 확정 전 예상 결과를 여러 개 표시하기 위한 임시 List를 반환한다.
-    /// 대상은 화면에서 시계 방향으로 정렬해 Preview 생성 순서가 매 실행마다 달라지지 않게 한다.
-    /// </summary>
-    private List<GameObject> CollectPushTargetsInArea(MapInfo playerTile)
-    {
-        List<GameObject> pushPreviewTargets = new List<GameObject>();
-
-        // EnemyTurnActor가 붙은 활성 전투 개체만 찾는다. 단순 Enemy 태그가 아니라 실제 턴에 참여하는
-        // Unit을 기준으로 하므로 장식용 Enemy 모델이나 비전투 오브젝트는 포함되지 않는다.
-        foreach (EnemyTurnActor enemy in FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None))
-        {
-            // 검색 결과를 순회하기 전에 같은 프레임에 파괴될 수 있고, 풀링·연출 때문에 비활성인
-            // Enemy는 현재 전투 대상이 아니므로 Preview 계산에서 제외한다.
-            if (enemy == null || !enemy.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            // 사망 여부는 BattleHealth, 격자상 거리는 Enemy 월드 위치에 가장 가까운 MapInfo로 계산한다.
-            BattleHealth health = enemy.GetComponent<BattleHealth>();
-            MapInfo enemyTile = findClosestTile(enemy.transform.position);
-
-            // areaSizeTiles가 0으로 잘못 저장돼도 광역 Push가 최소 인접 1칸은 검사하도록 보정한다.
-            int previewAreaRadius = Mathf.Max(1, selectedCardInfo.CardData.areaSizeTiles);
-            int distance = BattleTileRangeCalculator.GetDistance(
-                playerTile,
-                enemyTile,
-                previewAreaRadius);
-
-            // 거리 0은 Player 자신의 타일이고 음수는 범위 밖·경로 없음이므로 살아 있는 범위 내 Enemy만 추가한다.
-            if (health != null && !health.IsDead && distance > 0)
-            {
-                pushPreviewTargets.Add(enemy.gameObject);
-            }
-        }
-
-        // Hash/검색 순서는 보장되지 않으므로 Player 기준 시계 방향 각도로 정렬해 처리 순서를 고정한다.
-        pushPreviewTargets.Sort((left, right) =>
-            GetClockwiseAngle(player.transform.position, left.transform.position).CompareTo(
-                GetClockwiseAngle(player.transform.position, right.transform.position)));
-        return pushPreviewTargets;
-    }
-
-    /// <summary>
-    /// 중심에서 대상까지의 XZ 방향을 0~360도 시계 방향 각도로 변환한다.
-    /// 광역 Push 대상의 Preview 생성 순서를 공간상 일정하게 유지하는 정렬 기준이다.
-    /// </summary>
-    private static float GetClockwiseAngle(Vector3 center, Vector3 target)
-    {
-        Vector3 offset = target - center;
-        float angle = Mathf.Atan2(offset.x, offset.z) * Mathf.Rad2Deg;
-        return angle < 0f ? angle + 360f : angle;
-    }
-
-    /// <summary>
-    /// 자동 대상 선택 카드가 사용할 Enemy를 찾는다. 카드 사거리 안의 살아 있는 Enemy 중 현재 HP가
-    /// 가장 낮은 대상을 우선하며, HP가 같으면 Player와 더 가까운 대상을 선택한다.
-    /// 성공하면 Enemy GameObject와 그 Enemy가 서 있는 MapInfo를 함께 반환한다.
-    /// </summary>
-    private bool TrySelectLowestHealthEnemyInRange(out GameObject target, out MapInfo targetTile)
-    {
-        // out 값은 실패 시에도 이전 호출 결과가 남지 않도록 항상 null에서 시작한다.
-        target = null;
-        targetTile = null;
-
-        // 자동 대상 사거리 계산의 기준은 현재 Player가 서 있는 타일이다.
-        MapInfo playerTile = findClosestTile != null && player != null
-            ? findClosestTile(player.transform.position)
-            : null;
-        if (playerTile == null || selectedCardInfo == null)
-        {
-            return false;
-        }
-
-        float lowestHealthFound = float.MaxValue;
-        int closestDistanceAmongLowestHealth = int.MaxValue;
-        EnemyTurnActor[] enemies = FindObjectsByType<EnemyTurnActor>(FindObjectsSortMode.None);
-        foreach (EnemyTurnActor enemy in enemies)
-        {
-            // 파괴됐거나 비활성인 턴 참여자는 현재 자동 선택 후보가 아니다.
-            if (enemy == null || !enemy.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            // 후보의 생존 상태와 Player로부터의 격자 거리를 계산한다.
-            BattleHealth health = enemy.GetComponent<BattleHealth>();
-            MapInfo enemyTile = findClosestTile(enemy.transform.position);
-            int distance = BattleTileRangeCalculator.GetDistance(
-                playerTile,
-                enemyTile,
-                selectedCardInfo.ActionInfo.RangeTiles);
-            // HP 데이터가 없거나 사망했거나 카드 사거리 밖이면 후보에서 제외한다.
-            if (health == null || health.IsDead || distance < 0)
-            {
-                continue;
-            }
-
-            // HP가 더 낮은 Enemy로 교체한다. HP가 같으면 가까운 Enemy를 선택해 결과를 결정적으로 만든다.
-            if (health.CurrentHealth < lowestHealthFound ||
-                (Mathf.Approximately(health.CurrentHealth, lowestHealthFound) &&
-                 distance < closestDistanceAmongLowestHealth))
-            {
-                lowestHealthFound = health.CurrentHealth;
-                closestDistanceAmongLowestHealth = distance;
-                target = enemy.gameObject;
-                targetTile = enemyTile;
-            }
-        }
-
-        return target != null && targetTile != null;
-    }
-
-    /// <summary>카드 선택 상태를 초기화하고 상위 UI에도 사용 취소를 알린다.</summary>
+    /// <summary>[1][7] 카드 선택 상태를 초기화하고 상위 UI에도 사용 취소를 알린다.</summary>
     private void CancelAll()
     {
         ClearStateAndRange();
@@ -681,74 +582,27 @@ public sealed class BattleCardActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// 확정 전 Push 효과의 예상 결과를 표시한다. Push가 아니면 기존 표시를 숨긴다.
+    /// [5] 확정 전 Push 효과의 예상 결과를 표시한다. Push가 아니면 기존 표시를 숨긴다.
     /// 돌진 후 밀치기는 돌진 도착 타일을 밀치기 시작점으로 계산하고,
     /// 회전 공격은 인접한 모든 대상의 밀치기 계획을 각각 만들어 동시에 표시한다.
     /// </summary>
     private void RefreshPushPreview()
     {
-        if (pushPreviewView == null || selectedCardInfo == null || selectedTarget == null ||
-            !BattleCardEffectDataQuery.TryFindFirstEffect(
-                selectedCardInfo.CardData,
-                BattleCardEffectType.Push,
-                out BattleCardEffectData pushEffect))
+        if (pushPreviewView == null || selectedCardInfo == null || selectedTarget == null)
         {
             pushPreviewView?.HideAllPushPreviews();
             return;
         }
 
-        // Push 대상이 TargetsInArea면 특정 카드 이름을 추론하지 않고 Player 주변 전체를 Preview한다.
-        if (pushEffect.effectTarget == BattleCardEffectTarget.TargetsInArea)
-        {
-            MapInfo playerTile = findClosestTile != null ? findClosestTile(player.transform.position) : null;
-            List<BattleCardMovementService.PushPlan> pushPlans = new List<BattleCardMovementService.PushPlan>();
-            foreach (GameObject target in CollectPushTargetsInArea(playerTile))
-            {
-                // TryCreatePushPlan은 실제 이동시키지 않고 목적지·벽/Enemy 충돌·물 추락 결과만 계산한다.
-                if (BattleCardMovementService.TryCreatePushPlan(
-                        player,
-                        target,
-                        Mathf.Max(0, pushEffect.distanceTiles),
-                        Mathf.Max(1, pushEffect.pushForce),
-                        out BattleCardMovementService.PushPlan plan))
-                {
-                    pushPlans.Add(plan);
-                }
-            }
-            pushPreviewView.ShowPushPredictions(pushPlans);
-            return;
-        }
-
-        // 돌진 후 밀치기 카드는 현재 Player 위치가 아니라 돌진 완료 예상 타일에서 밀기 방향을 계산해야 한다.
-        MapInfo predictedSourceTile = null;
-        if (BattleCardEffectDataQuery.ContainsEffect(selectedCardInfo.CardData, BattleCardEffectType.Dash) &&
-            BattleCardMovementService.TryCreateDashPlan(
-                player,
-                selectedTarget,
-                BattleCardEffectDataQuery.FindLongestMovementDistance(selectedCardInfo.CardData, BattleCardEffectType.Dash),
-                out BattleCardMovementService.MovementPlan dashPlan,
-                out _))
-        {
-            predictedSourceTile = dashPlan.Destination;
-        }
-
-        // Dash가 없는 일반 밀치기 카드도 이 공통 경로로 들어오며 predictedSourceTile만 null이다.
-        // TryCreatePushPlan이 null 시작점을 받으면 현재 Player 타일을 기준으로 Push 결과를 계산한다.
-        bool pushPlanCreated = BattleCardMovementService.TryCreatePushPlan(
+        // Controller는 현재 카드 상태만 전달한다. 대상 검색·Dash 예상 위치·Push 충돌 계산은
+        // Planner가 수행하고, View는 완성된 계획을 이미지로 표시한다.
+        List<BattleCardMovementService.PushPlan> pushPlans =
+            BattleCardPushPreviewPlanner.BuildPushPlans(
             player,
             selectedTarget,
-            predictedSourceTile,
-            BattleCardEffectDataQuery.FindLongestMovementDistance(selectedCardInfo.CardData, BattleCardEffectType.Push),
-            BattleCardEffectDataQuery.FindStrongestPushForce(selectedCardInfo.CardData),
-            out BattleCardMovementService.PushPlan pushPlan);
-        if (pushPlanCreated)
-        {
-            pushPreviewView.ShowSinglePushPrediction(pushPlan);
-        }
-        else
-        {
-            pushPreviewView.HideAllPushPreviews();
-        }
+            selectedCardInfo.CardData,
+            findClosestTile);
+        pushPreviewView.ShowPushPredictions(pushPlans);
     }
 
 }
@@ -760,7 +614,7 @@ public sealed class BattleCardActionController : MonoBehaviour
 internal static class BattleCardTargetSelectionRules
 {
     /// <summary>이 카드가 사거리 안에서 현재 HP가 가장 낮은 Enemy를 자동 선택하도록 설정됐는지 반환한다.</summary>
-    internal static bool UsesLowestHealthEnemyAutoTarget(BattleCardData card)
+    internal static bool UsesAutomaticLowestHealthEnemyTarget(BattleCardData card)
     {
         return card != null &&
                card.targetSelectionMode == BattleCardTargetSelectionMode.LowestHealthEnemyInRange;

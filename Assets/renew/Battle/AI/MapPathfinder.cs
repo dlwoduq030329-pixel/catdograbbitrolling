@@ -34,6 +34,8 @@ public static class MapPathfinder
 
         Queue<MapInfo> queue = new Queue<MapInfo>();
         Dictionary<MapInfo, MapInfo> previous = new Dictionary<MapInfo, MapInfo>();
+        // Queue는 가까운 타일부터 탐색 순서를 보장하고, previous는 각 타일에 처음 도착한 부모 타일을 기록한다.
+        // 이 둘을 함께 사용하면 전체 경로 List를 탐색 중 매번 복사하지 않고 목적지 발견 후 한 번만 복원할 수 있다.
         queue.Enqueue(start);
         previous[start] = null;
 
@@ -69,6 +71,7 @@ public static class MapPathfinder
                     return true;
                 }
 
+                // 목적지가 아니면 이후 거리의 인접 타일을 계속 검사하도록 Queue 뒤에 넣는다.
                 queue.Enqueue(neighbour);
             }
         }

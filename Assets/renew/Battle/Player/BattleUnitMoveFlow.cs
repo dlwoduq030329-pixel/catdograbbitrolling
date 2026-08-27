@@ -63,11 +63,13 @@ public class BattleUnitMoveFlow : MonoBehaviour
     {
         owner.EnsureBattleRaycaster();
         owner.EnsureBattlePlayerRangeController();
+        owner.ResolveBattleDataPool();
         battleMoveThreatPreview = BattleComponentResolver.GetOrAdd(gameObject, battleMoveThreatPreview);
         battleMoveThreatPreview.ConfigureDependencies(
             owner.mainCamera,
             owner.battleRaycaster,
-            owner.battlePlayerRangeController);
+            owner.battlePlayerRangeController,
+            owner.battleDataPool != null ? owner.battleDataPool.Units : null);
     }
 
     /// <summary>새 Player 턴에 이동 관련 상태(대기 중이던 목적지, 화살표, 범위 표시)를 초기화한다.</summary>
@@ -200,7 +202,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
             Debug.LogWarning(
                 movementResult != null ? movementResult.FailureReason : "이동 결과를 받지 못했습니다.",
                 this);
-            owner.CancelMoveSelection();
+            owner.CancelCurrentPlayerAction();
             yield break;
         }
 

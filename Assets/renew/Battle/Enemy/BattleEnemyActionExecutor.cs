@@ -33,6 +33,8 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
         int attackRangeTiles,
         int moveCostPerTile)
     {
+        // Executor의 공개 경계에서는 실행에 필요한 MP·경로·시작 타일만 확인한다.
+        // 어떤 경로를 선택할지는 Planner 책임이므로 여기서 다른 타일을 검색하지 않는다.
         if (characterMP == null || path == null || startTile == null)
         {
             yield break;
@@ -56,12 +58,14 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
 
         for (int i = 0; i < moveCount; i++)
         {
+            // Path는 시작 타일을 제외하고 이동 순서대로 들어 있으므로 0번부터 차례로 이동한다.
             Vector3 targetPosition = path[i].transform.position + Vector3.up * heightOffset;
             yield return BattleUnitMotionAnimator.MoveToPosition(
                 transform,
                 targetPosition,
                 secondsPerTile);
 
+            // 한 칸 이동이 실제 완료된 직후 그 칸의 MP를 차감한다. 중간 실패 시 이후 경로는 실행하지 않는다.
             if (!characterMP.TrySpend(safeMoveCost))
             {
                 Debug.LogWarning($"{name}: MP 차감에 실패하여 이동을 중단했습니다.", this);
