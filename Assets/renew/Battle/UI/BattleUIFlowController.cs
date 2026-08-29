@@ -60,9 +60,6 @@ public class BattleUIFlowController : MonoBehaviour
     private float maximumCameraWaitSeconds = 10f;
 
     private Coroutine battleStartupRoutine;
-    private CanvasGroup battleHudInputGroup;
-    private bool battleHudWasInteractable;
-    private bool battleHudWasBlockingRaycasts;
     private GameObject battleStartupClickBlocker;
 
     /// <summary>Main Camera fallback을 보완하고 최초 화면을 캐릭터 선택 단계로 맞춘다.</summary>
@@ -110,14 +107,17 @@ public class BattleUIFlowController : MonoBehaviour
         // 같은 버튼의 StatusUI.summonPlayer()가 MapGenerator 상태를 먼저 초기화하도록 한 Frame 양보한다.
         yield return null;
         Debug.Log("진입 성공");
-        if (legacyMapGenerator == null || renewMapGenerator == null)
+        // Scene마다 Legacy 또는 Renew 생성기 하나만 사용할 수 있다. 둘 다 없을 때만 설정 오류다.
+        if (legacyMapGenerator == null && renewMapGenerator == null)
         {
             Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
             battleStartupRoutine = null;
             yield break;
         }
 
-        while (!legacyMapGenerator.IsGenerateEnd() && !renewMapGenerator.IsGenerateEnd())
+        // 연결된 생성기만 검사한다. 두 생성기가 함께 있는 전환기 Scene에서는 둘 다 완료될 때까지 기다린다.
+        while ((legacyMapGenerator != null && !legacyMapGenerator.IsGenerateEnd()) ||
+               (renewMapGenerator != null && !renewMapGenerator.IsGenerateEnd()))
         {
             Debug.Log("한무대기");
 
@@ -151,7 +151,9 @@ public class BattleUIFlowController : MonoBehaviour
         yield return WaitUntilBattleCameraStops();
 
         ShowCharacterSelectionOrBattleCanvas(showBattle: true);
-        SetBattleHudInteractionLocked(true);
+        // 전투 진입 중 Player·카메라·HUD 입력 상태는 BattleOverlayUiController 한 곳에서만 관리한다.
+        // 여기서 같은 HUD CanvasGroup을 별도로 잠그면 이미 잠긴 false/false를 원래 상태로 잘못 저장해,
+        // 진입 연출이 끝난 뒤 Overlay가 복구한 HUD를 다시 비활성화하는 이중 관리 버그가 발생한다.
         battleGameManager.LockBattleInputForOverlay();
         yield return battleGameManager.PlayStageIntro();
         // SpawnPlayer.waitUnitMApGen()이 맵 생성 완료 시점에 LoadingUI로 이미 페이드 아웃/인을
@@ -169,7 +171,6 @@ public class BattleUIFlowController : MonoBehaviour
             yield return null;
         }
 
-        SetBattleHudInteractionLocked(false);
         SetBattleStartupClickBlockerActive(false);
 
         battleStartupRoutine = null;
@@ -208,35 +209,6 @@ public class BattleUIFlowController : MonoBehaviour
         {
             EventSystem.current.SetSelectedGameObject(null);
         }
-    }
-
-    /// <summary>전투 진입 연출 동안 Battle HUD의 기존 입력 상태를 저장하고 UI·카메라 입력을 함께 잠근다.</summary>
-    private void SetBattleHudInteractionLocked(bool shouldLockInput)
-    {
-        if (battleHudCanvas == null) return;
-
-        if (battleHudInputGroup == null)
-        {
-            battleHudInputGroup = battleHudCanvas.GetComponent<CanvasGroup>();
-            if (battleHudInputGroup == null)
-            {
-                battleHudInputGroup = battleHudCanvas.AddComponent<CanvasGroup>();
-            }
-        }
-
-        if (shouldLockInput)
-        {
-            battleHudWasInteractable = battleHudInputGroup.interactable;
-            battleHudWasBlockingRaycasts = battleHudInputGroup.blocksRaycasts;
-            battleHudInputGroup.interactable = false;
-            battleHudInputGroup.blocksRaycasts = true;
-            BattleMapCameraInput.SetEnabledOnMainCamera(false);
-            return;
-        }
-
-        battleHudInputGroup.interactable = battleHudWasInteractable;
-        battleHudInputGroup.blocksRaycasts = battleHudWasBlockingRaycasts;
-        BattleMapCameraInput.SetEnabledOnMainCamera(true);
     }
 
     /// <summary>이전 Player 선택 코드를 수정하지 않고 선택 Canvas 아래의 초기 State 화면을 활성화한다.</summary>

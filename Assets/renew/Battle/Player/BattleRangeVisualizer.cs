@@ -42,7 +42,9 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
     // 과거 값으로 되감지 않고 자기 레이어만 제거한 뒤 남은 레이어를 우선순위대로 다시 합성한다.
     private readonly Dictionary<Renderer, Dictionary<TileColorLayer, TileColorOverlay>> activeColorLayers =
         new Dictionary<Renderer, Dictionary<TileColorLayer, TileColorOverlay>>();
-    private readonly MaterialPropertyBlock colorPropertyBlock = new MaterialPropertyBlock();
+    // UnityEngine.Object 계열 리소스인 MaterialPropertyBlock은 MonoBehaviour 생성자/필드 초기화 시
+    // 만들 수 없다. 실제 타일 색상을 적용하는 시점(Awake 이후)에 한 번만 지연 생성한다.
+    private MaterialPropertyBlock colorPropertyBlock;
 
     // 이동/공격/카드 범위 표시, 확정 전 선택 타일, 착지 타일 각각 다른 강도로 원본 색과 섞는다(0=원본 유지, 1=강조색으로 완전 교체).
     private float rangeBlendStrength = 0.3f;
@@ -83,9 +85,9 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
                 Material material = renderer != null ? renderer.sharedMaterial : null;
                 if (material != null &&
                     !originalColors.ContainsKey(renderer) &&
-                    material.HasProperty("_Color"))
+                    TryReadMaterialColor(material, out Color originalColor))
                 {
-                    originalColors[renderer] = material.GetColor("_Color");
+                    originalColors[renderer] = originalColor;
                 }
             }
         }
@@ -200,9 +202,9 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
         foreach (Renderer renderer in tile.GetComponentsInChildren<Renderer>(true))
         {
             // MapInfo 자체뿐 아니라 자식 Mesh까지 한 타일의 외형으로 취급한다.
-            // _Color 속성이 없는 Shader에는 이 방식으로 색을 적용할 수 없으므로 건너뛴다.
+            // 기존 Standard 계열의 _Color와 Yeop 타일 Shader의 _BaseColor 중 하나도 없으면 건너뛴다.
             Material material = renderer != null ? renderer.sharedMaterial : null;
-            if (material == null || !material.HasProperty("_Color"))
+            if (material == null || !TryReadMaterialColor(material, out Color materialColor))
             {
                 continue;
             }
@@ -210,7 +212,7 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
             // 사전 Cache가 누락된 런타임 타일도 표시할 수 있게 현재 sharedMaterial 색을 최초 원본으로 등록한다.
             if (!originalColors.ContainsKey(renderer))
             {
-                originalColors[renderer] = material.GetColor("_Color");
+                originalColors[renderer] = materialColor;
             }
 
             if (!activeColorLayers.TryGetValue(
@@ -349,11 +351,49 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
             }
         }
 
-        // Renderer에 이미 설정된 다른 PropertyBlock 값은 보존하고 _Color 항목만 교체한다.
+        // Renderer에 이미 설정된 다른 PropertyBlock 값은 보존하고 현재 Shader가 지원하는 색상 항목만 교체한다.
         // sharedMaterial을 변경하지 않으므로 같은 Material을 쓰는 다른 타일까지 함께 변하지 않는다.
+        if (colorPropertyBlock == null)
+        {
+            colorPropertyBlock = new MaterialPropertyBlock();
+        }
+
         renderer.GetPropertyBlock(colorPropertyBlock);
-        colorPropertyBlock.SetColor("_Color", finalColor);
+        Material material = renderer.sharedMaterial;
+        // Yeop 타일용 Shader는 실제 표면색에 _BaseColor를 사용한다. 일부 Material은 호환을 위해
+        // _Color도 함께 갖고 있으므로 존재하는 두 속성을 모두 갱신해 Shader 종류에 관계없이 범위가 보이게 한다.
+        if (material != null && material.HasProperty("_BaseColor"))
+            colorPropertyBlock.SetColor("_BaseColor", finalColor);
+        if (material != null && material.HasProperty("_Color"))
+            colorPropertyBlock.SetColor("_Color", finalColor);
         renderer.SetPropertyBlock(colorPropertyBlock);
         colorPropertyBlock.Clear();
+    }
+
+    /// <summary>
+    /// Yeop 타일 Shader의 _BaseColor를 우선 읽고, 기존 Standard 타일은 _Color를 읽는다.
+    /// 반환값이 false면 이 Renderer는 색상 PropertyBlock 방식의 범위 표시에 사용할 수 없다.
+    /// </summary>
+    private static bool TryReadMaterialColor(Material material, out Color color)
+    {
+        color = Color.white;
+        if (material == null)
+        {
+            return false;
+        }
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            color = material.GetColor("_BaseColor");
+            return true;
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            color = material.GetColor("_Color");
+            return true;
+        }
+
+        return false;
     }
 }

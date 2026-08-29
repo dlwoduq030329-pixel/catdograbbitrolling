@@ -10,7 +10,16 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattlePlayerMover : MonoBehaviour
 {
+    private const string JumpStartAnimationState = "Jump_Idle";
+    private const string JumpLandingAnimationState = "Jump_Land";
+
     private GameObject playerObject;
+
+    [Header("단차 이동 연출")]
+    [Tooltip("앞 타일과 다음 타일의 높이 차이가 이 값 이상일 때 점프 이동을 사용한다.")]
+    [SerializeField, Min(0f)] private float minimumHeightDifferenceForJump = 0.1f;
+    [Tooltip("단차 이동 중 직선 경로 위로 추가되는 포물선의 최대 높이.")]
+    [SerializeField, Min(0f)] private float jumpArcHeight = 0.75f;
 
     // 아래 두 값은 항상 Configure()에서 BattlePlayerActionController의 Inspector 값(기본 1f / 4f)으로
     // 덮어써진다. 여기 초기값은 Configure가 호출되기 전에도 GetDurationPerTile()이 0으로 나누지
@@ -49,10 +58,27 @@ public sealed class BattlePlayerMover : MonoBehaviour
             }
 
             Vector3 targetPosition = pathTile.transform.position + Vector3.up * heightOffset;
-            yield return BattleUnitMotionAnimator.MoveToPosition(
-                playerObject.transform,
-                targetPosition,
-                durationPerTile);
+            float heightDifference = Mathf.Abs(targetPosition.y - playerObject.transform.position.y);
+            bool crossesHeightStep = heightDifference >= minimumHeightDifferenceForJump;
+
+            if (crossesHeightStep)
+            {
+                // 모델 Animator에 점프 State가 있으면 함께 재생한다. 없는 모델도 위치 포물선은 정상 동작한다.
+                BattleCharacterAnimationBridge.PlayState(playerObject, JumpStartAnimationState);
+                yield return BattleUnitMotionAnimator.MoveToPositionWithJumpArc(
+                    playerObject.transform,
+                    targetPosition,
+                    durationPerTile,
+                    jumpArcHeight);
+                BattleCharacterAnimationBridge.PlayState(playerObject, JumpLandingAnimationState);
+            }
+            else
+            {
+                yield return BattleUnitMotionAnimator.MoveToPosition(
+                    playerObject.transform,
+                    targetPosition,
+                    durationPerTile);
+            }
         }
 
         BattleCharacterAnimationBridge.PlayIdle(playerObject);
