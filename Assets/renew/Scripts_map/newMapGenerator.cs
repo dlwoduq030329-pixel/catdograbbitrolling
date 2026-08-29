@@ -8,6 +8,9 @@ public class NewMapGenerator : MonoBehaviour
     [SerializeField]
     bool CODE_EXPLAIN;
 
+    [SerializeField]
+    private GridWaterSimulation waterSimulation;
+
     [Header("블록간의 거리")]
     [SerializeField]
     float blockDistance;
@@ -356,12 +359,38 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
     }
+    public List<Vector2Int> GetAllRiverPositions()
+    {
+        List<Vector2Int> riverPositions =
+            new List<Vector2Int>();
 
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                if (mapblueprint[x, z] ==
+                    TileType.River)
+                {
+                    riverPositions.Add(
+                        new Vector2Int(x, z)
+                    );
+                }
+            }
+        }
+
+        return riverPositions;
+    }
 
     // =========================================================
     // 대륙 생성
     // =========================================================
+    public TileType GetTileType(Vector2Int pos)
+    {
+        if (!IsInsideMap(pos))
+            return TileType.Empty;
 
+        return mapblueprint[pos.x, pos.y];
+    }
 
     // =========================================================
     // Height Index
@@ -1535,6 +1564,21 @@ public class NewMapGenerator : MonoBehaviour
 
         if (playerBody != null)
             playerBody.transform.position = playerPos;
+
+
+        if (waterSimulation != null)
+        {
+            List<Vector2Int> rivers =
+                GetAllRiverPositions();
+
+            foreach (Vector2Int riverPos in rivers)
+            {
+                waterSimulation.AddWaterSource(
+                    riverPos,
+                    blockDistance
+                );
+            }
+        }
 
         generatorEnd = true;
     }
