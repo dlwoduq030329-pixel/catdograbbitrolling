@@ -38,14 +38,14 @@ public sealed class SelectedCardUseInfo
 /// </summary>
 public class BattleCardDrawSystem : MonoBehaviour
 {
-    [Header("?„íˆ¬ ì¹´ë“œ ?°ì´??)]
+    [Header("?„íˆ¬ ì¹´ë“œ ?°ì´??")]
     [InspectorName("?„íˆ¬ ì¹´ë“œ ?°ì´?°ë² ?´ìŠ¤")]
     [SerializeField] private BattleCardDatabase battleCardDatabase;
     [InspectorName("?ë³¸ ì¹´ë“œ ?°ì´?°ë² ?´ìŠ¤")]
     [SerializeField] private CardDatabase originalCardDatabase;
 
     [Header("?œë¡œ??ê·œì¹™")]
-    [InspectorName("ìµœë? ?íŒ¨ ??)]
+    [InspectorName("ìµœë? ?íŒ¨ ??")]
     [SerializeField, Min(1)] private int handLimit = 5;
     [InspectorName("?„íˆ¬ ?œì‘ ?????ê¸°")]
     [SerializeField] private bool shuffleAtBattleStart = true;

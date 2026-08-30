@@ -4,90 +4,254 @@ using UnityEngine;
 public class GridWaterSimulation : MonoBehaviour
 {
     [Header("Grid")]
-    public int sizeX = 100;
-    public int sizeY = 30;
-    public int sizeZ = 100;
+    [SerializeField] private int sizeX = 100;
+    [SerializeField] private int sizeY = 10;
+    [SerializeField] private int sizeZ = 100;
 
-    public float cellSize = 1f;
+    [SerializeField] private float cellSize = 1f;
 
     [Header("Simulation")]
-    public float simulationInterval = 0.05f;
+    [SerializeField] private float simulationInterval = 0.05f;
 
-    [Range(0f, 1f)]
-    public float horizontalFlowSpeed = 0.25f;
+    [Tooltip("물이 낮은 곳으로 이동하는 속도")]
+    [SerializeField] private float flowSpeed = 0.35f;
 
-    [Range(0f, 1f)]
-    public float downwardFlowSpeed = 1f;
+    [Tooltip("절벽 아래로 떨어지는 속도")]
+    [SerializeField] private float waterfallSpeed = 1f;
 
-    [Header("Rendering")]
-    public GameObject waterBlockPrefab;
+    [Tooltip("한 칸에 저장 가능한 물의 최대량")]
+    [SerializeField] private float maxWaterAmount = 1f;
 
     [Header("Water Source")]
+    [Tooltip("강 타일마다 계속 공급되는 물")]
+    [SerializeField] private float sourceWaterAmount = 0.5f;
 
-    [Tooltip("Source가 매 시뮬레이션마다 공급하는 물의 양")]
-    public float sourceWaterAmount = 1f;
+    [Header("Rendering")]
+    [SerializeField] private GameObject waterBlockPrefab;
+
+    [Tooltip("물이 거의 없는 양은 렌더링하지 않음")]
+    [SerializeField] private float renderThreshold = 0.01f;
 
 
-    private bool[,,] solidGrid;
+    // ============================================================
+    // 내부 데이터
+    // ============================================================
+
     private float[,,] waterGrid;
+
+    /*
+     * terrainHeight[x,z]
+     *
+     * 해당 타일의 실제 지형 높이.
+     *
+     * River = 0
+     * Height 1 = 1
+     * Height 2 = 2
+     * Height 3 = 3
+     */
+    private int[,] terrainHeight;
+
+    /*
+     * 지형이 존재하는지.
+     *
+     * true  = 지형 있음
+     * false = 빈 공간
+     */
+    private bool[,] terrainExists;
+
+
+    /*
+     * River 위치.
+     * 모든 River가 Water Source가 된다.
+     */
+    private HashSet<Vector2Int> waterSources =
+        new HashSet<Vector2Int>();
+
+
+    /*
+     * 현재 화면에 생성된 물 오브젝트.
+     */
+    private Dictionary<Vector3Int, GameObject> waterObjects =
+        new Dictionary<Vector3Int, GameObject>();
+
+
+    private NewMapGenerator mapGenerator;
+
+    private float timer;
+
+    private bool initialized;
+
+
+    // ============================================================
+    // Unity
+    // ============================================================
+
+    private void Awake()
+    {
+        CreateGrid();
+    }
+
+
+    private void Update()
+    {
+        if (!initialized)
+            return;
+
+        timer += Time.deltaTime;
+
+        if (timer < simulationInterval)
+            return;
+
+        timer = 0f;
+
+        SupplyWaterSources();
+
+        SimulateWater();
+
+        UpdateWaterVisual();
+    }
+
+
+    // ============================================================
+    // Grid 생성
+    // ============================================================
+
+    private void CreateGrid()
+    {
+        waterGrid =
+            new float[sizeX, sizeY, sizeZ];
+
+        terrainHeight =
+            new int[sizeX, sizeZ];
+
+        terrainExists =
+            new bool[sizeX, sizeZ];
+    }
+
+
+    // ============================================================
+    // 초기화
+    // ============================================================
+
+    public void Initialize(NewMapGenerator generator)
+    {
+        if (generator == null)
+        {
+            Debug.LogError(
+                "GridWaterSimulation.Initialize : NewMapGenerator가 null입니다."
+            );
+
+            return;
+        }
+
+        mapGenerator = generator;
+
+        ClearSimulation();
+
+        /*
+         * NewMapGenerator의 실제 맵 크기를 가져온다.
+         */
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int z = 0; z < sizeZ; z++)
+            {
+                Vector2Int pos =
+                    new Vector2Int(x, z);
+
+                int height =
+                    generator.GetHeightIndex(pos);
+
+                /*
+                 * Height 0은 River.
+                 *
+                 * 실제 맵 범위 안의 타일만
+                 * terrainExists = true로 취급한다.
+                 */
+                if (height > 0)
+                {
+                    terrainExists[x, z] = true;
+                    terrainHeight[x, z] = height;
+                }
+                else
+                {
+                    /*
+                     * River도 지형 바닥은 존재한다.
+                     *
+                     * 물이 흐를 바닥이 필요하므로
+                     * River는 높이 0의 지형으로 취급.
+                     */
+                    terrainExists[x, z] = true;
+                    terrainHeight[x, z] = 0;
+                }
+            }
+        }
+
+
+        /*
+         * 모든 River를 Water Source로 등록.
+         */
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int z = 0; z < sizeZ; z++)
+            {
+                Vector2Int pos =
+                    new Vector2Int(x, z);
+
+                if (generator.GetHeightIndex(pos) == 0)
+                {
+                    waterSources.Add(pos);
+                }
+            }
+        }
+
+
+        initialized = true;
+
+        Debug.Log(
+            $"Water Simulation 초기화 완료 / Source : {waterSources.Count}"
+        );
+    }
+
+
+    // ============================================================
+    // 시뮬레이션 초기화
+    // ============================================================
+
+    private void ClearSimulation()
+    {
+        waterSources.Clear();
+
+        foreach (GameObject water in waterObjects.Values)
+        {
+            if (water != null)
+                Destroy(water);
+        }
+
+        waterObjects.Clear();
+
+        if (waterGrid == null)
+            return;
+
+        for (int x = 0; x < sizeX; x++)
+        {
+            for (int y = 0; y < sizeY; y++)
+            {
+                for (int z = 0; z < sizeZ; z++)
+                {
+                    waterGrid[x, y, z] = 0f;
+                }
+            }
+        }
+    }
 
 
     // ============================================================
     // Water Source
     // ============================================================
 
-    private HashSet<Vector3Int> waterSources =
-        new HashSet<Vector3Int>();
-
-
-    private Dictionary<Vector3Int, GameObject> waterObjects =
-        new Dictionary<Vector3Int, GameObject>();
-
-    private float timer;
-
-
-    private void Awake()
-    {
-        solidGrid =
-            new bool[sizeX, sizeY, sizeZ];
-
-        waterGrid =
-            new float[sizeX, sizeY, sizeZ];
-    }
-
-
-    private void Update()
-    {
-        timer += Time.deltaTime;
-
-        if (timer >= simulationInterval)
-        {
-            timer = 0f;
-
-
-            // ============================================
-            // 모든 Water Source에서 물 공급
-            // ============================================
-
-            SupplyWaterSources();
-
-
-            // 물 시뮬레이션
-
-            SimulateWater();
-
-
-            // 물 표시
-
-            UpdateWaterVisual();
-        }
-    }
-
-
-    // ============================================================
-    // Water Source 등록
-    // ============================================================
-
+    /*
+     * River 좌표를 직접 등록하고 싶을 때 사용.
+     */
     public void AddWaterSource(
         Vector2Int riverPos,
         float blockDistance
@@ -106,16 +270,22 @@ public class GridWaterSimulation : MonoBehaviour
         if (!IsInside(gridPosition))
             return;
 
-        waterSources.Add(gridPosition);
+        waterSources.Add(riverPos);
 
+        /*
+         * River는 y=0에 물이 존재.
+         */
         waterGrid[
             gridPosition.x,
-            gridPosition.y,
+            0,
             gridPosition.z
-        ] = 1f;
+        ] = maxWaterAmount;
     }
 
 
+    /*
+     * Grid 좌표로 Source 추가.
+     */
     public void AddWaterSourceGrid(
         Vector3Int gridPosition
     )
@@ -123,131 +293,56 @@ public class GridWaterSimulation : MonoBehaviour
         if (!IsInside(gridPosition))
             return;
 
-        waterSources.Add(
-            gridPosition
-        );
+        Vector2Int source =
+            new Vector2Int(
+                gridPosition.x,
+                gridPosition.z
+            );
 
-
-        // Source 위치에 최초 물 생성
+        waterSources.Add(source);
 
         waterGrid[
             gridPosition.x,
             gridPosition.y,
             gridPosition.z
-        ] = 1f;
+        ] = maxWaterAmount;
     }
 
 
     // ============================================================
-    // Water Source 제거
-    // ============================================================
-
-    public void RemoveWaterSource(
-        Vector3 worldPosition
-    )
-    {
-        Vector3Int gridPosition =
-            WorldToGrid(worldPosition);
-
-        waterSources.Remove(
-            gridPosition
-        );
-    }
-
-
-    // ============================================================
-    // 모든 Source에서 물 공급
+    // Source 물 공급
     // ============================================================
 
     private void SupplyWaterSources()
     {
-        foreach (
-            Vector3Int source
-            in waterSources
-        )
+        foreach (Vector2Int source in waterSources)
         {
-            if (!IsInside(source))
+            if (!IsInsideXZ(source))
                 continue;
 
-
+            /*
+             * River는 항상 y=0.
+             */
             waterGrid[
                 source.x,
-                source.y,
-                source.z
+                0,
+                source.y
             ] =
-                Mathf.Clamp01(
+                Mathf.Clamp(
                     waterGrid[
                         source.x,
-                        source.y,
-                        source.z
-                    ]
-                    +
-                    sourceWaterAmount
+                        0,
+                        source.y
+                    ] + sourceWaterAmount,
+                    0f,
+                    maxWaterAmount
                 );
         }
     }
 
 
     // ============================================================
-    // 물 생성
-    // ============================================================
-
-    public void AddWater(
-        Vector3 worldPosition,
-        float amount = 1f
-    )
-    {
-        Vector3Int gridPosition =
-            WorldToGrid(worldPosition);
-
-        if (!IsInside(gridPosition))
-            return;
-
-        waterGrid[
-            gridPosition.x,
-            gridPosition.y,
-            gridPosition.z
-        ] += amount;
-
-        waterGrid[
-            gridPosition.x,
-            gridPosition.y,
-            gridPosition.z
-        ] =
-            Mathf.Clamp01(
-                waterGrid[
-                    gridPosition.x,
-                    gridPosition.y,
-                    gridPosition.z
-                ]
-            );
-    }
-
-
-    // ============================================================
-    // 지형 등록
-    // ============================================================
-
-    public void AddSolid(
-        Vector3 worldPosition
-    )
-    {
-        Vector3Int gridPosition =
-            WorldToGrid(worldPosition);
-
-        if (!IsInside(gridPosition))
-            return;
-
-        solidGrid[
-            gridPosition.x,
-            gridPosition.y,
-            gridPosition.z
-        ] = true;
-    }
-
-
-    // ============================================================
-    // 실제 물 시뮬레이션
+    // 물 시뮬레이션
     // ============================================================
 
     private void SimulateWater()
@@ -256,8 +351,9 @@ public class GridWaterSimulation : MonoBehaviour
             new float[sizeX, sizeY, sizeZ];
 
 
-        // 현재 물 상태 복사
-
+        /*
+         * 현재 상태 복사.
+         */
         for (int x = 0; x < sizeX; x++)
         {
             for (int y = 0; y < sizeY; y++)
@@ -271,76 +367,51 @@ public class GridWaterSimulation : MonoBehaviour
         }
 
 
-        for (int x = 0; x < sizeX; x++)
+        /*
+         * 낮은 위치부터 처리한다.
+         *
+         * 이렇게 해야 물이 위쪽 → 아래쪽으로
+         * 자연스럽게 내려간다.
+         */
+        for (int y = 0; y < sizeY; y++)
         {
-            for (int y = 0; y < sizeY; y++)
+            for (int x = 0; x < sizeX; x++)
             {
                 for (int z = 0; z < sizeZ; z++)
                 {
-                    float currentWater =
+                    float amount =
                         waterGrid[x, y, z];
 
-                    if (currentWater <= 0.001f)
+                    if (amount <= 0.001f)
                         continue;
 
 
-                    // ------------------------------------------------
-                    // 1. 아래로 흐르기
-                    // ------------------------------------------------
-
-                    Vector3Int below =
-                        new Vector3Int(
-                            x,
-                            y - 1,
-                            z
-                        );
-
-                    if (
-                        IsInside(below) &&
-                        !solidGrid[
-                            below.x,
-                            below.y,
-                            below.z
-                        ]
-                    )
+                    /*
+                     * 1.
+                     * 바로 아래가 비어 있으면
+                     * 무조건 아래로 떨어진다.
+                     */
+                    if (TryFlowDown(
+                        x,
+                        y,
+                        z,
+                        amount,
+                        nextWater))
                     {
-                        float availableSpace =
-                            1f -
-                            waterGrid[
-                                below.x,
-                                below.y,
-                                below.z
-                            ];
-
-                        float flow =
-                            Mathf.Min(
-                                currentWater,
-                                availableSpace
-                            );
-
-                        flow *= downwardFlowSpeed;
-
-                        nextWater[x, y, z] -= flow;
-
-                        nextWater[
-                            below.x,
-                            below.y,
-                            below.z
-                        ] += flow;
-
                         continue;
                     }
 
 
-                    // ------------------------------------------------
-                    // 2. 아래가 막히면 옆으로 퍼짐
-                    // ------------------------------------------------
-
-                    SpreadHorizontal(
+                    /*
+                     * 2.
+                     * 아래가 지형으로 막혀 있으면
+                     * 주변의 낮은 지형으로 흐른다.
+                     */
+                    FlowToLowerTerrain(
                         x,
                         y,
                         z,
-                        currentWater,
+                        amount,
                         nextWater
                     );
                 }
@@ -353,114 +424,312 @@ public class GridWaterSimulation : MonoBehaviour
 
 
     // ============================================================
-    // 수평 방향으로 물 퍼뜨리기
+    // 아래로 떨어지기
     // ============================================================
 
-    private void SpreadHorizontal(
+    private bool TryFlowDown(
         int x,
         int y,
         int z,
-        float currentWater,
+        float amount,
         float[,,] nextWater
     )
     {
-        Vector3Int[] directions =
+        int belowY = y - 1;
+
+
+        /*
+         * Grid 아래쪽으로 나가면
+         * 물이 맵 바깥으로 떨어진 것이다.
+         */
+        if (belowY < 0)
         {
-            Vector3Int.left,
-            Vector3Int.right,
-            Vector3Int.forward,
-            Vector3Int.back
+            nextWater[x, y, z] = 0f;
+
+            return true;
+        }
+
+
+        /*
+         * 아래에 지형이 있으면 못 내려간다.
+         */
+        if (IsTerrainAt(
+            x,
+            belowY,
+            z))
+        {
+            return false;
+        }
+
+
+        float available =
+            maxWaterAmount -
+            waterGrid[x, belowY, z];
+
+
+        if (available <= 0f)
+            return false;
+
+
+        float flow =
+            Mathf.Min(
+                amount * waterfallSpeed,
+                available
+            );
+
+
+        nextWater[x, y, z] -= flow;
+
+        nextWater[
+            x,
+            belowY,
+            z
+        ] += flow;
+
+
+        return true;
+    }
+
+
+    // ============================================================
+    // 낮은 지형으로 흐르기
+    // ============================================================
+
+    private void FlowToLowerTerrain(
+        int x,
+        int y,
+        int z,
+        float amount,
+        float[,,] nextWater
+    )
+    {
+        /*
+         * 현재 물이 놓여있는 지형 높이.
+         */
+        int currentTerrainHeight =
+            GetTerrainSurfaceHeight(x, z);
+
+
+        List<Vector2Int> targets =
+            new List<Vector2Int>();
+
+
+        Vector2Int[] directions =
+        {
+            Vector2Int.left,
+            Vector2Int.right,
+            Vector2Int.up,
+            Vector2Int.down
         };
 
 
-        List<Vector3Int> availableCells =
-            new List<Vector3Int>();
-
-
-        foreach (Vector3Int direction in directions)
+        foreach (Vector2Int direction in directions)
         {
-            Vector3Int neighbour =
-                new Vector3Int(
-                    x + direction.x,
-                    y,
-                    z + direction.z
+            int nx =
+                x + direction.x;
+
+            int nz =
+                z + direction.y;
+
+
+            if (!IsInsideXZ(nx, nz))
+            {
+                /*
+                 * 맵 바깥.
+                 *
+                 * 물이 절벽 밖으로 빠지는 경우.
+                 */
+                continue;
+            }
+
+
+            /*
+             * 이웃 지형 높이.
+             */
+            int neighbourHeight =
+                GetTerrainSurfaceHeight(
+                    nx,
+                    nz
                 );
 
-            if (!IsInside(neighbour))
+
+            /*
+             * 현재보다 낮은 곳으로만 흐른다.
+             */
+            if (neighbourHeight >= currentTerrainHeight)
                 continue;
 
+
+            /*
+             * 물이 실제로 존재할 수 있는
+             * 표면 높이.
+             */
+            int targetY =
+                neighbourHeight;
+
+
+            if (!IsInsideY(targetY))
+                continue;
+
+
+            /*
+             * 해당 위치가 비어 있어야 한다.
+             */
+            if (IsTerrainAt(
+                nx,
+                targetY,
+                nz))
+                continue;
+
+
             if (
-                solidGrid[
-                    neighbour.x,
-                    neighbour.y,
-                    neighbour.z
-                ]
+                waterGrid[
+                    nx,
+                    targetY,
+                    nz
+                ] >= maxWaterAmount
             )
                 continue;
 
 
-            float neighbourWater =
-                waterGrid[
-                    neighbour.x,
-                    neighbour.y,
-                    neighbour.z
-                ];
-
-
-            if (neighbourWater < currentWater)
-            {
-                availableCells.Add(neighbour);
-            }
+            targets.Add(
+                new Vector2Int(nx, nz)
+            );
         }
 
 
-        if (availableCells.Count == 0)
+        /*
+         * 낮은 곳이 없으면 고인다.
+         */
+        if (targets.Count == 0)
             return;
 
 
+        /*
+         * 여러 방향으로 균등하게 분배.
+         */
         float totalFlow =
-            currentWater *
-            horizontalFlowSpeed;
+            amount * flowSpeed;
 
 
-        float flowPerCell =
+        float flowPerTarget =
             totalFlow /
-            availableCells.Count;
+            targets.Count;
 
 
-        foreach (
-            Vector3Int neighbour
-            in availableCells
-        )
+        foreach (Vector2Int target in targets)
         {
-            float availableSpace =
-                1f -
-                waterGrid[
-                    neighbour.x,
-                    neighbour.y,
-                    neighbour.z
-                ];
-
-            float actualFlow =
-                Mathf.Min(
-                    flowPerCell,
-                    availableSpace
+            int targetY =
+                GetTerrainSurfaceHeight(
+                    target.x,
+                    target.y
                 );
 
 
-            nextWater[x, y, z] -= actualFlow;
+            float available =
+                maxWaterAmount -
+                waterGrid[
+                    target.x,
+                    targetY,
+                    target.y
+                ];
+
+
+            float flow =
+                Mathf.Min(
+                    flowPerTarget,
+                    available
+                );
+
+
+            if (flow <= 0f)
+                continue;
+
+
+            nextWater[x, y, z] -= flow;
+
 
             nextWater[
-                neighbour.x,
-                neighbour.y,
-                neighbour.z
-            ] += actualFlow;
+                target.x,
+                targetY,
+                target.y
+            ] += flow;
         }
     }
 
 
     // ============================================================
-    // 물 표시
+    // 지형 높이
+    // ============================================================
+
+    private int GetTerrainSurfaceHeight(
+        int x,
+        int z
+    )
+    {
+        if (!IsInsideXZ(x, z))
+            return 0;
+
+        return terrainHeight[x, z];
+    }
+
+
+    /*
+     * 특정 Grid Y 위치에 지형이 존재하는지.
+     *
+     * 예:
+     *
+     * Height 1
+     * ┌───────┐  ← y=1 물 표면
+     * │ water │
+     * ├───────┤
+     * │solid  │  ← y=0
+     * └───────┘
+     *
+     * Height 3
+     * ┌───────┐ ← y=3
+     * │ water │
+     * ├───────┤ ← y=2
+     * │solid  │
+     * ├───────┤ ← y=1
+     * │solid  │
+     * ├───────┤ ← y=0
+     * │solid  │
+     * └───────┘
+     */
+    private bool IsTerrainAt(
+        int x,
+        int y,
+        int z
+    )
+    {
+        if (!IsInsideXZ(x, z))
+            return false;
+
+        int height =
+            terrainHeight[x, z];
+
+        /*
+         * Height 0 = River.
+         * River 바닥은 y=0 아래에 있으므로
+         * y=0은 물이 들어갈 수 있는 공간.
+         */
+        if (height == 0)
+            return false;
+
+        /*
+         * Height 1이면
+         * y=0만 지형.
+         *
+         * Height 3이면
+         * y=0,1,2가 지형.
+         */
+        return y < height;
+    }
+
+
+    // ============================================================
+    // Water Visual
     // ============================================================
 
     private void UpdateWaterVisual()
@@ -478,29 +747,42 @@ public class GridWaterSimulation : MonoBehaviour
                     float amount =
                         waterGrid[x, y, z];
 
-                    if (amount <= 0.01f)
+
+                    if (amount <= renderThreshold)
                         continue;
 
 
                     Vector3Int gridPosition =
-                        new Vector3Int(x, y, z);
+                        new Vector3Int(
+                            x,
+                            y,
+                            z
+                        );
 
-                    activeCells.Add(gridPosition);
+
+                    activeCells.Add(
+                        gridPosition
+                    );
 
 
                     if (
-                        waterObjects.ContainsKey(
-                            gridPosition
+                        waterObjects.TryGetValue(
+                            gridPosition,
+                            out GameObject existing
                         )
                     )
                     {
                         UpdateWaterHeight(
-                            waterObjects[gridPosition],
+                            existing,
                             amount
                         );
 
                         continue;
                     }
+
+
+                    if (waterBlockPrefab == null)
+                        continue;
 
 
                     GameObject water =
@@ -527,6 +809,9 @@ public class GridWaterSimulation : MonoBehaviour
         }
 
 
+        /*
+         * 사라진 물 제거.
+         */
         List<Vector3Int> removeList =
             new List<Vector3Int>();
 
@@ -541,47 +826,73 @@ public class GridWaterSimulation : MonoBehaviour
         {
             if (!activeCells.Contains(pair.Key))
             {
-                Destroy(pair.Value);
+                if (pair.Value != null)
+                    Destroy(pair.Value);
 
-                removeList.Add(pair.Key);
+                removeList.Add(
+                    pair.Key
+                );
             }
         }
 
 
-        foreach (
-            Vector3Int position
-            in removeList
-        )
+        foreach (Vector3Int position in removeList)
         {
-            waterObjects.Remove(position);
+            waterObjects.Remove(
+                position
+            );
         }
     }
 
+
+    // ============================================================
+    // 물 높이
+    // ============================================================
 
     private void UpdateWaterHeight(
         GameObject water,
         float amount
     )
     {
+        if (water == null)
+            return;
+
+
+        /*
+         * 물의 기준 위치.
+         */
+        Vector3 position =
+            GridToWorld(
+                WorldToGrid(
+                    water.transform.position
+                )
+            );
+
+
         Vector3 scale =
             water.transform.localScale;
 
+
         scale.y =
-            amount * cellSize;
+            Mathf.Max(
+                amount * cellSize,
+                0.001f
+            );
+
 
         water.transform.localScale =
             scale;
 
 
-        Vector3 position =
-            water.transform.localPosition;
-
+        /*
+         * 물은 바닥에서 위로 올라오도록 한다.
+         */
         position.y =
-            position.y -
-            (cellSize * 0.5f) +
+            position.y +
             (scale.y * 0.5f);
 
-        water.transform.localPosition =
+
+        water.transform.position =
             position;
     }
 
@@ -596,15 +907,18 @@ public class GridWaterSimulation : MonoBehaviour
     {
         return new Vector3Int(
             Mathf.RoundToInt(
-                worldPosition.x / cellSize
+                worldPosition.x /
+                cellSize
             ),
 
             Mathf.RoundToInt(
-                worldPosition.y / cellSize
+                worldPosition.y /
+                cellSize
             ),
 
             Mathf.RoundToInt(
-                worldPosition.z / cellSize
+                worldPosition.z /
+                cellSize
             )
         );
     }
@@ -622,6 +936,10 @@ public class GridWaterSimulation : MonoBehaviour
     }
 
 
+    // ============================================================
+    // 범위 검사
+    // ============================================================
+
     private bool IsInside(
         Vector3Int position
     )
@@ -635,5 +953,40 @@ public class GridWaterSimulation : MonoBehaviour
 
             position.z >= 0 &&
             position.z < sizeZ;
+    }
+
+
+    private bool IsInsideY(
+        int y
+    )
+    {
+        return
+            y >= 0 &&
+            y < sizeY;
+    }
+
+
+    private bool IsInsideXZ(
+        int x,
+        int z
+    )
+    {
+        return
+            x >= 0 &&
+            x < sizeX &&
+
+            z >= 0 &&
+            z < sizeZ;
+    }
+
+
+    private bool IsInsideXZ(
+        Vector2Int position
+    )
+    {
+        return IsInsideXZ(
+            position.x,
+            position.y
+        );
     }
 }
