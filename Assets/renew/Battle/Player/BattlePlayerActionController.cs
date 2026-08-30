@@ -248,8 +248,8 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// 이동 가능 타일 좌클릭으로 목적지를 고르고, 목적지가 선택된 상태에서 Player를
-    /// 좌클릭하면 이동을 확정한다. 주사위 이후 이동 범위는 별도 버튼 없이 계속 유지한다.
+    /// 이동 가능 타일을 첫 번째 좌클릭으로 선택하고, 같은 타일을 제한 시간 안에
+    /// 두 번째로 좌클릭하면 이동을 확정한다. Player 본체 클릭은 더 이상 이동 확정 입력이 아니다.
     /// </summary>
     private void HandleLeftClick(Vector2 pointerPosition)
     {
@@ -265,13 +265,6 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (TryRaycastPlayer(pointerPosition, out GameObject clickedPlayer))
         {
-            if (moveFlow.IsAwaitingConfirmation)
-            {
-                Debug.Log($"플레이어 클릭으로 이동 확정: {moveFlow.PendingTarget?.name}", clickedPlayer);
-                ConfirmCurrentPlayerAction();
-                return;
-            }
-
             if (IsBasicAttackActive || IsCardActionActive)
             {
                 return;
@@ -305,7 +298,7 @@ public class BattlePlayerActionController : MonoBehaviour
             if (clickedReachableTile && !turnActionState.MovementUsed &&
                 !IsBasicAttackActive && !IsCardActionActive)
             {
-                moveFlow.SelectMoveTile(clickedTile);
+                moveFlow.HandleReachableTileLeftClick(clickedTile);
                 return;
             }
 

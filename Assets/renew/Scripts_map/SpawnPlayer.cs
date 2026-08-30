@@ -24,6 +24,11 @@ public class SpawnPlayer : MonoBehaviour
     LoadingUI loading;
     [SerializeField]
     Canvas hudCanvas;
+    [Header("전투 맵 위 Player 배치")]
+    [Tooltip("생성된 캐릭터 Prefab의 원본 Scale에 곱할 값입니다. Yeop 타일과 캐릭터 크기를 Inspector에서 맞출 때 사용합니다.")]
+    [SerializeField, Min(0.01f)]
+    float spawnedPlayerScaleMultiplier = 1f;
+    [Tooltip("Player Body 기준으로 생성된 캐릭터 루트를 위로 올릴 높이입니다. 타일 윗면과 발 위치를 맞춥니다.")]
     [SerializeField]
     float defaultSpawnHeight = 0.5f;
 
@@ -68,7 +73,12 @@ public class SpawnPlayer : MonoBehaviour
             mapGenerator.StartGenerator();
         }
         player = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
+        // 캐릭터 Prefab마다 이미 설정된 원본 비율은 유지하고, 맵 규격에 필요한 공통 배율만 추가로 적용한다.
+        // Prefab Asset 자체를 수정하지 않으므로 다른 Scene에서 사용하는 캐릭터 크기에는 영향을 주지 않는다.
+        player.transform.localScale *= spawnedPlayerScaleMultiplier;
         Vector3 spawnLocalPosition = player.transform.localPosition;
+        // 맵 타일 Mesh/Collider 높이가 바뀌어도 Scene별 Inspector 값으로 발 위치를 조정할 수 있게
+        // Player Body의 고정 위치가 아니라 생성된 캐릭터 루트의 로컬 Y만 보정한다.
         spawnLocalPosition.y = defaultSpawnHeight;
         player.transform.localPosition = spawnLocalPosition;
         playerBody.GetComponent<CharactorStatus>().TribeSet(charactorIndex);

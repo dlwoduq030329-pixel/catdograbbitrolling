@@ -21,7 +21,13 @@ public class BattleUnitMoveFlow : MonoBehaviour
     [SerializeField] private BattleMovePreview battleMovePreview;
     [SerializeField] private BattleMoveThreatPreview battleMoveThreatPreview;
 
+    [Header("이동 확정 입력")]
+    [Tooltip("같은 이동 타일을 두 번 좌클릭했을 때 더블 클릭으로 인정할 최대 간격(초).")]
+    [SerializeField, Min(0.1f)] private float moveDoubleClickInterval = 0.4f;
+
     private bool isMoving;
+    private MapInfo lastClickedMoveTile;
+    private float lastMoveTileClickTime = float.NegativeInfinity;
 
     /// <summary>이동 실행 코루틴이 진행 중인지(다른 행동을 막아야 하는지) 여부.</summary>
     public bool IsMoving => isMoving;
@@ -79,6 +85,39 @@ public class BattleUnitMoveFlow : MonoBehaviour
         battleMoveTransaction.ResetTurn();
         ClearMoveArrow();
         ClearMoveRange();
+        ResetMoveDoubleClickState();
+    }
+
+    /// <summary>
+    /// 이동 가능한 타일의 좌클릭을 처리한다.
+    /// 첫 클릭은 목적지 선택과 Preview만 수행하고, 같은 타일을 제한 시간 안에 다시 클릭했을 때만
+    /// 실제 이동을 확정한다. 다른 타일을 클릭하거나 시간이 초과되면 그 클릭을 새 첫 클릭으로 취급한다.
+    /// </summary>
+    public void HandleReachableTileLeftClick(MapInfo clickedTile)
+    {
+        if (clickedTile == null)
+        {
+            ResetMoveDoubleClickState();
+            return;
+        }
+
+        bool clickedSameSelectedTileAgain =
+            battleMoveTransaction != null &&
+            battleMoveTransaction.IsAwaitingConfirmation &&
+            battleMoveTransaction.PendingTarget == clickedTile &&
+            lastClickedMoveTile == clickedTile &&
+            Time.unscaledTime - lastMoveTileClickTime <= moveDoubleClickInterval;
+
+        if (clickedSameSelectedTileAgain)
+        {
+            ResetMoveDoubleClickState();
+            ConfirmSelectedMove();
+            return;
+        }
+
+        SelectMoveTile(clickedTile);
+        lastClickedMoveTile = clickedTile;
+        lastMoveTileClickTime = Time.unscaledTime;
     }
 
     /// <summary>
@@ -127,7 +166,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
     }
 
     /// <summary>이전 선택 색상을 복구한 뒤 새 목적지 강조와 화살표를 표시한다.
-    /// 이동 확정은 별도 UI가 아니라 Player 본체 좌클릭으로 수행한다.</summary>
+    /// 이동 확정은 같은 타일을 제한 시간 안에 다시 좌클릭했을 때 수행한다.</summary>
     public void SelectMoveTile(MapInfo targetTile)
     {
         ShowMoveRange();
@@ -245,6 +284,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
         EnsureBattleMoveTransaction();
         bool returnToMoveRange = battleMoveTransaction.CancelSelection();
         ClearMoveArrow();
+        ResetMoveDoubleClickState();
 
         owner.SetConfirmButtonsInteractable(false);
         owner.SetMoveButtonGroupVisible(false);
@@ -259,6 +299,14 @@ public class BattleUnitMoveFlow : MonoBehaviour
             owner.rangeToggleActive = false;
             ClearMoveRange();
         }
+    }
+
+
+    /// <summary>이전 타일 클릭이 다음 클릭과 잘못 묶이지 않도록 더블 클릭 판정 상태를 지운다.</summary>
+    private void ResetMoveDoubleClickState()
+    {
+        lastClickedMoveTile = null;
+        lastMoveTileClickTime = float.NegativeInfinity;
     }
 
     /// <summary>타일 색상, 도달 가능 집합, 전역 범위 표시 상태를 초기화한다.</summary>

@@ -67,6 +67,59 @@ public static class BattleUnitMotionAnimator
     }
 
     /// <summary>
+    /// 시작점과 도착점 사이를 이동하면서 Y축에 포물선 높이를 더해 한 번 뛰는 움직임을 만든다.
+    /// 기본 높이 변화는 Vector3.Lerp가 처리하고, sin 곡선은 이동 중간에만 추가 높이를 더하므로
+    /// 높은 타일과 낮은 타일 어느 방향으로 이동해도 마지막 위치는 정확히 destinationPosition이 된다.
+    /// </summary>
+    public static IEnumerator MoveToPositionWithJumpArc(
+        Transform mover,
+        Vector3 destinationPosition,
+        float durationSeconds,
+        float jumpArcHeight)
+    {
+        if (mover == null)
+        {
+            yield break;
+        }
+
+        float clampedDurationSeconds = Mathf.Max(0.01f, durationSeconds);
+        float clampedJumpHeight = Mathf.Max(0f, jumpArcHeight);
+        Vector3 startPosition = mover.position;
+
+        Vector3 flatDirection = destinationPosition - startPosition;
+        flatDirection.y = 0f;
+        Quaternion? lookRotation = flatDirection.sqrMagnitude > 0.0001f
+            ? Quaternion.LookRotation(flatDirection.normalized, Vector3.up)
+            : (Quaternion?)null;
+
+        float elapsedSeconds = 0f;
+        while (elapsedSeconds < clampedDurationSeconds)
+        {
+            elapsedSeconds += Time.unscaledDeltaTime;
+            float movementProgress = Mathf.Clamp01(elapsedSeconds / clampedDurationSeconds);
+            Vector3 positionOnDirectPath = Vector3.Lerp(startPosition, destinationPosition, movementProgress);
+            positionOnDirectPath.y += Mathf.Sin(movementProgress * Mathf.PI) * clampedJumpHeight;
+            mover.position = positionOnDirectPath;
+
+            if (lookRotation.HasValue)
+            {
+                mover.rotation = Quaternion.RotateTowards(
+                    mover.rotation,
+                    lookRotation.Value,
+                    RotationDegreesPerSecond * Time.unscaledDeltaTime);
+            }
+
+            yield return null;
+        }
+
+        mover.position = destinationPosition;
+        if (lookRotation.HasValue)
+        {
+            mover.rotation = lookRotation.Value;
+        }
+    }
+
+    /// <summary>
     /// 이동 없이 제자리에서 목표 위치 방향(XZ 평면 기준)을 즉시 바라보게 한다.
     /// 이동하지 않고 바로 공격할 때(상하좌우 인접 대상) 항상 정면만 보고 공격하는 문제를 막기 위해 사용한다.
     /// </summary>
