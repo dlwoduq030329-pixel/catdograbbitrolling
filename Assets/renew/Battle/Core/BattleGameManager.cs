@@ -70,6 +70,7 @@ public class BattleGameManager : MonoBehaviour
     [SerializeField, Range(1, 10)] private int debugPlayerMaxMP = 10;
     [InspectorName("Debug maximum movement tiles")]
     [SerializeField, Range(1, 12)] private int debugMaxMoveRange = 6;
+    private BattleQaTeleportController qaTeleportController;
 
     [Header("턴 상태 (런타임 확인용)")] // 턴 관리용 
     [InspectorName("현재 턴 번호")]
@@ -87,6 +88,9 @@ public class BattleGameManager : MonoBehaviour
     [InspectorName("전투 정지 여부")]
     [FormerlySerializedAs("battleStopped")]
     [SerializeField] private bool isBattleStopped;
+    [Header("전투 진행 상태")]
+    [InspectorName("현재 스테이지")]
+    [SerializeField, Min(1)] private int currentStage = 1;
 
 
     /// <summary>Player 등록이 끝난 뒤 카메라·Enemy 감지기 등에 생성된 Player 인스턴스를 전달한다.</summary>
@@ -110,6 +114,10 @@ public class BattleGameManager : MonoBehaviour
     public BattleUnitMP CurrentPlayerMP { get; private set; }
     /// <summary>현재 Player의 공격력과 사거리 등 전투 계산에 필요한 읽기 전용 기준 데이터다.</summary>
     public PlayerCombatData CurrentPlayerCombatData { get; private set; }
+    /// <summary>현재 등록된 Player가 직접 소유하는 장비 슬롯과 장비 스탯이다.</summary>
+    public PlayerWeapon CurrentPlayerWeapon { get; private set; }
+    /// <summary>현재 등록된 Player가 직접 소유하는 골드 지갑이다.</summary>
+    public PlayerWallet CurrentPlayerWallet { get; private set; }
     /// <summary>현재 등록된 플레이어의 체력 컴포넌트를 참조한다.</summary>
     public BattleHealth CurrentPlayerHealth => playerHealthBinding?.CurrentHealth;
     /// <summary>전투 시작과 Player 턴 시작에 손패를 구성하는 기존 카드 드로우 시스템 참조다.</summary>
@@ -121,6 +129,7 @@ public class BattleGameManager : MonoBehaviour
     public bool IsBattleStopped => isBattleStopped;
     public bool IsDebugQaBoostEnabled => enableDebugQaBoost;
     public int CurrentTurn => currentTurnNumber;
+    public int CurrentStage => currentStage;
     /// <summary>상점·보상창처럼 뒤쪽 전투 조작을 막는 UI가 하나 이상 열려 있는지 나타낸다.</summary>
     public bool IsBattleBlockingUiOpen => overlayUi != null && overlayUi.IsOverlayOpen;
 
@@ -187,6 +196,9 @@ public class BattleGameManager : MonoBehaviour
 
         // 다른 전투 컴포넌트가 공용 Manager를 찾을 수 있도록 이 Scene의 공식 인스턴스로 등록한다.
         Instance = this;
+        // 현재 메인 진행 코드는 아직 DataConfig에 스테이지를 저장하므로 전투 진입 경계에서 한 번만 가져온다.
+        // 추후 Run/Stage 진행 관리자가 생기면 SetCurrentStage 호출로 교체하고 이 호환 줄을 삭제한다.
+        currentStage = Mathf.Max(1, DataConfig.stage);
         // 이전 전투의 정지 상태와 TimeScale이 남아 새 전투가 멈춘 채 시작되는 것을 방지한다.
         isBattleStopped = false;
         Time.timeScale = 1f;
@@ -199,6 +211,13 @@ public class BattleGameManager : MonoBehaviour
 
         // 누락된 Inspector 참조를 런타임 자동 생성으로 숨기지 않고 시작 즉시 Console에 표시한다.
         ValidateRequiredReferences();
+
+        // 동적 맵의 상점·상자 UI를 빠르게 검증할 수 있도록 Editor 전용 QA 텔레포트 입력을 연결한다.
+        if (enableDebugQaBoost)
+        {
+            qaTeleportController = BattleComponentResolver.GetOrAdd(gameObject, qaTeleportController);
+            qaTeleportController.Attach(this);
+        }
 
         // UI 모듈은 버튼 클릭을 해석하고, 실제 턴 규칙은 이 Manager의 공개 함수를 호출한다.
         turnButtonController?.BindEndTurnAction(EndTurn);
@@ -381,7 +400,7 @@ public class BattleGameManager : MonoBehaviour
     {
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
-        yield return turnAnnouncementView.ShowStageAnnouncement(Mathf.Max(1, DataConfig.stage), 2f);
+        yield return turnAnnouncementView.ShowStageAnnouncement(currentStage, 2f);
         BattleMapCameraInput.SetEnabledOnMainCamera(true);
         UnlockBattleInputAfterOverlay();
     }
@@ -414,6 +433,9 @@ public class BattleGameManager : MonoBehaviour
     /// </summary>
     public void RegisterPlayer(GameObject player)
     {
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged -= HandlePlayerGoldChanged;
+
         // Binder가 Player의 MP·전투 데이터·체력을 찾고 MP UI, 덱, 행동 제어기에 연결한다.
         // Manager는 연결 방법을 알지 않고 성공 여부와 완성된 참조만 돌려받는다.
         if (playerRuntimeBinder == null || !playerRuntimeBinder.TryBind(
@@ -429,6 +451,8 @@ public class BattleGameManager : MonoBehaviour
             CurrentPlayer = null;
             CurrentPlayerMP = null;
             CurrentPlayerCombatData = null;
+            CurrentPlayerWeapon = null;
+            CurrentPlayerWallet = null;
             playerHealthBinding?.Bind(null);
             return;
         }
@@ -437,6 +461,22 @@ public class BattleGameManager : MonoBehaviour
         CurrentPlayer = player;
         CurrentPlayerMP = playerMP;
         CurrentPlayerCombatData = combatData;
+        CurrentPlayerWeapon = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<PlayerWeapon>());
+        CurrentPlayerWallet = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<PlayerWallet>());
+        // 메인 씬의 기존 재화를 잃지 않도록 Player 등록 시 한 번만 레거시 값을 새 지갑으로 이전한다.
+        CurrentPlayerWallet?.InitializeGold(DataConfig.playerMoney);
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged += HandlePlayerGoldChanged;
+
+        BattleEquipVisualBinder equipmentVisualBinder = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<BattleEquipVisualBinder>());
+        CurrentPlayerCombatData.Bind(CurrentPlayerWeapon);
+        equipmentVisualBinder?.Bind(CurrentPlayerWeapon);
 
         // SpawnPlayer가 Player Body의 CharactorStatus에 저장한 선택 인덱스를 UI 표현 컴포넌트에 전달한다.
         // 캐릭터 이름이나 Prefab 이름을 검색하지 않으며 Player 등록 시 한 번만 버튼 이미지를 결정한다.
@@ -493,9 +533,24 @@ public class BattleGameManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance != this) return;
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged -= HandlePlayerGoldChanged;
         overlayUi?.ResetOverlayInputState();
         playerHealthBinding?.ClearBinding();
         Instance = null;
+    }
+
+    /// <summary>현재 전투 스테이지를 변경하고 아직 남아 있는 구 진행 코드에도 같은 값을 동기화한다.</summary>
+    public void SetCurrentStage(int stage)
+    {
+        currentStage = Mathf.Max(1, stage);
+        DataConfig.stage = currentStage;
+    }
+
+    /// <summary>PlayerWallet을 재화 원본으로 유지하면서 구 저장 구조에는 결과만 동기화한다.</summary>
+    private static void HandlePlayerGoldChanged(int currentGold)
+    {
+        DataConfig.playerMoney = Mathf.Max(0, currentGold);
     }
 
 

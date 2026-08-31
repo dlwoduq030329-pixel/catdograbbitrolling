@@ -9,44 +9,43 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattleMovePreview : MonoBehaviour
 {
-    private GameObject arrowPrefab;
-    private Vector3 arrowOffset;
+    [Header("이동 목적지 화살표")]
+    [Tooltip("선택한 이동 타일 위에 표시할 화살표 Prefab입니다.")]
+    [SerializeField] private GameObject moveArrowPrefab;
+    [Tooltip("선택한 타일의 월드 Y 위치에서 화살표를 띄울 높이입니다.")]
+    [SerializeField, Min(0f)] private float arrowHeightAboveTile = 1f;
+
     private GameObject arrowInstance;
-
-    /// <summary>목적지 안내에 사용할 화살표 Prefab과 타일 기준 위치 보정값을 설정한다.
-    /// 이미 생성해둔 화살표 인스턴스가 있는데 Prefab이 바뀌면(기획 변경 등) 옛 인스턴스를 지우고
-    /// 다음 Show() 호출 때 새 Prefab으로 다시 만들게 한다.</summary>
-    public void SetArrowPrefab(GameObject targetArrowPrefab, Vector3 targetArrowOffset)
-    {
-        if (arrowPrefab != targetArrowPrefab && arrowInstance != null)
-        {
-            Destroy(arrowInstance);
-            arrowInstance = null;
-        }
-
-        arrowPrefab = targetArrowPrefab;
-        arrowOffset = targetArrowOffset;
-    }
 
     /// <summary>선택 목적 타일 위에 화살표를 표시한다. 화살표 인스턴스가 이미 있으면 새로 만들지
     /// 않고 위치만 옮겨서 재사용한다(없을 때만 Instantiate 1회 발생).</summary>
     public void Show(MapInfo targetTile)
     {
-        if (targetTile == null || arrowPrefab == null)
+        if (targetTile == null)
         {
             Hide();
             return;
         }
 
+        if (moveArrowPrefab == null)
+        {
+            Debug.LogError("BattleMovePreview에 이동 화살표 Prefab이 연결되지 않았습니다.", this);
+            return;
+        }
+
         if (arrowInstance == null)
         {
-            arrowInstance = Instantiate(arrowPrefab);
+            arrowInstance = Instantiate(moveArrowPrefab);
             arrowInstance.name = "MoveArrowPreview";
         }
 
-        arrowInstance.transform.SetPositionAndRotation(
-            targetTile.transform.position + arrowOffset,
-            Quaternion.identity);
+        Vector3 tileWorldPosition = targetTile.transform.position;
+        Vector3 arrowWorldPosition = new Vector3(
+            tileWorldPosition.x,
+            tileWorldPosition.y + arrowHeightAboveTile,
+            tileWorldPosition.z);
+
+        arrowInstance.transform.SetPositionAndRotation(arrowWorldPosition, Quaternion.identity);
         arrowInstance.SetActive(true);
     }
 

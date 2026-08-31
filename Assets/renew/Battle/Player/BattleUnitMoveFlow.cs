@@ -7,15 +7,15 @@ using UnityEngine;
 /// (MovePlayerToSelectedTile), 이동 확정/취소(ConfirmSelectedMove/CancelSelectedMove),
 /// 턴 초기화(ResetTurn)를 전담한다.
 ///
-/// 이동 범위 최대/최소/현재값, 이동 연출 시간, 화살표 프리팹 같은 "Inspector에서 세팅하는 값"은
-/// 여전히 BattlePlayerActionController가 갖고 있다(4개 Scene에 이미 저장된 값이라 그대로 두는 것이
-/// 안전하다). 이 클래스는 그 값을 owner를 통해 읽어서 "이동 로직 자체"만 담당한다 — 용병단처럼
-/// 조작 가능한 유닛이 여러 개가 되어도 유닛마다 이 컴포넌트 하나씩만 붙이면 이동 로직은 그대로
-/// 재사용 가능하도록 만든 것이 분리 목적이다.
+/// 이동 범위와 이동 속도처럼 Player 행동 전체에 필요한 값은 BattlePlayerActionController에서 읽는다.
+/// 목적지 화살표 Prefab과 위치 보정값은 표시 책임을 가진 BattleMovePreview가 직접 관리한다.
+/// 용병단처럼 조작 가능한 유닛이 여러 개가 되어도 유닛마다 이 컴포넌트 하나씩만 붙이면 이동 로직을
+/// 재사용할 수 있도록 만든 것이 분리 목적이다.
 /// </summary>
 public class BattleUnitMoveFlow : MonoBehaviour
 {
     private BattlePlayerActionController owner;
+    private GameObject boundPlayer;
 
     [SerializeField] private BattlePlayerMoveTransaction battleMoveTransaction;
     [SerializeField] private BattleMovePreview battleMovePreview;
@@ -40,13 +40,36 @@ public class BattleUnitMoveFlow : MonoBehaviour
     public MapInfo PendingTarget =>
         battleMoveTransaction != null ? battleMoveTransaction.PendingTarget : null;
 
-    /// <summary>소유자(BattlePlayerActionController)를 연결하고 하위 컴포넌트를 확보한다.</summary>
+    /// <summary>
+    /// 소유자(BattlePlayerActionController)를 최초 1회 연결한다.
+    /// 같은 소유자가 반복 전달되면 전체 초기화를 다시 하지 않고,
+    /// 실제 Player가 교체된 경우에만 Player 의존성을 갱신한다.
+    /// </summary>
     public void Attach(BattlePlayerActionController controller)
     {
+        if (controller == null)
+        {
+            Debug.LogError("BattleUnitMoveFlow에 연결할 BattlePlayerActionController가 없습니다.", this);
+            return;
+        }
+
+        bool isFirstOwnerBinding = owner != controller;
+        bool hasPlayerChanged = boundPlayer != controller.player;
+
+        if (!isFirstOwnerBinding && !hasPlayerChanged)
+        {
+            return;
+        }
+
         owner = controller;
         EnsureBattleMoveTransaction();
-        EnsureBattleMovePreview();
-        EnsureBattleMoveThreatPreview();
+        boundPlayer = owner.player;
+
+        if (isFirstOwnerBinding)
+        {
+            TryResolveBattleMovePreview();
+            EnsureBattleMoveThreatPreview();
+        }
     }
 
     /// <summary>일반 이동 경로 검증, 이동 연출과 MP 차감을 담당하는 기능 컴포넌트를 확보한다.</summary>
@@ -58,11 +81,26 @@ public class BattleUnitMoveFlow : MonoBehaviour
         battleMoveTransaction.AttachPlayer(owner.player, owner.battlePlayerMover);
     }
 
-    /// <summary>이동 목적지 화살표 표시 컴포넌트를 확보하고 프리팹 설정을 전달한다.</summary>
-    private void EnsureBattleMovePreview()
+    /// <summary>
+    /// 같은 GameObject에 Scene 컴포넌트로 연결된 이동 목적지 표시 모듈을 가져온다.
+    /// 누락을 숨기기 위해 런타임에 새 컴포넌트를 만들지 않는다.
+    /// </summary>
+    private bool TryResolveBattleMovePreview()
     {
-        battleMovePreview = BattleComponentResolver.GetOrAdd(gameObject, battleMovePreview);
-        battleMovePreview.SetArrowPrefab(owner.moveArrowPrefab, owner.arrowOffset);
+        if (battleMovePreview == null)
+        {
+            battleMovePreview = GetComponent<BattleMovePreview>();
+        }
+
+        if (battleMovePreview != null)
+        {
+            return true;
+        }
+
+        Debug.LogError(
+            "BattleUnitMoveFlow와 같은 GameObject에 BattleMovePreview 컴포넌트가 없습니다.",
+            this);
+        return false;
     }
 
     private void EnsureBattleMoveThreatPreview()
@@ -321,8 +359,11 @@ public class BattleUnitMoveFlow : MonoBehaviour
     /// <summary>목적지 위에 화살표 프리팹을 생성 또는 재사용해 표시한다.</summary>
     public void ShowMoveArrow(MapInfo targetTile)
     {
-        EnsureBattleMovePreview();
-        battleMovePreview.Show(targetTile);
+        if (TryResolveBattleMovePreview())
+        {
+            battleMovePreview.Show(targetTile);
+        }
+
         EnsureBattleMoveThreatPreview();
         battleMoveThreatPreview.ShowSelectedDestination(targetTile);
     }
@@ -330,8 +371,11 @@ public class BattleUnitMoveFlow : MonoBehaviour
     /// <summary>화살표 인스턴스를 파괴하지 않고 비활성화해 재사용한다.</summary>
     public void ClearMoveArrow()
     {
-        EnsureBattleMovePreview();
-        battleMovePreview.Hide();
+        if (TryResolveBattleMovePreview())
+        {
+            battleMovePreview.Hide();
+        }
+
         EnsureBattleMoveThreatPreview();
         battleMoveThreatPreview.ClearSelectedDestination();
     }

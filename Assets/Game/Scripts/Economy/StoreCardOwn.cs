@@ -150,7 +150,7 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                 myEquipSt.cost = 100;
                                 for (int i = 0; i < 4; i++)
                                 {
-                                    int temp = Random.Range(0, 4);
+                                    int temp = Random.Range(0, 6);
 
                                     switch (temp)
                                     {
@@ -172,6 +172,16 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                         case 3:
                                             {
                                                 myEquipSt.wisoffset++;
+                                                break;
+                                            }
+                                        case 4:
+                                            {
+                                                myEquipSt.intoffset++;
+                                                break;
+                                            }
+                                        case 5:
+                                            {
+                                                myEquipSt.caroffset++;
                                                 break;
                                             }
                                     }
@@ -185,7 +195,7 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                 myEquipSt.cost = 180;
                                 for (int i = 0; i < 6; i++)
                                 {
-                                    int temp = Random.Range(0, 4);
+                                    int temp = Random.Range(0, 6);
 
                                     switch (temp)
                                     {
@@ -207,6 +217,16 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                         case 3:
                                             {
                                                 myEquipSt.wisoffset++;
+                                                break;
+                                            }
+                                        case 4:
+                                            {
+                                                myEquipSt.intoffset++;
+                                                break;
+                                            }
+                                        case 5:
+                                            {
+                                                myEquipSt.caroffset++;
                                                 break;
                                             }
                                     }
@@ -219,7 +239,7 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                 myEquipSt.cost = 300;
                                 for (int i = 0; i < 10; i++)
                                 {
-                                    int temp = Random.Range(0, 4);
+                                    int temp = Random.Range(0, 6);
 
                                     switch (temp)
                                     {
@@ -243,15 +263,28 @@ public class StoreCardOwn : MonoBehaviour,IPointerDownHandler,IPointerEnterHandl
                                                 myEquipSt.wisoffset++;
                                                 break;
                                             }
+                                        case 4:
+                                            {
+                                                myEquipSt.intoffset++;
+                                                break;
+                                            }
+                                        case 5:
+                                            {
+                                                myEquipSt.caroffset++;
+                                                break;
+                                            }
                                     }
                                 }
                                 break;
                             }
                     }
                     aboutCard = "STR + " + myEquipSt.stroffset + "\n" +
-                                "WIS + " + myEquipSt.wisoffset + "\n" +
                                 "DEX + " + myEquipSt.dexoffset + "\n" +
-                                "VIT + " + myEquipSt.vitoffset + "\n";
+                                "INT + " + myEquipSt.intoffset + "\n" +
+                                "WIS + " + myEquipSt.wisoffset + "\n" +
+                                "CAR + " + myEquipSt.caroffset + "\n" +
+                                "VIT + " + myEquipSt.vitoffset + "\n" +
+                                "사거리 + " + myEquipSt.attackRange + "\n";
 
                     if(myEquipSt.weaponKind == WeaponKind.TwoHand)
                     {

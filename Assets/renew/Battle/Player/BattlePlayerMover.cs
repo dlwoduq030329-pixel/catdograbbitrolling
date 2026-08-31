@@ -18,8 +18,8 @@ public sealed class BattlePlayerMover : MonoBehaviour
     [Header("단차 이동 연출")]
     [Tooltip("앞 타일과 다음 타일의 높이 차이가 이 값 이상일 때 점프 이동을 사용한다.")]
     [SerializeField, Min(0f)] private float minimumHeightDifferenceForJump = 0.1f;
-    [Tooltip("단차 이동 중 직선 경로 위로 추가되는 포물선의 최대 높이.")]
-    [SerializeField, Min(0f)] private float jumpArcHeight = 0.75f;
+    private float jumpTakeoffDelaySeconds = 0.1f;
+    private float jumpArcHeight = 1.5f;
 
     // 아래 두 값은 항상 Configure()에서 BattlePlayerActionController의 Inspector 값(기본 1f / 4f)으로
     // 덮어써진다. 여기 초기값은 Configure가 호출되기 전에도 GetDurationPerTile()이 0으로 나누지
@@ -28,11 +28,18 @@ public sealed class BattlePlayerMover : MonoBehaviour
     private float moveSpeedMultiplier = 4f;
 
     /// <summary>이동 대상과 한 칸당 기준 시간, 연출 배속을 설정한다. 경로·MP 규칙은 판단하지 않는다.</summary>
-    public void Configure(GameObject targetPlayer, float baseSecondsPerTile, float speedMultiplier)
+    public void Configure(
+        GameObject targetPlayer,
+        float baseSecondsPerTile,
+        float speedMultiplier,
+        float takeoffDelaySeconds,
+        float baseJumpArcHeight)
     {
         playerObject = targetPlayer;
         secondsPerTile = Mathf.Max(0.01f, baseSecondsPerTile);
         moveSpeedMultiplier = Mathf.Max(0.01f, speedMultiplier);
+        jumpTakeoffDelaySeconds = Mathf.Max(0f, takeoffDelaySeconds);
+        jumpArcHeight = Mathf.Max(0f, baseJumpArcHeight);
     }
 
     /// <summary>계산이 끝난 타일 경로를 순서대로 따라가며 Player Transform 이동만 연출한다.</summary>
@@ -63,8 +70,21 @@ public sealed class BattlePlayerMover : MonoBehaviour
 
             if (crossesHeightStep)
             {
+                // 점프 이동과 회전을 동시에 시작하지 않고, 목표 타일 방향을 먼저 바라본 뒤 준비 동작에 들어간다.
+                yield return BattleUnitMotionAnimator.RotateTowards(
+                    playerObject.transform,
+                    targetPosition);
+
                 // 모델 Animator에 점프 State가 있으면 함께 재생한다. 없는 모델도 위치 포물선은 정상 동작한다.
                 BattleCharacterAnimationBridge.PlayState(playerObject, JumpStartAnimationState);
+
+                // 점프 State를 재생한 프레임에 바로 위치 이동을 시작하면 준비 동작이 거의 보이지 않는다.
+                // 단차 이동에만 짧은 이륙 대기 시간을 적용하고 평지 이동 속도에는 영향을 주지 않는다.
+                if (jumpTakeoffDelaySeconds > 0f)
+                {
+                    yield return new WaitForSeconds(jumpTakeoffDelaySeconds);
+                }
+
                 yield return BattleUnitMotionAnimator.MoveToPositionWithJumpArc(
                     playerObject.transform,
                     targetPosition,

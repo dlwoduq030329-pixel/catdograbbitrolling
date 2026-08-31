@@ -8,6 +8,7 @@ using UnityEngine.UI;
 public sealed class BattleCardShopSystem : MonoBehaviour
 {
     private const int SlotCount = 6;
+    private const int DefaultCardTypeCount = 5;
     // Item01 슬롯 크기는 158x268이고 카드 이미지 원본은 100x150.8이다. 이 배율(1.5배)이면
     // 이미지가 가로 150/세로 227 정도로 커져서 슬롯을 거의 채우면서도, 항상 보이는 하단
     // 가격 텍스트 영역까지는 침범하지 않는다.
@@ -42,13 +43,14 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     [Header("카드 데이터")]
     [SerializeField] private BattleCardDatabase battleCardDatabase;
     [SerializeField] private CardDatabase originalCardDatabase;
+    [Header("상점 화면")]
+    [SerializeField] private BattleShopView shopView;
     /// <summary>Resources의 BattleEquipmentDatabaseReference에서 Awake 때 채워지는 장비 원본 목록.</summary>
     private EquipDatabase equipmentDatabase;
     /// <summary>Resources의 BattleShopConfig(등급/부위 가중치, 카드·장비 슬롯 수, 리롤 초깃값 등 상점 밸런스 설정).</summary>
     private BattleShopConfig shopConfig;
     private MapInfo currentStore;
     private StoreState currentState;
-    private Canvas canvas;
     /// <summary>상점 UI 전체의 루트 오브젝트. null이면 아직 EnsureView로 생성/바인딩 전이라는 뜻.</summary>
     private GameObject viewRoot;
     private TMP_Text goldText;
@@ -71,9 +73,9 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private GameObject selectedImageRoot;
     private TMP_Text selectedCardNameText;
     /// <summary>보유 카드 인벤토리 슬롯들(RefreshOwnedInventory가 매번 다시 채움).</summary>
-    private InventoryStore[] ownedCardSlots;
+    private BattleShopOwnedCardSlotView[] ownedCardSlotPool;
     /// <summary>보유 장비(좌/우손·몸통·머리) 슬롯들(RefreshOwnedInventory가 매번 다시 채움).</summary>
-    private EquipStore[] ownedEquipmentSlots;
+    private BattleShopOwnedEquipmentSlotView[] ownedEquipmentSlots;
     private ScrollRect ownedInventoryScroll;
     /// <summary>하나뿐인 공용 BUY/SELL 버튼. purchaseButtonMode에 따라 라벨과 동작이 바뀐다.</summary>
     private Button purchaseButton;
@@ -86,7 +88,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private enum PurchaseButtonMode { None, BuyOffer, SellCard, SellEquipment }
     private PurchaseButtonMode purchaseButtonMode = PurchaseButtonMode.None;
     private int selectedSellCardIndex = -1;
-    private EquipState selectedSellEquipState;
+    private PlayerEquipmentSlotType selectedSellEquipmentSlot;
     private bool hasSelectedSellEquip;
 
     /// <summary>
@@ -155,6 +157,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         viewRoot.SetActive(true);
         AcquireModalLock();
         BattleGameManager.Instance?.SetShopOpen(true);
+
         RefreshView();
         Debug.Log($"[Shop] {tile.name} 상점 진입", tile);
         return true;
@@ -259,7 +262,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (candidates == null || candidates.Count == 0) return -1;
         // 1차 추첨: 부위(WeaponKind)를 먼저 정한다.
         WeaponKind preferredKind = shopConfig != null
-            ? shopConfig.RollEquipmentKind(DataConfig.stage)
+            ? shopConfig.RollEquipmentKind(BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentStage : 1)
             : equipmentDatabase.equip[candidates[0]].weaponKind;
         // 후보 중 그 부위만 걸러낸 풀. 그 부위 재고가 하나도 없으면(kindFilteredPool.Count == 0)
         // 부위 제한을 포기하고 원래 후보 전체(candidates)를 그대로 쓴다.
@@ -279,27 +282,30 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     }
 
     /// <summary>이 장비 인덱스가 지금 왼손/오른손/몸통/머리 중 하나로 장착되어 있는지 확인한다.</summary>
-    private static bool IsEquipped(int equipmentIndex)
+    private bool IsEquipped(int equipmentIndex)
     {
-        return (DataConfig.leftDa != null && DataConfig.leftDa.weaponIndex == equipmentIndex) ||
-               (DataConfig.rightDa != null && DataConfig.rightDa.weaponIndex == equipmentIndex) ||
-               (DataConfig.bodyDa != null && DataConfig.bodyDa.weaponIndex == equipmentIndex) ||
-               (DataConfig.headDa != null && DataConfig.headDa.weaponIndex == equipmentIndex);
+        PlayerWeapon playerWeapon = ResolveCurrentPlayerWeapon();
+        return playerWeapon != null &&
+               (playerWeapon.LeftArm.CurrentEquipment?.weaponIndex == equipmentIndex ||
+                playerWeapon.RightArm.CurrentEquipment?.weaponIndex == equipmentIndex ||
+                playerWeapon.Body.CurrentEquipment?.weaponIndex == equipmentIndex ||
+                playerWeapon.Head.CurrentEquipment?.weaponIndex == equipmentIndex);
     }
 
     /// <summary>
     /// 지정한 장비 원본을 복제(Clone)해 등급을 <c>shopConfig.RollRarity</c>로 굴리고, 부위별
     /// 기본가(양손90/몸통75/머리70/한손60)에 등급 배율(rare1.6/epic2.5/legendary4)을 곱해
     /// 가격을 매긴다. 등급이 높을수록 보너스 스탯 굴림 횟수(bonusRolls)도 늘어난다
-    /// (rare4/epic6/legendary10회, 매 회 STR/WIS/DEX/VIT 중 하나를 무작위로 +1).
+    /// (rare4/epic6/legendary10회, 매 회 STR/DEX/INT/WIS/CAR/VIT 중 하나를 무작위로 +1).
     /// </summary>
     private EquipData CreateRandomEquipment(int equipmentIndex)
     {
         List<EquipData> equipment = equipmentDatabase.equip;
         EquipData offer = equipment[equipmentIndex].Clone();
         weaponSt rarity = shopConfig != null
-            ? shopConfig.RollRarity(DataConfig.stage)
-            : (weaponSt)Random.Range(0, Mathf.Clamp(DataConfig.stage, 1, 4));
+            ? shopConfig.RollRarity(BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentStage : 1)
+            : (weaponSt)Random.Range(0, Mathf.Clamp(
+                BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentStage : 1, 1, 4));
         offer.weapon = rarity;
 
         int bonusRolls;
@@ -315,12 +321,14 @@ public sealed class BattleCardShopSystem : MonoBehaviour
 
         for (int i = 0; i < bonusRolls; i++)
         {
-            switch (Random.Range(0, 4))
+            switch (Random.Range(0, 6))
             {
                 case 0: offer.stroffset++; break;
-                case 1: offer.wisoffset++; break;
-                case 2: offer.dexoffset++; break;
-                case 3: offer.vitoffset++; break;
+                case 1: offer.dexoffset++; break;
+                case 2: offer.intoffset++; break;
+                case 3: offer.wisoffset++; break;
+                case 4: offer.caroffset++; break;
+                case 5: offer.vitoffset++; break;
             }
         }
 
@@ -378,11 +386,10 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         // 카드 1종당 최대 2장 보유 규칙 — BuildEligibleCards가 애초에 후보에서 걸러내지만, fallback
         // 재사용(GenerateOffers)이나 다른 슬롯에서 같은 카드를 이미 산 경우까지 대비해 여기서도 다시 확인한다.
         if (ownedCount >= 2) { Debug.LogWarning($"[Shop] {originalCard.name} 보유 한도 2장", this); RefreshView(); return; }
-        if (DataConfig.playerMoney < price) { Debug.LogWarning($"[Shop] 골드 부족: {price}G 필요", this); return; }
-
-        DataConfig.playerMoney -= price;
+        PlayerWallet wallet = ResolveCurrentPlayerWallet();
+        if (wallet == null) { Debug.LogError("[Shop] 카드 구매 실패: PlayerWallet 참조가 없습니다.", this); return; }
+        if (!wallet.TrySpendGold(price)) { Debug.LogWarning($"[Shop] 골드 부족: {price}G 필요", this); return; }
         playerDeck.AddOwnedCard(cardIndex, 1);
-        DataConfig.CardsCount[cardIndex] = playerDeck.GetOwnedCardCount(cardIndex);
         currentState.Sold[slot] = true;
         Debug.Log($"[Shop] 카드 구매: {originalCard.name} / {price}G", this);
         RefreshView();
@@ -405,8 +412,8 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     /// 장비 구매를 실제로 처리한다. equipLeft는 항상 null로 호출된다(2026-08-22 정리, 사용자 확인:
     /// "왼손/오른손 직접 선택" 확인 UI(EnsureEquipmentConfirmationView + Confirm/Left/Right/Cancel)는
     /// 호출부가 0개라 한 번도 생성된 적 없는 죽은 코드였다 — BuyEquipment가 확인창 없이 곧바로
-    /// 이 메서드를 null로 호출해, 항상 DataConfig.GetWeapon 경로(빈 손 자동 장착, 양손이 다
-    /// 차있으면 왼손 강제 교체)로 구매+장착이 즉시 끝난다. equipLeft 매개변수와
+    /// 이 메서드를 null로 호출해, PlayerWeapon의 빈 손 자동 선택 경로로 구매+장착이 즉시 끝난다.
+    /// equipLeft 매개변수와
     /// weaponKind == Hand 분기는 특정 손을 강제 지정하는 기능을 되살릴 때를 위해 남겨둔다.)
     /// </summary>
     private void ConfirmEquipmentPurchaseInHand(bool? equipLeft)
@@ -416,17 +423,40 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         EquipData equipment = currentState.OfferedEquipment[slot];
         if (equipment == null || currentState.Sold[slot]) return;
         int price = Mathf.Max(0, equipment.cost);
-        if (DataConfig.playerMoney < price)
+        PlayerWallet wallet = ResolveCurrentPlayerWallet();
+        if (wallet == null)
+        {
+            Debug.LogError("[Shop] 장비 구매 실패: PlayerWallet 참조가 없습니다.", this);
+            return;
+        }
+        if (!wallet.CanAfford(price))
         {
             Debug.LogWarning($"[Shop] Not enough gold. Equipment costs {price}G.", this);
             return;
         }
 
-        DataConfig.playerMoney -= price;
+        PlayerWeapon playerWeapon = ResolveCurrentPlayerWeapon();
+        if (playerWeapon == null)
+        {
+            Debug.LogError("[Shop] 장비 구매 실패: 등록된 PlayerWeapon이 없습니다.", this);
+            return;
+        }
+
+        wallet.TrySpendGold(price);
+        EquipData removedPrimaryEquipment;
+        EquipData removedSecondaryEquipment = null;
         if (equipment.weaponKind == WeaponKind.Hand && equipLeft.HasValue)
-            DataConfig.EquipHandInSlot(equipment, equipLeft.Value);
+            removedPrimaryEquipment = playerWeapon.EquipHandInSlot(
+                equipment,
+                equipLeft.Value ? PlayerEquipmentSlotType.LeftArm : PlayerEquipmentSlotType.RightArm);
         else
-            DataConfig.GetWeapon(equipment);
+            playerWeapon.EquipEquipmentAutomatically(
+                equipment,
+                out removedPrimaryEquipment,
+                out removedSecondaryEquipment);
+
+        AddEquipmentSaleGold(removedPrimaryEquipment);
+        AddEquipmentSaleGold(removedSecondaryEquipment);
         ApplyEquipmentVisual();
         currentState.Sold[slot] = true;
         pendingEquipmentSlot = -1;
@@ -454,23 +484,14 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         }
         GameObject playerObject = BattleGameManager.Instance.CurrentPlayer;
 
-        if (DataPool.Instance != null && DataPool.Instance.equipDatabase == null && equipmentDatabase != null)
-            DataPool.Instance.equipDatabase = equipmentDatabase;
-
-        if (DataPool.Instance == null || DataPool.Instance.equipDatabase == null)
-        {
-            Debug.LogError("[Shop] DataPool.Instance.equipDatabase가 비어 있어 장비 모델을 갱신하지 못했습니다.", this);
-            return;
-        }
-
         try
         {
             BattleEquipVisualBinder equipmentView = BattleComponentResolver.GetOrAdd<BattleEquipVisualBinder>(playerObject, null);
-            equipmentView.Refresh();
+            equipmentView.Bind(ResolveCurrentPlayerWeapon());
             CharacterListUIStatusController statusController =
                 FindFirstObjectByType<CharacterListUIStatusController>(FindObjectsInactive.Include);
             statusController?.Refresh();
-            Debug.Log($"[Shop] 장비 모델 갱신: L={DataConfig.leftHand} R={DataConfig.rightHand} Body={DataConfig.body} Head={DataConfig.head} (player={playerObject.name})", this);
+            Debug.Log($"[Shop] PlayerWeapon 기준 장비 모델 갱신 완료: {playerObject.name}", this);
         }
         catch (System.Exception exception)
         {
@@ -503,9 +524,11 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private void Reroll()
     {
         if (currentState == null) return;
-        if (DataConfig.playerMoney < currentState.RerollPrice)
+        PlayerWallet wallet = ResolveCurrentPlayerWallet();
+        if (wallet == null)
+        { Debug.LogError("[Shop] 리롤 실패: PlayerWallet 참조가 없습니다.", this); return; }
+        if (!wallet.TrySpendGold(currentState.RerollPrice))
         { Debug.LogWarning($"[Shop] 리롤 골드 부족: {currentState.RerollPrice}G 필요", this); return; }
-        DataConfig.playerMoney -= currentState.RerollPrice;
         Debug.Log($"[Shop] 상품 리롤 / {currentState.RerollPrice}G", this);
         int maximumPrice = shopConfig != null ? shopConfig.maximumRerollPrice : 160;
         currentState.RerollPrice = Mathf.Min(maximumPrice, currentState.RerollPrice * 2);
@@ -515,7 +538,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 상점 UI를 정상적으로 닫는 내부 경로다(ESC나 닫기 버튼이 이걸 호출 — TryBindSceneStoreView에서
+    /// 상점 UI를 정상적으로 닫는 내부 경로다(ESC나 닫기 버튼이 이걸 호출 — TryBindConfiguredShopView에서
     /// binding.EscButton.onClick과 CreateButton으로 만든 CLOSE 버튼 둘 다 이 메서드에 연결됨).
     /// 대기 중이던 장비구매/선택 상태를 전부 취소하고, 모달 입력잠금을 풀고, 이 타일의 currentState
     /// 참조를 비운다(다음에 다른 상점 타일에 들어갈 때 실수로 이전 상태를 쓰지 않도록).
@@ -578,10 +601,12 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         if (viewRoot == null || currentState == null) return;
         FillExistingEmptySlots(currentState);
-        if (goldText != null) goldText.text = $"Gold : {DataConfig.playerMoney}G";
+        PlayerWallet wallet = ResolveCurrentPlayerWallet();
+        int currentGold = wallet != null ? wallet.Gold : 0;
+        if (goldText != null) goldText.text = $"Gold : {currentGold}G";
         if (rerollText != null) rerollText.text = $"REROLL {currentState.RerollPrice}G";
         if (rerollButton != null)
-            rerollButton.interactable = DataConfig.playerMoney >= currentState.RerollPrice;
+            rerollButton.interactable = wallet != null && wallet.CanAfford(currentState.RerollPrice);
         PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
         for (int i = 0; i < SlotCount; i++)
         {
@@ -592,7 +617,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             bool hasOffer = card != null || equipment != null;
             int price = card != null ? Mathf.Max(0, card.cardCost * 2) :
                 equipment != null ? Mathf.Max(0, equipment.cost) : 0;
-            bool canAfford = DataConfig.playerMoney >= price;
+            bool canAfford = wallet != null && wallet.CanAfford(price);
             bool atCardLimit = card != null && playerDeck != null &&
                 playerDeck.GetOwnedCardCount(card.index) >= PlayerDeck.MaximumOwnedCopiesPerCard;
             if (offerButtons != null && i < offerButtons.Length && offerButtons[i] != null)
@@ -671,67 +696,50 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     // 등급별 색상을 표시하려던 흔적으로 보이나 실제로 UI에 연결된 적이 없다.)
 
     /// <summary>
-    /// 상점 뷰가 아직 없으면(viewRoot == null) 딱 한 번만 TryBindSceneStoreView로 만든다. TryEnter가
+    /// 상점 뷰가 아직 없으면(viewRoot == null) Inspector의 BattleShopView 참조를 딱 한 번 연결한다. TryEnter가
     /// 상점 타일에 들어갈 때마다 호출하지만, 두 번째 방문부터는 viewRoot가 이미 있어 즉시 반환한다.
     /// </summary>
     private void EnsureView()
     {
         if (viewRoot != null) return;
-        if (TryBindSceneStoreView()) return;
-        Debug.LogError("[Shop] Battle Canvas 아래에서 Event_Store 프리팹 인스턴스를 찾지 못했습니다.", this);
+        if (TryBindConfiguredShopView()) return;
+        Debug.LogError("[Shop] BattleShopView 또는 필수 UI 참조가 연결되지 않았습니다.", this);
     }
 
-    /// <summary>Battle Canvas에 배치된 Event_Store 인스턴스의 기존 슬롯과 텍스트만 연결한다.</summary>
-    private bool TryBindSceneStoreView()
+    /// <summary>Inspector에 지정된 BattleShopView의 직접 참조를 상점 시스템에 연결한다.</summary>
+    private bool TryBindConfiguredShopView()
     {
-        Transform storeRoot = null;
-        foreach (Transform candidate in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
-            if (candidate != null && candidate.gameObject.name == "Event_Store")
-            {
-                storeRoot = candidate;
-                break;
-            }
-        }
-        if (storeRoot == null) return false;
+        if (shopView == null || !shopView.HasRequiredReferences(SlotCount)) return false;
 
-        viewRoot = storeRoot.gameObject;
-        canvas = storeRoot.GetComponentInParent<Canvas>(true);
-        if (!BattleLegacyStoreViewAdapter.TryBind(viewRoot, SlotCount, out BattleLegacyStoreViewAdapter.Binding binding))
+        // BattleShopView가 실제 Event_Store 루트에 직접 붙어 있으므로 같은 오브젝트를 켜고 끈다.
+        viewRoot = shopView.gameObject;
+        BattleShopOfferSlotView[] configuredSlots = shopView.OfferSlots;
+        offerButtons = new Button[SlotCount];
+        offerImages = new Image[SlotCount];
+        offerTexts = new TMP_Text[SlotCount];
+        offerPriceTexts = new TMP_Text[SlotCount];
+        for (int i = 0; i < SlotCount; i++)
         {
-            viewRoot = null;
-            canvas = null;
-            return false;
+            offerButtons[i] = configuredSlots[i].SelectButton;
+            offerImages[i] = configuredSlots[i].ItemImage;
+            offerTexts[i] = configuredSlots[i].ItemNameText;
+            offerPriceTexts[i] = configuredSlots[i].PriceText;
         }
 
-        offerButtons = binding.Buttons;
-        offerImages = binding.CardImages;
-        offerTexts = binding.CardNames;
-        offerPriceTexts = binding.CardPrices;
-        goldText = binding.GoldText;
-        rerollButton = binding.RerollButton;
-        rerollText = binding.RerollText;
-        tagText = FindComponentByName<TMP_Text>(storeRoot, "TText");
-        propertyText = FindComponentByName<TMP_Text>(storeRoot, "SText");
-        damageText = FindComponentByName<TMP_Text>(storeRoot, "PText");
-        equipmentInfoText = FindComponentByName<TMP_Text>(storeRoot, "InText");
-        hoverPreviewImage = binding.PreviewImage;
-        Transform selectedImage = FindTransformByName(storeRoot, "SelectedImage");
-        selectedImageRoot = selectedImage != null ? selectedImage.gameObject : null;
-        selectedCardNameText = selectedImage != null
-            ? FindComponentByName<TMP_Text>(selectedImage, "CardName")
-            : null;
-
-        Transform inventoryRoot = FindTransformByName(storeRoot, "Inventory");
-        ownedInventoryScroll = inventoryRoot != null ? inventoryRoot.GetComponent<ScrollRect>() : null;
-        ownedCardSlots = inventoryRoot != null
-            ? inventoryRoot.GetComponentsInChildren<InventoryStore>(true)
-            : System.Array.Empty<InventoryStore>();
-        Transform equipmentRoot = FindTransformByName(storeRoot, "EquipMent");
-        ownedEquipmentSlots = equipmentRoot != null
-            ? equipmentRoot.GetComponentsInChildren<EquipStore>(true)
-            : System.Array.Empty<EquipStore>();
-        purchaseButton = FindComponentByName<Button>(storeRoot, "BuySellButton");
+        goldText = shopView.GoldText;
+        rerollButton = shopView.RerollButton;
+        rerollText = shopView.RerollPriceText;
+        tagText = shopView.TargetText;
+        propertyText = shopView.PropertyText;
+        damageText = shopView.DamageText;
+        equipmentInfoText = shopView.EquipmentInfoText;
+        hoverPreviewImage = shopView.PreviewImage;
+        selectedImageRoot = shopView.SelectedItemPanel;
+        selectedCardNameText = shopView.SelectedItemNameText;
+        ownedInventoryScroll = shopView.OwnedCardScroll;
+        ownedCardSlotPool = shopView.OwnedCardSlotPool ?? System.Array.Empty<BattleShopOwnedCardSlotView>();
+        ownedEquipmentSlots = shopView.OwnedEquipmentSlots ?? System.Array.Empty<BattleShopOwnedEquipmentSlotView>();
+        purchaseButton = shopView.PurchaseButton;
         if (purchaseButton != null)
         {
             purchaseButton.onClick = new Button.ButtonClickedEvent();
@@ -743,18 +751,11 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         // (Event_Store를 직접 SetActive(false)만 하는 이벤트). 이 이벤트는 Close()를 거치지 않으므로
         // SetShopOpen(false)/UnlockBattleInputAfterOverlay도 호출되지 않는다. onClick 이벤트 객체를
         // 통째로 새로 만들어 교체하면 그 레거시 호출이 사라지고, 우리 쪽 정리 로직(Close)만 남는다.
-        if (binding.EscButton != null)
+        if (shopView.CloseButton != null)
         {
-            binding.EscButton.onClick = new Button.ButtonClickedEvent();
-            binding.EscButton.onClick.AddListener(Close);
+            shopView.CloseButton.onClick = new Button.ButtonClickedEvent();
+            shopView.CloseButton.onClick.AddListener(Close);
         }
-
-        foreach (StoreManager legacy in viewRoot.GetComponentsInChildren<StoreManager>(true)) legacy.enabled = false;
-        foreach (StoreSet legacy in viewRoot.GetComponentsInChildren<StoreSet>(true)) legacy.enabled = false;
-        foreach (StoreCardOwn legacy in viewRoot.GetComponentsInChildren<StoreCardOwn>(true)) legacy.enabled = false;
-        foreach (InventoryStore legacy in viewRoot.GetComponentsInChildren<InventoryStore>(true)) legacy.enabled = false;
-        foreach (EquipStore legacy in viewRoot.GetComponentsInChildren<EquipStore>(true)) legacy.enabled = false;
-        foreach (sellCard legacy in viewRoot.GetComponentsInChildren<sellCard>(true)) legacy.enabled = false;
 
         for (int i = 0; i < SlotCount; i++)
         {
@@ -766,7 +767,7 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             }
             if (offerImages[i] != null)
                 offerImages[i].rectTransform.localScale = new Vector3(OfferImageScale, OfferImageScale, 1f);
-            GameObject hoverRoot = binding.SlotRoots[i];
+            GameObject hoverRoot = configuredSlots[i].Root;
             BattleShopOfferHover hover = BattleComponentResolver.GetOrAdd<BattleShopOfferHover>(hoverRoot, null);
             // Item01 안의 슬롯별 "Button" 오브젝트는 프리팹 기본값이 비활성 상태다(레거시 설계상
             // 다른 곳 클릭 후에야 보이게 돼 있었음), 그래서 이 버튼은 스스로 레이캐스트 클릭을
@@ -839,7 +840,9 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             SetTextVisible(propertyText, false, string.Empty);
             SetTextVisible(damageText, false, string.Empty);
             SetTextVisible(equipmentInfoText, true,
-                $"STR +{equipment.stroffset}\nDEX +{equipment.dexoffset}\nVIT +{equipment.vitoffset}\nWIS +{equipment.wisoffset}");
+                $"STR +{equipment.stroffset}\nDEX +{equipment.dexoffset}\nINT +{equipment.intoffset}\n" +
+                $"WIS +{equipment.wisoffset}\nCAR +{equipment.caroffset}\nVIT +{equipment.vitoffset}\n" +
+                $"공격 사거리 +{equipment.attackRange:0.##}");
             SetPreviewImage(equipment.myEquipSprite, equipment.cardname);
             return;
         }
@@ -872,6 +875,8 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     private void SelectInventoryCardForSale(int cardIndex)
     {
         if (currentState == null) return;
+        if (IsDefaultCard(cardIndex)) return;
+
         PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
         if (playerDeck == null || !playerDeck.HasCard(cardIndex)) return;
         CardData card = BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase);
@@ -889,25 +894,19 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     }
 
     /// <summary>보유 장비 슬롯을 눌렀을 때 같은 BuySellButton을 장비 판매 모드로 전환한다.</summary>
-    private void SelectEquipmentSlotForSale(EquipState state)
+    private void SelectEquipmentSlotForSale(PlayerEquipmentSlotType slotType)
     {
         if (currentState == null) return;
-        int equipIndex = GetEquippedIndex(state);
-        if (equipIndex <= 0) return; // 0번 = 미장착 (EquipStore.OnPointerDown과 동일한 규칙)
+        EquipData equippedEquipment = GetEquippedEquipment(slotType);
+        if (equippedEquipment == null) return;
 
         selectedPurchaseSlot = -1;
         selectedSellCardIndex = -1;
-        selectedSellEquipState = state;
+        selectedSellEquipmentSlot = slotType;
         hasSelectedSellEquip = true;
         purchaseButtonMode = PurchaseButtonMode.SellEquipment;
         HideOfferDetails();
-        bool valid = equipmentDatabase != null && equipmentDatabase.equip != null &&
-            equipIndex >= 0 && equipIndex < equipmentDatabase.equip.Count;
-        if (valid)
-        {
-            EquipData equipment = equipmentDatabase.equip[equipIndex];
-            SetPreviewImage(equipment.myEquipSprite, equipment.cardname);
-        }
+        SetPreviewImage(equippedEquipment.myEquipSprite, equippedEquipment.cardname);
         if (purchaseButton == null) return;
         purchaseButton.gameObject.SetActive(true);
         TMP_Text label = purchaseButton.GetComponentInChildren<TMP_Text>(true);
@@ -935,6 +934,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     {
         int index = selectedSellCardIndex;
         if (index < 0) { ResetPurchaseSelection(); return; }
+        if (IsDefaultCard(index))
+        {
+            Debug.LogWarning($"[Shop] 기본 카드는 판매할 수 없습니다. 카드 {index}", this);
+            ResetPurchaseSelection();
+            return;
+        }
+
         PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
         if (playerDeck == null)
         {
@@ -954,26 +960,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             RefreshOwnedInventory();
             return;
         }
-        if (remainingOwned <= 0) DataConfig.CardsCount.Remove(index);
-        else DataConfig.CardsCount[index] = remainingOwned;
-        CopyEquippedDeckToLegacyCardData(playerDeck);
         int remainingEquippedCopies = playerDeck.GetEquippedCopyCount(index);
         BattleGameManager.Instance?.CardDrawSystem?
             .RemoveRuntimeCardCopiesAboveEquippedCount(index, remainingEquippedCopies);
-        DataConfig.playerMoney += refund;
-        RefreshLinkedCardInventories();
+        ResolveCurrentPlayerWallet()?.AddGold(refund);
         Debug.Log($"[Shop] 카드 판매: {card.name} / {refund}G / 남은 보유 {remainingOwned}장", this);
         ResetPurchaseSelection();
         RefreshView();
-    }
-
-    /// <summary>PlayerDeck에서 확정된 장착 덱을 기존 저장·UI 호환 목록에 복사한다.</summary>
-    private static void CopyEquippedDeckToLegacyCardData(PlayerDeck playerDeck)
-    {
-        DataConfig.cardData.Clear();
-        if (playerDeck == null || playerDeck.EquippedCards == null) return;
-        foreach (int equippedCardIndex in playerDeck.EquippedCards)
-            if (equippedCardIndex >= 0) DataConfig.cardData.Add(equippedCardIndex);
     }
 
     /// <summary>현재 등록 Player의 PlayerDeck을 우선 반환하고 구형 Scene은 비활성 객체 검색으로 보완한다.</summary>
@@ -987,33 +980,29 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             : Object.FindFirstObjectByType<PlayerDeck>(FindObjectsInactive.Include);
     }
 
-    /// <summary>판매 결과를 상점 밖 일반 카드 인벤토리에도 즉시 전달한다.</summary>
-    private static void RefreshLinkedCardInventories()
+    /// <summary>BattleGameManager가 등록한 실제 Player의 장비 상태 원본을 반환한다.</summary>
+    private static PlayerWeapon ResolveCurrentPlayerWeapon()
     {
-        foreach (InventorySetting inventory in
-                 Object.FindObjectsByType<InventorySetting>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
-            if (inventory != null) inventory.RefreshDeckEditorVisuals();
-        }
+        return BattleGameManager.Instance?.CurrentPlayerWeapon;
     }
 
-    /// <summary>레거시 sellCard.EquipCardSellBtn과 같은 DataConfig.SellXWeapon() 경로로 장비 1개를 판매한다.</summary>
+    /// <summary>BattleGameManager가 등록한 실제 Player의 골드 지갑을 반환한다.</summary>
+    private static PlayerWallet ResolveCurrentPlayerWallet()
+    {
+        return BattleGameManager.Instance?.CurrentPlayerWallet;
+    }
+
+    /// <summary>선택한 PlayerWeapon 슬롯의 장비를 해제하고 구매가의 50%를 지급한다.</summary>
     private void SellSelectedEquipment()
     {
         if (!hasSelectedSellEquip) { ResetPurchaseSelection(); return; }
-        EquipState state = selectedSellEquipState;
-        int equipIndex = GetEquippedIndex(state);
-        if (equipIndex <= 0) { ResetPurchaseSelection(); RefreshView(); return; }
+        PlayerEquipmentSlotType slotType = selectedSellEquipmentSlot;
+        PlayerWeapon playerWeapon = ResolveCurrentPlayerWeapon();
+        if (playerWeapon == null) { ResetPurchaseSelection(); return; }
 
-        int goldBefore = DataConfig.playerMoney;
-        switch (state)
-        {
-            case EquipState.LeftHand: DataConfig.SellLeftWeapon(); break;
-            case EquipState.RightHand: DataConfig.SellRightWeapon(); break;
-            case EquipState.Head: DataConfig.SellheadWeapon(); break;
-            case EquipState.Body: DataConfig.SellBodyWeapon(); break;
-        }
-        Debug.Log($"[Shop] 장비 판매: {state} / {DataConfig.playerMoney - goldBefore}G", this);
+        EquipData removedEquipment = playerWeapon.UnequipSlot(slotType);
+        int saleGold = AddEquipmentSaleGold(removedEquipment);
+        Debug.Log($"[Shop] 장비 판매: {slotType} / {saleGold}G", this);
 
         ApplyEquipmentVisual();
 
@@ -1071,28 +1060,34 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     /// <summary>상점 인벤토리 영역에 현재 보유 카드와 장착 장비를 표시한다.</summary>
     private void RefreshOwnedInventory()
     {
-        if (ownedCardSlots != null)
+        if (ownedCardSlotPool != null)
         {
             PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
             List<int> ownedCardIndices = playerDeck != null
                 ? new List<int>(playerDeck.OwnedCards.Keys)
                 : new List<int>();
             ownedCardIndices.Sort();
-            for (int i = 0; i < ownedCardSlots.Length; i++)
+            for (int i = 0; i < ownedCardSlotPool.Length; i++)
             {
-                InventoryStore slot = ownedCardSlots[i];
+                BattleShopOwnedCardSlotView slot = ownedCardSlotPool[i];
                 if (slot == null) continue;
                 bool hasCard = i < ownedCardIndices.Count;
                 slot.gameObject.SetActive(hasCard);
                 if (!hasCard) continue;
 
                 int cardIndex = ownedCardIndices[i];
-                slot.StoreInvenInit(cardIndex);
-                // InventoryStore.OnPointerDown은 legacy 판매 체인(StoreManager/StoreSet)이 같이
-                // 비활성화되면서 덩달아 죽어, 보유 카드를 눌러도 아무 반응이 없었다. 상점 진열
-                // 슬롯과 같은 호버 릴레이를 재사용해 클릭 시 SELL 버튼이 뜨도록 연결한다.
+                CardData card = BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase);
+                slot.Display(
+                    card,
+                    playerDeck.GetOwnedCardCount(cardIndex),
+                    playerDeck.GetEquippedCopyCount(cardIndex));
+                // 기본 카드(0~4번)는 게임 시작 덱을 구성하는 필수 카드이므로 판매 클릭을 연결하지 않는다.
+                // 그 외 카드는 레거시 판매 체인 대신 상점용 클릭 릴레이로 SELL 선택을 연결한다.
                 BattleShopOfferHover hover = BattleComponentResolver.GetOrAdd<BattleShopOfferHover>(slot.gameObject, null);
-                hover.Bind(null, null, () => SelectInventoryCardForSale(cardIndex));
+                hover.Bind(
+                    null,
+                    null,
+                    IsDefaultCard(cardIndex) ? null : () => SelectInventoryCardForSale(cardIndex));
             }
             if (ownedInventoryScroll != null)
             {
@@ -1106,59 +1101,52 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         }
 
         if (ownedEquipmentSlots == null) return;
-        foreach (EquipStore slot in ownedEquipmentSlots)
+        Sprite emptySlotSprite = equipmentDatabase != null && equipmentDatabase.equip != null &&
+            equipmentDatabase.equip.Count > 0
+            ? equipmentDatabase.equip[0]?.myEquipSprite
+            : null;
+        foreach (BattleShopOwnedEquipmentSlotView slot in ownedEquipmentSlots)
         {
             if (slot == null) continue;
             slot.gameObject.SetActive(true);
-            RefreshOwnedEquipmentSlot(slot);
+            EquipData equippedEquipment = GetEquippedEquipment(slot.SlotType);
+            slot.Display(equippedEquipment, emptySlotSprite);
+            BattleShopOfferHover hover = BattleComponentResolver.GetOrAdd<BattleShopOfferHover>(slot.gameObject, null);
+            hover.Bind(null, null, equippedEquipment != null
+                ? () => SelectEquipmentSlotForSale(slot.SlotType)
+                : null);
         }
     }
 
-    /// <summary>DataPool을 요구하는 레거시 Init을 호출하지 않고 장착 데이터와 표시 이미지만 연결한다.</summary>
     /// <summary>
-    /// EquipStore.Init()은 DataPool.Instance를 요구해 Battle 상점에서 그대로 못 쓴다(DataPool이
-    /// 갱신 안 돼 있을 수 있음). 그래서 리플렉션으로 private 필드(state/thisIMG)에 직접 접근해
-    /// "지금 장착된 장비 아이콘을 그려주는 부분"만 골라 흉내낸다 — EquipStore 클래스 자체를 고치지
-    /// 않고 화면 표시만 대신 처리하는 우회 방법. state는 이 슬롯이 왼손/오른손/몸통/머리 중 무엇인지,
-    /// thisIMG는 아이콘을 그릴 Image 컴포넌트.
+    /// PlayerDeck.InitializeDefaultCards와 같은 기준으로 시작 카드 인덱스 0~4를 판정한다.
+    /// 기본 카드는 상점 인벤토리에 표시하되 판매 선택과 실제 판매를 모두 막는다.
     /// </summary>
-    private void RefreshOwnedEquipmentSlot(EquipStore slot)
+    private static bool IsDefaultCard(int cardIndex) =>
+        cardIndex >= 0 && cardIndex < DefaultCardTypeCount;
+
+    /// <summary>PlayerWeapon에서 지정한 부위의 현재 장비를 반환한다.</summary>
+    private static EquipData GetEquippedEquipment(PlayerEquipmentSlotType slotType)
     {
-        const System.Reflection.BindingFlags flags =
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-        System.Reflection.FieldInfo stateField = typeof(EquipStore).GetField("state", flags);
-        System.Reflection.FieldInfo imageField = typeof(EquipStore).GetField("thisIMG", flags);
-        if (stateField == null || imageField == null) return;
-
-        EquipState state = (EquipState)stateField.GetValue(slot);
-        Image display = imageField.GetValue(slot) as Image;
-        if (display == null) return;
-        int equipmentIndex = GetEquippedIndex(state);
-        bool valid = equipmentDatabase != null && equipmentDatabase.equip != null &&
-            equipmentIndex >= 0 && equipmentIndex < equipmentDatabase.equip.Count;
-        display.sprite = valid ? equipmentDatabase.equip[equipmentIndex].myEquipSprite : null;
-        display.enabled = display.sprite != null;
-
-        // EquipStore.OnPointerDown은 부모의 legacy sellCard 컴포넌트를 요구해 Battle 상점에서는
-        // 아무 반응이 없었다. 카드와 동일한 클릭 릴레이로 판매 모드 전환을 연결한다.
-        BattleShopOfferHover hover = BattleComponentResolver.GetOrAdd<BattleShopOfferHover>(slot.gameObject, null);
-        hover.Bind(null, null, () => SelectEquipmentSlotForSale(state));
-    }
-
-    /// <summary>
-    /// 지정한 장비 부위(state)에 지금 장착된 장비의 데이터베이스 인덱스를 반환한다(0=미장착).
-    /// RefreshOwnedEquipmentSlot 하나에서만 쓰이는 작은 매핑 헬퍼라 그 바로 아래에 놓여 있다.
-    /// </summary>
-    private static int GetEquippedIndex(EquipState state)
-    {
-        switch (state)
+        PlayerWeapon playerWeapon = ResolveCurrentPlayerWeapon();
+        if (playerWeapon == null) return null;
+        switch (slotType)
         {
-            case EquipState.LeftHand: return DataConfig.leftHand;
-            case EquipState.RightHand: return DataConfig.rightHand;
-            case EquipState.Head: return DataConfig.head;
-            case EquipState.Body: return DataConfig.body;
-            default: return -1;
+            case PlayerEquipmentSlotType.LeftArm: return playerWeapon.LeftArm.CurrentEquipment;
+            case PlayerEquipmentSlotType.RightArm: return playerWeapon.RightArm.CurrentEquipment;
+            case PlayerEquipmentSlotType.Head: return playerWeapon.Head.CurrentEquipment;
+            case PlayerEquipmentSlotType.Body: return playerWeapon.Body.CurrentEquipment;
+            default: return null;
         }
+    }
+
+    /// <summary>장비 하나를 기존 상점 규칙인 구매가의 50%로 정산하고 실제 지급액을 반환한다.</summary>
+    private static int AddEquipmentSaleGold(EquipData equipment)
+    {
+        if (equipment == null) return 0;
+        int saleGold = Mathf.Max(0, equipment.cost / 2);
+        ResolveCurrentPlayerWallet()?.AddGold(saleGold);
+        return saleGold;
     }
 
     /// <summary>
@@ -1204,32 +1192,6 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             case BattleCardType.MagicDamage: return "MAGIC";
             default: return "SUPPORT";
         }
-    }
-
-    // (2026-08-22 정리, 사용자 확인: TryCreateLegacyView 삭제됨 - EnsureView()는 TryBindSceneStoreView()만
-    // 호출하고 이 메서드는 어디서도 호출되지 않는 완전한 죽은 코드였다. 씬에 이미 배치된 Event_Store
-    // 인스턴스를 못 찾는 경우 EnsureView()는 그냥 오류 로그만 남기고 실패한다.)
-
-    /// <summary>
-    /// root의 모든 자손(비활성 포함) 중에서 GameObject 이름이 objectName과 정확히 일치하는 T 컴포넌트를
-    /// 찾는다. 레거시 프리팹(Event_Store 등)은 Inspector 참조 없이 이름만으로 슬롯/버튼/텍스트를
-    /// 찾아 쓰는 구조라, TryBindSceneStoreView가 이 방식으로 필요한 UI 요소들을 전부 연결한다.
-    /// 이름 검색이라 프리팹 구조가 바뀌면(오브젝트 이름 변경) 조용히 null을 반환하니 주의.
-    /// </summary>
-    private static T FindComponentByName<T>(Transform root, string objectName) where T : Component
-    {
-        foreach (T component in root.GetComponentsInChildren<T>(true))
-            if (component != null && component.gameObject.name == objectName) return component;
-        return null;
-    }
-
-    /// <summary>FindComponentByName과 같은 방식의 이름 검색이지만 컴포넌트가 아니라 Transform 자체를 찾는다.</summary>
-    private static Transform FindTransformByName(Transform root, string objectName)
-    {
-        if (root == null) return null;
-        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
-            if (child != null && child.gameObject.name == objectName) return child;
-        return null;
     }
 
 }

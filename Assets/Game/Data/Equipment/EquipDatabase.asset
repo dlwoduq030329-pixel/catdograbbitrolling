@@ -16,10 +16,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 654012467, guid: 442ff6518ddfc014091aed487889ef54, type: 3}
     cardname: NULL
     attackRange: 4
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 0
     wisoffset: 0
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 0
     weapon: 0
@@ -32,10 +33,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 196008597, guid: 1e52258854e7c31499384b98cc62c3e0, type: 3}
     cardname: Wooden_Sword
     attackRange: 4
-    attackSpeed: 0
     stroffset: 2
     dexoffset: 0
+    intoffset: 0
     wisoffset: 0
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 1
     weapon: 0
@@ -48,10 +50,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1676151596, guid: 33a7d70c180f27f4ba73263684aa08bc, type: 3}
     cardname: Wooden_Staff
     attackRange: 11
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 1
     wisoffset: 2
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 2
     weapon: 0
@@ -64,10 +67,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1231174186, guid: 67b9aeb92c3edc549b71da83f0ca808c, type: 3}
     cardname: Wooden_Shield
     attackRange: 3
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 0
     wisoffset: 0
+    caroffset: 0
     vitoffset: 2
     weaponIndex: 3
     weapon: 0
@@ -80,10 +84,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1505496340, guid: 6aa164dddec5e3041afb25723bb78564, type: 3}
     cardname: Wooden_Guard
     attackRange: 4
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 1
+    intoffset: 0
     wisoffset: 0
+    caroffset: 0
     vitoffset: 1
     weaponIndex: 4
     weapon: 0
@@ -96,10 +101,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1646849064, guid: c15613ae314fb9340a6390ed5e9dc01c, type: 3}
     cardname: Crude_Bow
     attackRange: 11
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 2
+    intoffset: 0
     wisoffset: 0
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 5
     weapon: 0
@@ -112,10 +118,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 748816325, guid: fc7676b07e676794d91c607b66f3de9b, type: 3}
     cardname: Rusted_Sword
     attackRange: 4
-    attackSpeed: 0
     stroffset: 4
     dexoffset: -1
+    intoffset: 0
     wisoffset: 0
+    caroffset: -1
     vitoffset: -1
     weaponIndex: 6
     weapon: 0
@@ -128,10 +135,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1361728571, guid: 77b465c9ed54e414086ee210d19f2022, type: 3}
     cardname: Broken_Bluebow
     attackRange: 4
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 4
+    intoffset: 0
     wisoffset: 0
+    caroffset: -1
     vitoffset: 0
     weaponIndex: 7
     weapon: 0
@@ -144,10 +152,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1655058762, guid: 663b00cf53c9ddc40821e6076b84e646, type: 3}
     cardname: Knight_Sword_Shield
     attackRange: 3
-    attackSpeed: 0
     stroffset: 3
     dexoffset: 0
+    intoffset: 0
     wisoffset: 0
+    caroffset: 2
     vitoffset: 3
     weaponIndex: 8
     weapon: 0
@@ -160,10 +169,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1623704096, guid: d7e4d13fb729fce45a4292a9003909b7, type: 3}
     cardname: Knight_LongSword
     attackRange: 5
-    attackSpeed: 0
     stroffset: 3
     dexoffset: 1
+    intoffset: 0
     wisoffset: 0
+    caroffset: 1
     vitoffset: 0
     weaponIndex: 9
     weapon: 0
@@ -176,10 +186,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 41269420, guid: a8ff18b22b8b21b42aabd49918d170bc, type: 3}
     cardname: Knight_Helmet
     attackRange: 0
-    attackSpeed: 0
     stroffset: 0
     dexoffset: -1
+    intoffset: 0
     wisoffset: 0
+    caroffset: 1
     vitoffset: 3
     weaponIndex: 10
     weapon: 0
@@ -192,10 +203,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 2144175787, guid: 565200fdd4bcaa94ab3c5486ebcb59d7, type: 3}
     cardname: Knight_Armor
     attackRange: 0
-    attackSpeed: 0
     stroffset: 0
     dexoffset: -2
+    intoffset: 0
     wisoffset: 0
+    caroffset: 2
     vitoffset: 4
     weaponIndex: 11
     weapon: 0
@@ -208,10 +220,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1323563972, guid: f73c320fab89c7446b3e8033bb09de38, type: 3}
     cardname: Frost_Armor
     attackRange: 0
-    attackSpeed: 0
     stroffset: 0
     dexoffset: -3
+    intoffset: 1
     wisoffset: 0
+    caroffset: 0
     vitoffset: 6
     weaponIndex: 12
     weapon: 0
@@ -224,10 +237,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1559861044, guid: d9a4aaf908d5d9640a728695e315b6d6, type: 3}
     cardname: Flame_Armor
     attackRange: 0
-    attackSpeed: 0
     stroffset: 3
     dexoffset: 0
+    intoffset: 1
     wisoffset: 0
+    caroffset: 0
     vitoffset: -1
     weaponIndex: 13
     weapon: 0
@@ -240,10 +254,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 485079404, guid: e67e3ccae15b9b74a85670d76d186b5e, type: 3}
     cardname: Frost_Staff
     attackRange: 11
-    attackSpeed: 0
     stroffset: 0
     dexoffset: -2
+    intoffset: 4
     wisoffset: 6
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 14
     weapon: 0
@@ -256,10 +271,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1182933132, guid: c18924764a9e54f4bbe742ce3932f1f6, type: 3}
     cardname: Cursed_Mask
     attackRange: 0
-    attackSpeed: 0
     stroffset: 3
     dexoffset: 1
+    intoffset: 2
     wisoffset: 0
+    caroffset: -2
     vitoffset: -2
     weaponIndex: 15
     weapon: 0
@@ -272,10 +288,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -812951030, guid: 82a03945d6d896643882921e9813d20e, type: 3}
     cardname: Shadow_Robe
     attackRange: 0
-    attackSpeed: 0
     stroffset: 1
     dexoffset: 2
+    intoffset: 2
     wisoffset: 1
+    caroffset: -1
     vitoffset: -1
     weaponIndex: 16
     weapon: 0
@@ -288,10 +305,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1720106203, guid: adb247d3219f7594dabc3e00d43a014a, type: 3}
     cardname: Battle_Axe
     attackRange: 4
-    attackSpeed: 0
     stroffset: 3
     dexoffset: 2
+    intoffset: 0
     wisoffset: 0
+    caroffset: 1
     vitoffset: 0
     weaponIndex: 17
     weapon: 0
@@ -304,10 +322,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 1642360396, guid: 013157fd0fce08f44acbb5fba7ae847c, type: 3}
     cardname: Thunder_Gauntlets
     attackRange: 4
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 7
+    intoffset: 1
     wisoffset: 0
+    caroffset: 0
     vitoffset: 0
     weaponIndex: 18
     weapon: 0
@@ -320,10 +339,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: -1634912152, guid: 5a52a8389f6e14a4e82d4adf480b3034, type: 3}
     cardname: Venom_Whip
     attackRange: 7
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 1
     wisoffset: 1
+    caroffset: -1
     vitoffset: 2
     weaponIndex: 19
     weapon: 0
@@ -336,10 +356,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 20705840, guid: 1912ddaa2a0622746b8d7f3d44d7bd00, type: 3}
     cardname: Blacksmith_Hammer
     attackRange: 7
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 0
     wisoffset: 1
+    caroffset: 1
     vitoffset: 2
     weaponIndex: 20
     weapon: 0
@@ -352,10 +373,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 982538749, guid: 8f4c581d29e88c24c84420d20829e0ee, type: 3}
     cardname: Bone_jow
     attackRange: 4
-    attackSpeed: 0
     stroffset: 0
     dexoffset: 0
+    intoffset: 0
     wisoffset: 1
+    caroffset: -2
     vitoffset: 2
     weaponIndex: 21
     weapon: 0
@@ -368,10 +390,11 @@ MonoBehaviour:
   - myEquipSprite: {fileID: 818460119, guid: 314b90977cb8b1742baf5f597b51dace, type: 3}
     cardname: "\uAC00\uC2DC \uAC11\uC637"
     attackRange: 1
-    attackSpeed: 0
     stroffset: 1
     dexoffset: -1
+    intoffset: 0
     wisoffset: 0
+    caroffset: -1
     vitoffset: 3
     weaponIndex: 22
     weapon: 0

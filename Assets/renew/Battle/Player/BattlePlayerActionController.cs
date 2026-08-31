@@ -67,6 +67,12 @@ public class BattlePlayerActionController : MonoBehaviour
     public float secondsPerTile = 1f;
     [InspectorName("이동 속도 배율")]
     public float moveSpeedMultiplier = 4f;
+    [InspectorName("점프 이륙 지연 시간")]
+    [Tooltip("단차 점프 애니메이션을 재생한 뒤 실제 이동을 시작하기까지 기다리는 시간(초).")]
+    [Min(0f)] public float jumpTakeoffDelaySeconds = 0.1f;
+    [InspectorName("점프 포물선 높이")]
+    [Tooltip("단차 점프의 기본 포물선 높이입니다. 실제 단차가 더 크면 관통 방지를 위해 자동으로 높아집니다.")]
+    [Min(0f)] public float jumpArcHeight = 1.5f;
 
     [Header("이동 범위 색상")]
     // 이전엔 색상 9개가 이 컨트롤러 필드로 직접 박혀 있었는데, 다른 컨트롤러/Scene에서도 같은 팔레트를
@@ -82,11 +88,6 @@ public class BattlePlayerActionController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float landedColorBlend = 0.5f;
     [InspectorName("도착 타일 강조 시간")]
     public float landedHighlightDuration = 0.6f;
-    [InspectorName("이동 화살표 프리팹")]
-    public GameObject moveArrowPrefab;
-    [InspectorName("화살표 위치 보정값")]
-    public Vector3 arrowOffset = new Vector3(0f, 0.45f, 0f);
-
     internal BattlePlayerMapContext battlePlayerMapContext;
     internal readonly BattlePlayerTurnActionState turnActionState = new BattlePlayerTurnActionState();
     private bool rangeVisible;
@@ -545,7 +546,12 @@ public class BattlePlayerActionController : MonoBehaviour
     internal void EnsureBattlePlayerMover()
     {
         battlePlayerMover = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerMover);
-        battlePlayerMover.Configure(player, secondsPerTile, moveSpeedMultiplier);
+        battlePlayerMover.Configure(
+            player,
+            secondsPerTile,
+            moveSpeedMultiplier,
+            jumpTakeoffDelaySeconds,
+            jumpArcHeight);
     }
 
     /// <summary>이동 플로우 전담 컴포넌트(BattleUnitMoveFlow)를 확보하고 소유자 참조를 연결한다.</summary>

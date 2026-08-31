@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -28,27 +27,39 @@ public sealed class BattleEquipVisualBinder : MonoBehaviour
     private GameObject rightEquipmentInstance;
     private GameObject bodyEquipmentInstance;
     private GameObject headEquipmentInstance;
+    private PlayerWeapon playerWeapon;
     private bool bound;
+
+    /// <summary>PlayerWeapon의 변경 이벤트를 구독하고 현재 장비 모델을 즉시 반영한다.</summary>
+    public void Bind(PlayerWeapon sourcePlayerWeapon)
+    {
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged -= HandleEquipmentChanged;
+
+        playerWeapon = sourcePlayerWeapon;
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged += HandleEquipmentChanged;
+
+        Refresh();
+    }
 
     public void Refresh()
     {
         BindIfNeeded();
 
-        if (DataPool.Instance == null || DataPool.Instance.equipDatabase == null ||
-            DataPool.Instance.equipDatabase.equip == null)
+        if (playerWeapon == null)
         {
-            Debug.LogError("[BattleEquipVisualBinder] equipDatabase가 비어 있어 모델을 갱신하지 못했습니다.", this);
+            Debug.LogWarning("[BattleEquipVisualBinder] PlayerWeapon이 연결되지 않았습니다.", this);
             return;
         }
 
-        List<EquipData> equip = DataPool.Instance.equipDatabase.equip;
-        int count = equip.Count;
-
-        ApplySlot("Left", leftSlot, equip, count, DataConfig.leftHand, true, ref leftEquipmentInstance);
-        ApplySlot("Right", rightSlot, equip, count, DataConfig.rightHand, true, ref rightEquipmentInstance);
-        ApplySlot("Body", bodySlot, equip, count, DataConfig.body, false, ref bodyEquipmentInstance);
-        ApplySlot("Head", headSlot, equip, count, DataConfig.head, false, ref headEquipmentInstance);
+        ApplySlot("Left", leftSlot, playerWeapon.LeftArm.CurrentEquipment, true, false, ref leftEquipmentInstance);
+        ApplySlot("Right", rightSlot, playerWeapon.RightArm.CurrentEquipment, true, true, ref rightEquipmentInstance);
+        ApplySlot("Body", bodySlot, playerWeapon.Body.CurrentEquipment, false, false, ref bodyEquipmentInstance);
+        ApplySlot("Head", headSlot, playerWeapon.Head.CurrentEquipment, false, false, ref headEquipmentInstance);
     }
+
+    private void HandleEquipmentChanged(PlayerWeapon changedPlayerWeapon) => Refresh();
 
     private void BindIfNeeded()
     {
@@ -69,10 +80,9 @@ public sealed class BattleEquipVisualBinder : MonoBehaviour
     private void ApplySlot(
         string slotLabel,
         Transform slot,
-        List<EquipData> equip,
-        int count,
-        int index,
+        EquipData equipment,
         bool isHandSlot,
+        bool useSecondaryTwoHandPrefab,
         ref GameObject equipmentInstance)
     {
         if (slot == null) return;
@@ -84,24 +94,34 @@ public sealed class BattleEquipVisualBinder : MonoBehaviour
             equipmentInstance = null;
         }
 
-        if (index <= 0 || index >= count)
+        if (equipment == null)
         {
-            Debug.Log($"[BattleEquipVisualBinder] {slotLabel} 슬롯: index={index} (미장착 또는 범위 밖, count={count})", this);
-            return; // 0번 = 미장착
+            Debug.Log($"[BattleEquipVisualBinder] {slotLabel} 슬롯: 미장착", this);
+            return;
         }
-        GameObject prefab = equip[index].weaponPrefab;
+        GameObject prefab = useSecondaryTwoHandPrefab &&
+                            equipment.weaponKind == WeaponKind.TwoHand &&
+                            equipment.weaponPrefab2 != null
+            ? equipment.weaponPrefab2
+            : equipment.weaponPrefab;
         if (prefab == null)
         {
-            Debug.LogWarning($"[BattleEquipVisualBinder] {slotLabel} 슬롯: equip[{index}]({equip[index].cardname})의 weaponPrefab이 비어 있습니다.", this);
+            Debug.LogWarning($"[BattleEquipVisualBinder] {slotLabel} 슬롯: {equipment.cardname}의 weaponPrefab이 비어 있습니다.", this);
             return;
         }
 
         equipmentInstance = Instantiate(prefab, slot);
-        Debug.Log($"[BattleEquipVisualBinder] {slotLabel} 슬롯: equip[{index}]({equip[index].cardname}) 모델 생성 완료.", this);
+        Debug.Log($"[BattleEquipVisualBinder] {slotLabel} 슬롯: {equipment.cardname} 모델 생성 완료.", this);
         if (isHandSlot)
         {
             equipmentInstance.transform.localRotation = Quaternion.Euler(-90f, 0f, 100f);
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged -= HandleEquipmentChanged;
     }
 
     private static Transform FindChild(Transform root, string name)

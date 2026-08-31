@@ -37,10 +37,11 @@ public class EquipData
     public Sprite myEquipSprite;
     public string cardname;
     public float attackRange;
-    public float attackSpeed;
     public int stroffset;
     public int dexoffset;
+    public int intoffset;
     public int wisoffset;
+    public int caroffset;
     public int vitoffset;
     public int weaponIndex;
     public weaponSt weapon;
@@ -53,12 +54,14 @@ public class EquipData
     {
         myEquipSprite = other.myEquipSprite;
         cardname = other.cardname;
+
         attackRange = other.attackRange;
-        attackSpeed = other.attackSpeed;
 
         stroffset = other.stroffset;
         dexoffset = other.dexoffset;
+        intoffset = other.intoffset;
         wisoffset = other.wisoffset;
+        caroffset = other.caroffset;
         vitoffset = other.vitoffset;
 
         weaponIndex = other.weaponIndex;
