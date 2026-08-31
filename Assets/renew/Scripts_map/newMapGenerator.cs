@@ -8,9 +8,6 @@ public class NewMapGenerator : MonoBehaviour
     [SerializeField]
     bool CODE_EXPLAIN;
 
-    [SerializeField]
-    private GridWaterSimulation waterSimulation;
-
     [Header("블록간의 거리")]
     [SerializeField]
     float blockDistance;
@@ -38,6 +35,19 @@ public class NewMapGenerator : MonoBehaviour
     [SerializeField] private GameObject storePrefab;
     [SerializeField] private GameObject boxPrefab;
     [SerializeField] private GameObject exitPrefab;
+
+    [Header("Water")]
+    [Tooltip("River 타일 위에 생성되는 일반 물 프리팹")]
+    [SerializeField] private GameObject waterPrefab;
+
+    [Tooltip("River와 Empty가 만나는 외곽에 생성되는 흐르는 물 프리팹")]
+    [SerializeField] private GameObject flowWaterPrefab;
+
+    [Tooltip("흐르는 물 프리팹의 기본 Forward 방향이 실제 물의 흐름 방향과 다를 경우 회전 보정")]
+    [SerializeField] private Vector3 flowWaterRotationOffset;
+
+    [Tooltip("River와 외부/Empty가 만나는 경계에서 물 프리팹을 얼마나 River 쪽/Empty 쪽으로 이동할지")]
+    [SerializeField] private float flowWaterEdgeOffset = 0f;
 
     [Header("Tile Checker Material")]
     [SerializeField] private Material brightTileMaterial;
@@ -100,9 +110,8 @@ public class NewMapGenerator : MonoBehaviour
     private int[,] heightIndices;
     private Transform stackedTerrainParent;
 
-
-
-
+    // 맵 전체 그리드의 중심을 월드 원점으로 맞추기 위한 오프셋
+    private Vector3 mapWorldOffset;
 
 
     private void Awake()
@@ -112,6 +121,13 @@ public class NewMapGenerator : MonoBehaviour
         mapblueprint = new TileType[blockCountX, blockCountZ];
         blocks = new MapInfo[blockCountX, blockCountZ];
         heightIndices = new int[blockCountX, blockCountZ];
+
+        // 전체 그리드의 중심이 월드 (0,0,0)이 되도록 계산
+        mapWorldOffset = new Vector3(
+            (blockCountX - 1) * blockDistance * 0.5f,
+            0f,
+            (blockCountZ - 1) * blockDistance * 0.5f
+        );
     }
 
 
@@ -182,14 +198,12 @@ public class NewMapGenerator : MonoBehaviour
 
         NormalizeHeightIndices();
         DrawGrid();
-        //GenerateRiverTerrain();
-        //GenerateFogCloud();
-        // GenerateTerrain();
 
         Debug.Log(
             $"맵 생성 완료 / 대륙 블록 : {landBlockCount} / 시도 횟수 : {tryCount}"
         );
     }
+
 
     // =========================================================
     // 내부 맵 크기 계산
@@ -263,6 +277,7 @@ public class NewMapGenerator : MonoBehaviour
         return false;
     }
 
+
     public bool CanMoveBetween(Vector2Int from, Vector2Int to)
     {
         if (!IsInsideMap(from) || !IsInsideMap(to))
@@ -279,6 +294,7 @@ public class NewMapGenerator : MonoBehaviour
         return difference <= maxWalkableHeightDifference;
     }
 
+
     public int GetHeightIndex(Vector2Int pos)
     {
         if (!IsInsideMap(pos))
@@ -287,11 +303,13 @@ public class NewMapGenerator : MonoBehaviour
         return heightIndices[pos.x, pos.y];
     }
 
+
     public float GetWorldHeight(Vector2Int pos)
     {
         // 단차 1개 = 타일 1칸
         return GetHeightIndex(pos) * blockDistance;
     }
+
 
     public int GetHeightDifference(Vector2Int from, Vector2Int to)
     {
@@ -301,6 +319,7 @@ public class NewMapGenerator : MonoBehaviour
         return heightIndices[to.x, to.y] -
                heightIndices[from.x, from.y];
     }
+
 
     public HeightTransition GetHeightTransition(
         Vector2Int from,
@@ -334,7 +353,6 @@ public class NewMapGenerator : MonoBehaviour
 
                 return true;
 
-
             default:
 
                 return false;
@@ -359,31 +377,12 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
     }
-    public List<Vector2Int> GetAllRiverPositions()
-    {
-        List<Vector2Int> riverPositions =
-            new List<Vector2Int>();
 
-        for (int x = 0; x < blockCountX; x++)
-        {
-            for (int z = 0; z < blockCountZ; z++)
-            {
-                if (mapblueprint[x, z] ==
-                    TileType.River)
-                {
-                    riverPositions.Add(
-                        new Vector2Int(x, z)
-                    );
-                }
-            }
-        }
-
-        return riverPositions;
-    }
 
     // =========================================================
     // 대륙 생성
     // =========================================================
+
     public TileType GetTileType(Vector2Int pos)
     {
         if (!IsInsideMap(pos))
@@ -391,6 +390,7 @@ public class NewMapGenerator : MonoBehaviour
 
         return mapblueprint[pos.x, pos.y];
     }
+
 
     // =========================================================
     // Height Index
@@ -469,6 +469,7 @@ public class NewMapGenerator : MonoBehaviour
         ForceRiverHeightZero();
     }
 
+
     private bool IsHeightCandidate(Vector2Int pos)
     {
         if (!IsInsideMap(pos))
@@ -483,6 +484,7 @@ public class NewMapGenerator : MonoBehaviour
                type == TileType.Exit ||
                type == TileType.DisMoveable;
     }
+
 
     private int FindNearestHeight(Vector2Int target)
     {
@@ -510,6 +512,7 @@ public class NewMapGenerator : MonoBehaviour
 
         return Mathf.Clamp(bestHeight, 1, 3);
     }
+
 
     private void SmoothHeightIndices()
     {
@@ -565,6 +568,7 @@ public class NewMapGenerator : MonoBehaviour
             for (int z = 0; z < blockCountZ; z++)
                 heightIndices[x, z] = result[x, z];
     }
+
 
     private void ClampNeighbourHeightDifference()
     {
@@ -629,6 +633,7 @@ public class NewMapGenerator : MonoBehaviour
         }
     }
 
+
     private void ForceRiverHeightZero()
     {
         for (int x = 0; x < blockCountX; x++)
@@ -646,6 +651,7 @@ public class NewMapGenerator : MonoBehaviour
         }
     }
 
+
     private void GenerateRoad()
     {
         GenerateLand();
@@ -657,16 +663,13 @@ public class NewMapGenerator : MonoBehaviour
         HashSet<Vector2Int> landPositions =
             new HashSet<Vector2Int>();
 
-
         // 대륙 시작 위치
         Vector2Int start = new Vector2Int(
             blockCountX / 2,
             blockCountZ / 2
         );
 
-
         landPositions.Add(start);
-
 
         Vector2Int[] directions =
         {
@@ -676,16 +679,13 @@ public class NewMapGenerator : MonoBehaviour
             Vector2Int.right
         };
 
-
         // 육지가 landBlockCount가 될 때까지 성장
         while (landPositions.Count < landBlockCount)
         {
             Vector2Int[] currentLand =
                 new Vector2Int[landPositions.Count];
 
-
             landPositions.CopyTo(currentLand);
-
 
             // 기존 육지 중 하나 선택
             Vector2Int basePos =
@@ -693,31 +693,25 @@ public class NewMapGenerator : MonoBehaviour
                     Random.Range(0, currentLand.Length)
                 ];
 
-
             // 랜덤 방향
             Vector2Int direction =
                 directions[
                     Random.Range(0, directions.Length)
                 ];
 
-
             Vector2Int next =
                 basePos + direction;
-
 
             // 내부 맵 밖
             if (!IsInsideMap(next))
                 continue;
 
-
             // 이미 육지
             if (landPositions.Contains(next))
                 continue;
 
-
             landPositions.Add(next);
         }
-
 
         // 실제 맵에 적용
         foreach (Vector2Int pos in landPositions)
@@ -737,15 +731,12 @@ public class NewMapGenerator : MonoBehaviour
         List<Vector2Int> candidates =
             new List<Vector2Int>();
 
-
         int minX = blockCountX;
-
 
         // 가장 왼쪽 육지 찾기
         for (int x = 0; x < blockCountX; x++)
         {
             bool found = false;
-
 
             for (int z = 0; z < blockCountZ; z++)
             {
@@ -760,11 +751,9 @@ public class NewMapGenerator : MonoBehaviour
                 }
             }
 
-
             if (found)
                 break;
         }
-
 
         // 가장 왼쪽 육지 중 하나 선택
         for (int z = 0; z < blockCountZ; z++)
@@ -778,24 +767,19 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
 
-
         if (candidates.Count == 0)
         {
             Debug.LogError("시작 위치를 찾을 수 없습니다.");
             return;
         }
 
-
         startPos =
             candidates[
                 Random.Range(0, candidates.Count)
             ];
 
-
         mapblueprint[startPos.x, startPos.y] =
             TileType.Start;
-
-        //playerBody.transform.position = mapblueprint[startPos.x, startPos.y].Gameobject.transform.position + new Vector3(0, 2.5f, 0);
     }
 
 
@@ -808,15 +792,12 @@ public class NewMapGenerator : MonoBehaviour
         List<Vector2Int> candidates =
             new List<Vector2Int>();
 
-
         int maxX = -1;
-
 
         // 가장 오른쪽 육지 찾기
         for (int x = blockCountX - 1; x >= 0; x--)
         {
             bool found = false;
-
 
             for (int z = 0; z < blockCountZ; z++)
             {
@@ -831,11 +812,9 @@ public class NewMapGenerator : MonoBehaviour
                 }
             }
 
-
             if (found)
                 break;
         }
-
 
         // 가장 오른쪽 육지 중 하나 선택
         for (int z = 0; z < blockCountZ; z++)
@@ -849,19 +828,16 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
 
-
         if (candidates.Count == 0)
         {
             Debug.LogError("출구 위치를 찾을 수 없습니다.");
             return;
         }
 
-
         exitPos =
             candidates[
                 Random.Range(0, candidates.Count)
             ];
-
 
         mapblueprint[exitPos.x, exitPos.y] =
             TileType.Exit;
@@ -874,10 +850,9 @@ public class NewMapGenerator : MonoBehaviour
 
     private void GenerateRiver()
     {
-        // 기존처럼 1~2개의 강
+        // 기존처럼 2~4개의 강
         int riverCount =
             Random.Range(2, 5);
-
 
         for (int i = 0; i < riverCount; i++)
         {
@@ -892,16 +867,40 @@ public class NewMapGenerator : MonoBehaviour
             return;
 
         // 대륙 크기에 비례해서 강 길이 결정
-        int minLength = Mathf.Max(8, Mathf.RoundToInt(Mathf.Sqrt(landBlockCount) * 1.5f));
-        int maxLength = Mathf.Max(12, Mathf.RoundToInt(Mathf.Sqrt(landBlockCount) * 3.0f));
+        int minLength =
+            Mathf.Max(
+                8,
+                Mathf.RoundToInt(
+                    Mathf.Sqrt(landBlockCount) * 1.5f));
 
-        int length = Random.Range(minLength, maxLength);
+        int maxLength =
+            Mathf.Max(
+                12,
+                Mathf.RoundToInt(
+                    Mathf.Sqrt(landBlockCount) * 3.0f));
+
+        int length =
+            Random.Range(
+                minLength,
+                maxLength);
 
         // 강 폭도 대륙 크기에 따라 증가
-        int minWidth = Mathf.Max(2, Mathf.RoundToInt(Mathf.Sqrt(landBlockCount) * 0.08f));
-        int maxWidth = Mathf.Max(3, Mathf.RoundToInt(Mathf.Sqrt(landBlockCount) * 0.15f));
+        int minWidth =
+            Mathf.Max(
+                2,
+                Mathf.RoundToInt(
+                    Mathf.Sqrt(landBlockCount) * 0.08f));
 
-        int width = Random.Range(minWidth, maxWidth + 1);
+        int maxWidth =
+            Mathf.Max(
+                3,
+                Mathf.RoundToInt(
+                    Mathf.Sqrt(landBlockCount) * 0.15f));
+
+        int width =
+            Random.Range(
+                minWidth,
+                maxWidth + 1);
 
         Vector2Int direction =
             Random.value < 0.5f
@@ -910,19 +909,23 @@ public class NewMapGenerator : MonoBehaviour
 
         for (int i = 0; i < length; i++)
         {
-            PaintRiver(current, width);
+            PaintRiver(
+                current,
+                width);
 
             current += direction;
 
             if (Random.value < 0.3f)
             {
-                direction = GetRandomDirection(direction);
+                direction =
+                    GetRandomDirection(direction);
             }
 
             if (!IsInsideMap(current))
                 break;
 
-            if (mapblueprint[current.x, current.y] != TileType.Road)
+            if (mapblueprint[current.x, current.y]
+                != TileType.Road)
                 break;
         }
     }
@@ -939,15 +942,12 @@ public class NewMapGenerator : MonoBehaviour
                 int px = center.x + x;
                 int pz = center.y + z;
 
-
                 Vector2Int pos =
                     new Vector2Int(px, pz);
-
 
                 // 맵 밖
                 if (!IsInsideMap(pos))
                     continue;
-
 
                 // 원형 범위
                 if (x * x + z * z >
@@ -956,7 +956,6 @@ public class NewMapGenerator : MonoBehaviour
                     continue;
                 }
 
-
                 // 육지가 아니면 강 생성 안 함
                 if (mapblueprint[px, pz]
                     != TileType.Road)
@@ -964,16 +963,13 @@ public class NewMapGenerator : MonoBehaviour
                     continue;
                 }
 
-
                 // 시작점 보호
                 if (pos == startPos)
                     continue;
 
-
                 // 출구 보호
                 if (pos == exitPos)
                     continue;
-
 
                 mapblueprint[px, pz] =
                     TileType.River;
@@ -990,7 +986,6 @@ public class NewMapGenerator : MonoBehaviour
     {
         int count = 0;
 
-
         while (count < boxCount)
         {
             if (!TryGetRandomRoad(
@@ -999,17 +994,14 @@ public class NewMapGenerator : MonoBehaviour
                 break;
             }
 
-
             if (pos == startPos ||
                 pos == exitPos)
             {
                 continue;
             }
 
-
             mapblueprint[pos.x, pos.y] =
                 TileType.Box;
-
 
             count++;
         }
@@ -1024,7 +1016,6 @@ public class NewMapGenerator : MonoBehaviour
     {
         int count = 0;
 
-
         while (count < storeCount)
         {
             if (!TryGetRandomRoad(
@@ -1033,17 +1024,14 @@ public class NewMapGenerator : MonoBehaviour
                 break;
             }
 
-
             if (pos == startPos ||
                 pos == exitPos)
             {
                 continue;
             }
 
-
             mapblueprint[pos.x, pos.y] =
                 TileType.Store;
-
 
             count++;
         }
@@ -1058,7 +1046,6 @@ public class NewMapGenerator : MonoBehaviour
     {
         int count = 0;
 
-
         while (count < disMoveableCount)
         {
             if (!TryGetRandomRoad(
@@ -1067,17 +1054,14 @@ public class NewMapGenerator : MonoBehaviour
                 break;
             }
 
-
             if (pos == startPos ||
                 pos == exitPos)
             {
                 continue;
             }
 
-
             mapblueprint[pos.x, pos.y] =
                 TileType.DisMoveable;
-
 
             count++;
         }
@@ -1093,10 +1077,8 @@ public class NewMapGenerator : MonoBehaviour
     {
         pos = Vector2Int.zero;
 
-
         List<Vector2Int> roads =
             new List<Vector2Int>();
-
 
         for (int x = 0; x < blockCountX; x++)
         {
@@ -1112,16 +1094,13 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
 
-
         if (roads.Count == 0)
             return false;
-
 
         pos =
             roads[
                 Random.Range(0, roads.Count)
             ];
-
 
         return true;
     }
@@ -1143,6 +1122,34 @@ public class NewMapGenerator : MonoBehaviour
 
 
     // =========================================================
+    // Empty / 맵 외부 판정
+    // =========================================================
+
+    /// <summary>
+    /// 맵 내부의 Empty 또는 맵 배열 바깥이면 true.
+    ///
+    /// 맵 바깥은 실제 배열에 존재하지 않지만
+    /// 물 생성 판정에서는 전부 가상의 Empty로 취급한다.
+    /// </summary>
+    private bool IsEmptyOrOutsideMap(Vector2Int pos)
+    {
+        // 맵 바깥
+        if (!IsInsideMap(pos))
+            return true;
+
+        // 맵 내부 Empty
+        return mapblueprint[pos.x, pos.y] ==
+               TileType.Empty;
+    }
+
+
+    private bool IsOutsideMap(Vector2Int pos)
+    {
+        return !IsInsideMap(pos);
+    }
+
+
+    // =========================================================
     // 강 방향 변경
     // =========================================================
 
@@ -1158,20 +1165,13 @@ public class NewMapGenerator : MonoBehaviour
                 Vector2Int.right
             };
 
-
         // 바로 뒤로 가지 않도록 제거
         dirs.Remove(-current);
-
 
         return dirs[
             Random.Range(0, dirs.Count)
         ];
     }
-
-
-    // =========================================================
-    // 실제 맵 생성
-    // =========================================================
 
 
     // =========================================================
@@ -1192,12 +1192,14 @@ public class NewMapGenerator : MonoBehaviour
         stackedTerrainParent = parent.transform;
     }
 
+
     private GameObject GetTerrainBlockPrefab()
     {
         return terrainBlockPrefab != null
             ? terrainBlockPrefab
             : roadPrefab;
     }
+
 
     /// <summary>
     /// Height 0 = 1개
@@ -1208,25 +1210,11 @@ public class NewMapGenerator : MonoBehaviour
     /// 블록의 세로 단위는 blockDistance와 동일하다.
     /// 따라서 한 단계의 단차가 정확히 타일 1칸이다.
     /// </summary>
-    /// <summary>
-    /// 타일 하나당 Terrain Fill Prefab은 정확히 1개만 생성한다.
-    ///
-    /// tileLength = 10, blockDistance = 1이라고 하면
-    /// Height 0 : 길이 10
-    /// Height 1 : 길이 11
-    /// Height 2 : 길이 12
-    /// Height 3 : 길이 13
-    ///
-    /// 아래쪽 끝은 항상 -tileLength에 고정된다.
-    /// 따라서 Height가 올라갈수록 Fill 하나가 위쪽으로 길어진다.
-    /// </summary>
     private void CreateStackedTerrain(
         int x,
         int z,
         int heightIndex)
     {
-        // 아래쪽을 채우는 전용 프리팹만 사용한다.
-        // roadPrefab / 다른 타일 프리팹으로 대체하지 않는다.
         if (terrainBlockPrefab == null)
         {
             Debug.LogWarning(
@@ -1245,19 +1233,15 @@ public class NewMapGenerator : MonoBehaviour
                 3);
 
         // 0 높이의 타일에서도 tileLength만큼 아래로 내려간다.
-        // 높이가 1이면 tileLength + 1단차,
-        // 높이가 2면 tileLength + 2단차,
-        // 높이가 3이면 tileLength + 3단차.
         float totalLength =
             tileLength +
             (heightIndex * blockDistance);
 
         // 현재 타일의 상단 기준 Y.
-        // River는 항상 0, 육지는 HeightIndex * blockDistance.
         float topY =
             heightIndex * blockDistance;
 
-        // Pivot이 중앙인 프리팹이므로 일단 전체 길이의 중앙에 배치한다.
+        // Pivot이 중앙인 프리팹이므로 전체 길이의 중앙에 배치
         float centerY =
             topY -
             (totalLength * 0.5f) -
@@ -1267,9 +1251,9 @@ public class NewMapGenerator : MonoBehaviour
             Instantiate(
                 terrainBlockPrefab,
                 new Vector3(
-                    x * blockDistance,
+                    x * blockDistance - mapWorldOffset.x,
                     centerY,
-                    z * blockDistance
+                    z * blockDistance - mapWorldOffset.z
                 ),
                 Quaternion.identity,
                 stackedTerrainParent
@@ -1281,11 +1265,8 @@ public class NewMapGenerator : MonoBehaviour
         StretchTerrainFill(
             block,
             totalLength);
-
-        // ApplyTerrainFillMaterial(
-        //   block,
-        //  totalLength);
     }
+
 
     private void StretchTerrainFill(
         GameObject block,
@@ -1297,14 +1278,13 @@ public class NewMapGenerator : MonoBehaviour
         if (renderer == null)
             return;
 
-        // 프리팹의 원래 월드 Y 길이를 먼저 저장한다.
+        // 프리팹의 원래 월드 Y 길이
         float currentLength =
             renderer.bounds.size.y;
 
         if (currentLength <= 0.0001f)
             return;
 
-        // 기존 scale 변수명은 그대로 유지한다.
         Vector3 scale =
             block.transform.localScale;
 
@@ -1314,22 +1294,7 @@ public class NewMapGenerator : MonoBehaviour
         block.transform.localScale =
             scale;
 
-        /*
-         * 중요:
-         * Terrain Fill Prefab의 Pivot은 중앙이라고 가정한다.
-         *
-         * 단순히
-         *     transform.position.y = topY - targetLength * 0.5f
-         * 로 끝내면 프리팹의 Renderer 중심/오프셋 때문에
-         * 위쪽 또는 아래쪽이 반 칸씩 어긋날 수 있다.
-         *
-         * 따라서 Scale을 적용한 "실제 Renderer bounds"를 다시 가져온 뒤
-         * bounds.max.y가 정확히 topY에 오도록 오브젝트 전체를 이동한다.
-         *
-         * 이 방식이면 Pivot이 중앙이어도 실제 보이는 지형의
-         * 상단/하단이 정확히 맞는다.
-         */
-
+        // Scale 적용 후 실제 Renderer bounds를 다시 확인
         renderer =
             block.GetComponentInChildren<Renderer>();
 
@@ -1338,7 +1303,8 @@ public class NewMapGenerator : MonoBehaviour
             targetLength * 0.5f;
 
         float boundsOffset =
-            topY - renderer.bounds.max.y;
+            topY -
+            renderer.bounds.max.y;
 
         Vector3 position =
             block.transform.position;
@@ -1348,6 +1314,7 @@ public class NewMapGenerator : MonoBehaviour
         block.transform.position =
             position;
     }
+
 
     private void ApplyTerrainFillMaterial(
         GameObject block,
@@ -1371,7 +1338,8 @@ public class NewMapGenerator : MonoBehaviour
                     renderer.material;
             }
 
-            renderer.material = material;
+            renderer.material =
+                material;
 
             Vector2 tiling =
                 material.mainTextureScale;
@@ -1387,6 +1355,7 @@ public class NewMapGenerator : MonoBehaviour
                 tiling;
         }
     }
+
 
     private void DrawStackedTerrain()
     {
@@ -1415,7 +1384,7 @@ public class NewMapGenerator : MonoBehaviour
                         0,
                         3);
 
-                // 타일 하나당 Terrain Block Prefab은 정확히 1개만 생성한다.
+                // 타일 하나당 Terrain Block Prefab은 정확히 1개
                 CreateStackedTerrain(
                     x,
                     z,
@@ -1423,6 +1392,222 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
     }
+
+
+    // =========================================================
+    // Water
+    // =========================================================
+
+    /// <summary>
+    /// River 타일 하나당 일반 물 프리팹을 생성한다.
+    /// </summary>
+    private void CreateRiverWater(
+        int x,
+        int z)
+    {
+        if (waterPrefab == null)
+            return;
+
+        Vector2Int pos =
+            new Vector2Int(x, z);
+
+        Vector3 worldPos =
+            GetMapWorldPosition(pos);
+
+        worldPos.y =
+            GetWorldHeight(pos);
+
+        GameObject water =
+            Instantiate(
+                waterPrefab,
+                worldPos,
+                Quaternion.identity,
+                transform);
+
+        water.name =
+            $"RiverWater_{x}_{z}";
+    }
+
+
+    /// <summary>
+    /// River의 특정 방향이 Empty 또는 맵 외부라면
+    /// 그 경계에 흐르는 물 프리팹을 생성한다.
+    ///
+    /// direction은 River 기준으로 Empty가 있는 방향이다.
+    /// </summary>
+    private void CreateFlowWater(
+        Vector2Int riverPos,
+        Vector2Int direction)
+    {
+        if (flowWaterPrefab == null)
+            return;
+
+        Vector2Int emptyPos =
+            riverPos + direction;
+
+        // Empty 또는 맵 바깥인지 확인
+        if (!IsEmptyOrOutsideMap(emptyPos))
+            return;
+
+        Vector3 riverWorldPos =
+            GetMapWorldPosition(riverPos);
+
+        float riverWorldHeight =
+            GetWorldHeight(riverPos);
+
+        riverWorldPos.y =
+            riverWorldHeight;
+
+        // River와 Empty의 경계.
+        // River 중심에서 direction 방향으로 반 타일 이동하면
+        // 정확히 두 타일의 경계에 위치한다.
+        Vector3 flowWorldPos =
+            riverWorldPos +
+            new Vector3(
+                direction.x,
+                0f,
+                direction.y
+            ) *
+            (blockDistance * 0.5f);
+
+        // 사용자가 직접 미세 조정할 수 있는 값
+        flowWorldPos +=
+            new Vector3(
+                direction.x,
+                0f,
+                direction.y
+            ) *
+            flowWaterEdgeOffset;
+
+        flowWorldPos.y =
+            riverWorldHeight;
+
+        // Flow Water의 Forward 방향을
+        // River -> Empty 방향으로 맞춘다.
+        Quaternion rotation =
+            Quaternion.LookRotation(
+                new Vector3(
+                    direction.x,
+                    0f,
+                    direction.y
+                ),
+                Vector3.up
+            );
+
+        rotation *=
+            Quaternion.Euler(
+                flowWaterRotationOffset
+            );
+
+        GameObject flowWater =
+            Instantiate(
+                flowWaterPrefab,
+                flowWorldPos,
+                rotation,
+                transform);
+
+        string directionName;
+
+        if (direction == Vector2Int.left)
+            directionName = "Left";
+        else if (direction == Vector2Int.right)
+            directionName = "Right";
+        else if (direction == Vector2Int.up)
+            directionName = "Up";
+        else
+            directionName = "Down";
+
+        if (IsOutsideMap(emptyPos))
+        {
+            flowWater.name =
+                $"FlowWater_Outside_{riverPos.x}_{riverPos.y}_{directionName}";
+        }
+        else
+        {
+            flowWater.name =
+                $"FlowWater_Empty_{riverPos.x}_{riverPos.y}_{directionName}";
+        }
+    }
+
+
+    /// <summary>
+    /// 모든 River를 검사하여
+    /// River 자체에는 일반 물,
+    /// River와 Empty가 만나는 경계에는 흐르는 물을 생성한다.
+    /// </summary>
+    private void DrawWater()
+    {
+        Vector2Int[] directions =
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
+        };
+
+        for (int x = 0; x < blockCountX; x++)
+        {
+            for (int z = 0; z < blockCountZ; z++)
+            {
+                if (mapblueprint[x, z] !=
+                    TileType.River)
+                    continue;
+
+                // -------------------------------------------------
+                // 1. River 자체의 일반 물
+                // -------------------------------------------------
+
+                CreateRiverWater(
+                    x,
+                    z);
+
+                Vector2Int riverPos =
+                    new Vector2Int(x, z);
+
+                // -------------------------------------------------
+                // 2. River 주변 4방향 검사
+                // -------------------------------------------------
+
+                foreach (Vector2Int direction in directions)
+                {
+                    Vector2Int checkPos =
+                        riverPos + direction;
+
+                    // 내부 Empty + 외부 Empty 모두 처리
+                    if (!IsEmptyOrOutsideMap(checkPos))
+                        continue;
+
+                    CreateFlowWater(
+                        riverPos,
+                        direction);
+                }
+            }
+        }
+    }
+
+
+    // =========================================================
+    // 월드 좌표 계산
+    // =========================================================
+
+    private Vector3 GetMapWorldPosition(
+        Vector2Int pos)
+    {
+        return new Vector3(
+            pos.x * blockDistance -
+            mapWorldOffset.x,
+
+            0f,
+
+            pos.y * blockDistance -
+            mapWorldOffset.z
+        );
+    }
+
+
+    // =========================================================
+    // 실제 맵 그리기
+    // =========================================================
 
     private void DrawGrid()
     {
@@ -1449,10 +1634,11 @@ public class NewMapGenerator : MonoBehaviour
                     heightIndex * blockDistance;
 
                 Vector3 pos =
-                    new Vector3(
-                        x * blockDistance,
-                        worldY,
-                        z * blockDistance);
+                    GetMapWorldPosition(
+                        new Vector2Int(x, z));
+
+                pos.y =
+                    worldY;
 
                 GameObject prefab = null;
 
@@ -1500,9 +1686,7 @@ public class NewMapGenerator : MonoBehaviour
                         Quaternion.identity,
                         transform);
 
-                // 맵의 실제 X/Z 좌표를 기준으로 밝은색/어두운색을 지그재그 적용.
-                // Road, Start, Store, Box, Exit, DisMoveable 모두 동일한 규칙을 사용한다.
-                // River는 기존 강 머티리얼을 유지한다.
+                // 맵의 실제 X/Z 좌표를 기준으로 밝은색/어두운색 적용
                 if (mapblueprint[x, z] != TileType.Empty &&
                     mapblueprint[x, z] != TileType.River)
                 {
@@ -1554,34 +1738,51 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
 
+        // 3. Water 생성
+        //
+        // River 일반 물
+        // River-Empty 경계의 흐르는 물
+        //
+        // 맵 바깥도 Empty로 처리하기 때문에
+        // x=0 / x=max / z=0 / z=max의 River도 검사된다.
+        DrawWater();
+
         ConnectNeighbours();
 
         Vector3 playerPos =
-            new Vector3(
-                startPos.x * blockDistance,
-                GetWorldHeight(startPos),
-                startPos.y * blockDistance);
+            GetMapWorldPosition(startPos);
+
+        playerPos.y =
+            GetWorldHeight(startPos);
 
         if (playerBody != null)
             playerBody.transform.position = playerPos;
 
-
-        if (waterSimulation != null)
-        {
-            List<Vector2Int> rivers =
-                GetAllRiverPositions();
-
-            foreach (Vector2Int riverPos in rivers)
-            {
-                waterSimulation.AddWaterSource(
-                    riverPos,
-                    blockDistance
-                );
-            }
-        }
-
         generatorEnd = true;
     }
+
+
+    // =========================================================
+    // 외부 접근용
+    // =========================================================
+
+    public int GetMapSizeX()
+    {
+        return blockCountX;
+    }
+
+
+    public int GetMapSizeZ()
+    {
+        return blockCountZ;
+    }
+
+
+    public float GetBlockDistance()
+    {
+        return blockDistance;
+    }
+
 
     private void NormalizeHeightIndices()
     {
@@ -1589,18 +1790,26 @@ public class NewMapGenerator : MonoBehaviour
         {
             for (int z = 0; z < blockCountZ; z++)
             {
-                TileType type = mapblueprint[x, z];
+                TileType type =
+                    mapblueprint[x, z];
 
                 if (type == TileType.River)
+                {
                     heightIndices[x, z] = 0;
-                else if (IsHeightCandidate(new Vector2Int(x, z)))
+                }
+                else if (IsHeightCandidate(
+                    new Vector2Int(x, z)))
+                {
                     heightIndices[x, z] =
                         Mathf.Clamp(
                             heightIndices[x, z],
                             1,
                             3);
+                }
                 else
+                {
                     heightIndices[x, z] = 0;
+                }
             }
         }
     }
@@ -1617,33 +1826,41 @@ public class NewMapGenerator : MonoBehaviour
 
 
     // =========================================================
-    // 인접 타일 연결
+    // 이동 이벤트
     // =========================================================
-
 
     public bool InvokeMovementEvent(
         Vector2Int from,
         Vector2Int to)
     {
-        if (!IsInsideMap(from) || !IsInsideMap(to))
+        if (!IsInsideMap(from) ||
+            !IsInsideMap(to))
             return false;
 
-        MapInfo fromInfo = blocks[from.x, from.y];
-        MapInfo toInfo = blocks[to.x, to.y];
+        MapInfo fromInfo =
+            blocks[from.x, from.y];
 
-        if (fromInfo == null || toInfo == null)
+        MapInfo toInfo =
+            blocks[to.x, to.y];
+
+        if (fromInfo == null ||
+            toInfo == null)
             return false;
 
-        return fromInfo.TryInvokeMoveEvent(toInfo);
+        return fromInfo.TryInvokeMoveEvent(
+            toInfo);
     }
 
-    public MapInfo GetMapInfo(Vector2Int pos)
+
+    public MapInfo GetMapInfo(
+        Vector2Int pos)
     {
         if (!IsInsideMap(pos))
             return null;
 
         return blocks[pos.x, pos.y];
     }
+
 
     private void ConnectNeighbours()
     {
@@ -1654,10 +1871,8 @@ public class NewMapGenerator : MonoBehaviour
                 MapInfo current =
                     blocks[x, z];
 
-
                 if (current == null)
                     continue;
-
 
                 current.SetNeighbour(
                     z < blockCountZ - 1
@@ -1679,7 +1894,4 @@ public class NewMapGenerator : MonoBehaviour
             }
         }
     }
-
-
-
 }
