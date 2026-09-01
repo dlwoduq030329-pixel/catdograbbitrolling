@@ -34,11 +34,14 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     [Header("카드 데이터")]
     [SerializeField] private BattleCardDatabase battleCardDatabase;
     [SerializeField] private CardDatabase originalCardDatabase;
+    [Header("장비 및 밸런스 데이터")]
+    [Tooltip("상자에서 지급할 장비의 원본 목록입니다.")]
+    [SerializeField] private EquipDatabase equipmentDatabase;
+    [Tooltip("상점과 공유하는 장비 등급 및 부위 추첨 가중치입니다.")]
+    [SerializeField] private BattleShopBalanceData shopBalanceData;
     [Header("상자 연출 UI")]
     [Tooltip("Battle 전용으로 복사한 상자 연출 프리팹입니다. 레거시 원본이 아니라 renew/Battle 아래의 사본을 직접 참조합니다.")]
     [SerializeField] private GameObject chestOverlayPrefab;
-    private EquipDatabase equipmentDatabase;
-    private BattleShopConfig shopConfig;
     private Canvas chestOverlayCanvas;
     private BattleChestView chestView;
     private MapInfo currentTile;
@@ -52,12 +55,6 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     /// TryOpen 성공 시 true가 되고, 정상 지급 완료·강제 종료·컴포넌트 비활성화 시 false로 돌아간다.
     /// </summary>
     public bool ChestOpen { get; private set; }
-
-    private void Awake()
-    {
-        equipmentDatabase = BattleEquipmentDatabaseReference.Load()?.Database;
-        shopConfig = BattleShopConfig.Load();
-    }
 
     /// <summary>
     /// Box 타일을 클릭했을 때 호출한다. 이미 다른 상자가 열려 있거나(currentTile != null), 대상이
@@ -170,16 +167,16 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 뽑힌 장비 인덱스의 원본 EquipData를 복제한 뒤, 상점과 같은 <c>BattleShopConfig.RollRarity</c>로
+    /// 뽑힌 장비 인덱스의 원본 EquipData를 복제한 뒤, 상점과 같은 <c>BattleEquipmentRewardRoller</c>로
     /// 등급을 굴리고, 등급에 따라 가격(부위별 기본가 x 등급 배수)과 스탯 보너스(등급별 굴림 횟수만큼
     /// STR/DEX/INT/WIS/CAR/VIT 중 하나씩 +1)를 부여한다. 상점 장비와 같은 등급 확률표를 재사용하기 위해
-    /// Awake에서 shopConfig를 미리 로드해 둔다.
+    /// 인스펙터에 연결된 shopBalanceData의 가중치를 사용한다.
     /// </summary>
     private EquipData CreateEquipmentReward(int index)
     {
         EquipData reward = equipmentDatabase.equip[index].Clone();
         int currentStage = BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentStage : 1;
-        reward.weapon = shopConfig != null ? shopConfig.RollRarity(currentStage) : weaponSt.Common;
+        reward.weapon = BattleEquipmentRewardRoller.RollRarity(shopBalanceData, currentStage);
         int basePrice = reward.weaponKind == WeaponKind.TwoHand ? 90 :
             reward.weaponKind == WeaponKind.Body ? 75 : reward.weaponKind == WeaponKind.Head ? 70 : 60;
         reward.cost = reward.weapon == weaponSt.Legendary ? basePrice * 4 :

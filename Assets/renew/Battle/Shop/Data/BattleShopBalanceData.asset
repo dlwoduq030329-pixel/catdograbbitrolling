@@ -10,12 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e9122a97f86e443a8785bb6a5bde91f1, type: 3}
-  m_Name: BattleShopConfig
+  m_Name: BattleShopBalanceData
   m_EditorClassIdentifier: 
   cardSlots: 3
   equipmentSlots: 3
   initialRerollPrice: 10
   maximumRerollPrice: 160
+  defaultCardTypeCount: 5
+  cardPurchasePriceMultiplier: 2
+  cardSaleRefundRate: 0.5
+  equipmentSaleRefundRate: 0.5
+  handBasePrice: 60
+  headBasePrice: 70
+  bodyBasePrice: 75
+  twoHandBasePrice: 90
+  rarePriceMultiplier: 1.6
+  epicPriceMultiplier: 2.5
+  legendaryPriceMultiplier: 4
+  rareBonusStatRolls: 4
+  epicBonusStatRolls: 6
+  legendaryBonusStatRolls: 10
   rarityByStage:
   - minimumStage: 1
     common: 80

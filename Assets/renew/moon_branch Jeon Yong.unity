@@ -9059,7 +9059,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 40.22}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &787779377
 MonoBehaviour:
@@ -12161,10 +12161,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 787779376}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 0, y: -40.22}
+  m_SizeDelta: {x: 960, y: 40.22}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1066764630
 MonoBehaviour:
@@ -15481,7 +15481,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 793, y: -405}
+  m_AnchoredPosition: {x: 725, y: -405}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1319183077 stripped
@@ -15982,7 +15982,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1374083178
 Transform:
   m_ObjectHideFlags: 0
@@ -16971,7 +16971,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 89, y: -73}
+  m_AnchoredPosition: {x: 89, y: -89}
   m_SizeDelta: {x: 128, y: 128}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1462165883
@@ -24197,7 +24197,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerManaFillImage: {fileID: 0}
-  playerManaValueText: {fileID: 0}
+  playerManaValueText: {fileID: 1990125022}
   manaCrystalImages:
   - {fileID: 1900000001}
   - {fileID: 1900000002}
@@ -26580,6 +26580,8 @@ GameObject:
   - component: {fileID: 1943288772}
   - component: {fileID: 1943288774}
   - component: {fileID: 1943288775}
+  - component: {fileID: 1943288799}
+  - component: {fileID: 1943288800}
   m_Layer: 0
   m_Name: BattleGameManager
   m_TagString: Untagged
@@ -26711,6 +26713,7 @@ MonoBehaviour:
   CODE_EXPLAIN: 0
   turnButtonController: {fileID: 1943288767}
   diceRollButton: {fileID: 1826625744}
+  diceSystem: {fileID: 1943288800}
   cardPanelToggle: {fileID: 1062061998}
   overlayUi: {fileID: 1943288776}
   playerHealthBinding: {fileID: 1943288777}
@@ -26728,8 +26731,6 @@ MonoBehaviour:
   debugMaxMoveRange: 6
   currentTurnNumber: 1
   isPlayerTurnActive: 1
-  hasRolledDiceThisTurn: 0
-  currentDiceRoll: 0
   isBattleStopped: 0
   currentStage: 1
 --- !u!114 &1943288766
@@ -26842,6 +26843,8 @@ MonoBehaviour:
   battleCardDatabase: {fileID: 11400000, guid: de6fce783bfd3064585e9639fd5b4105, type: 2}
   originalCardDatabase: {fileID: 11400000, guid: 15b1ab3ad3596bf4aa48ed36b6b8450b,
     type: 2}
+  equipmentDatabase: {fileID: 11400000, guid: 3f370e061f9e23d47a60392a83ac50cc, type: 2}
+  shopBalanceData: {fileID: 11400000, guid: 448c452659444fd6bce1f3cc79427512, type: 2}
   chestOverlayPrefab: {fileID: 1717158328947291858, guid: 5c0f658fc4e429a45acc2b885877a25c,
     type: 3}
 --- !u!114 &1943288772
@@ -26859,6 +26862,8 @@ MonoBehaviour:
   battleCardDatabase: {fileID: 11400000, guid: de6fce783bfd3064585e9639fd5b4105, type: 2}
   originalCardDatabase: {fileID: 11400000, guid: 15b1ab3ad3596bf4aa48ed36b6b8450b,
     type: 2}
+  equipmentDatabase: {fileID: 11400000, guid: 3f370e061f9e23d47a60392a83ac50cc, type: 2}
+  shopBalanceData: {fileID: 11400000, guid: 448c452659444fd6bce1f3cc79427512, type: 2}
   shopView: {fileID: 1886697185}
 --- !u!114 &1943288773
 MonoBehaviour:
@@ -26944,6 +26949,39 @@ MonoBehaviour:
   portraitView: {fileID: 1943288770}
   damageDecreaseSpeed: 1.5
   healingIncreaseSpeed: 3
+--- !u!114 &1943288799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1943288758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4a6e02e7bd9422a9e5a87fc9211d76c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  diceRollVfxPrefab: {fileID: 0}
+  worldVfxSpawnPoint: {fileID: 0}
+  worldVfxPositionOffset: {x: 0, y: 1.5, z: 0}
+  diceResultPrefab: {fileID: 4020662855323443856, guid: a8b3049833ecd594081e41e8b6943533,
+    type: 3}
+  rollVfxDurationSeconds: 1
+  resultDisplaySeconds: 0.8
+--- !u!114 &1943288800
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1943288758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f8e4d21b5364d01a9946e12af33c9b5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  minimumDiceValue: 1
+  maximumDiceValue: 6
 --- !u!114 &1945993665 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1934626948127012957, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -27093,8 +27131,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -27743,12 +27781,12 @@ PrefabInstance:
     - target: {fileID: 3703657823099410148, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
         type: 3}
       propertyPath: m_AnchorMax.x
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3703657823099410148, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
         type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6123127817720601795, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
         type: 3}
@@ -28408,6 +28446,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1990125022 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 10000000000000010, guid: bbbe4404e5f540e8acb3ef45b5a979c8,
+    type: 3}
+  m_PrefabInstance: {fileID: 1988682217}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1990990473
 GameObject:
   m_ObjectHideFlags: 0
@@ -28456,7 +28506,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1993811735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30345,7 +30395,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CODE_EXPLAIN: 0
-  waterSimulation: {fileID: 0}
   blockDistance: 4
   landBlockCount: 1600
   mapPadding: 5
@@ -30361,6 +30410,10 @@ MonoBehaviour:
     type: 3}
   exitPrefab: {fileID: 6167411453670040965, guid: ee6c9ef27ffa98443ac200468d7643ee,
     type: 3}
+  waterPrefab: {fileID: 0}
+  flowWaterPrefab: {fileID: 0}
+  flowWaterRotationOffset: {x: 0, y: 0, z: 0}
+  flowWaterEdgeOffset: 0
   brightTileMaterial: {fileID: 2100000, guid: 75e615d4ab9c0b845b1d8b1c83cf9676, type: 2}
   darkTileMaterial: {fileID: 2100000, guid: 7d87327a3325dcc44ae54e47dc12acba, type: 2}
   disMoveableCount: 40

@@ -6,12 +6,12 @@ using UnityEngine.UI;
 /// <summary>
 /// 전투 씬의 주사위 굴리기 버튼 입력을 처리한다.
 /// 버튼을 꾹 누르고 있으면 연결된 Slider(게이지)가 0~1 사이를 왕복하고,
-/// 손을 떼는 순간 BattleGameManager.RollDice()를 호출해 실제 주사위를 굴린다.
+/// 손을 떼는 순간 BattleGameManager.RollDice()를 통해 BattleDiceSystem에 실제 굴림을 요청한다.
 ///
 /// 기존 필드맵 전용 Assets/Game/Scripts/Board/RollDice.cs(레거시, NodeBasePlayerMov·LinkSelect 등
 /// 필드맵 클래스에 의존)와는 완전히 별개이며, 전투 시스템(BattleGameManager)에만 의존한다.
-/// 게이지가 오가는 연출은 순수 시각 효과이며, 결과값 자체는 BattleGameManager.RollDice() 내부
-/// 로직을 그대로 사용한다(게이지 위치가 주사위 값에 영향을 주지 않음).
+/// 게이지가 오가는 연출은 순수 시각 효과이며, 결과값 자체는 BattleDiceSystem이 정한다
+/// (게이지 위치가 주사위 값에 영향을 주지 않음).
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
@@ -146,7 +146,7 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
 
     /// <summary>
     /// 유효하게 누르기 시작한 뒤 포인터를 놓으면 게이지 연출을 종료하고 주사위 효과음을 재생한다.
-    /// 이어서 BattleGameManager.RollDice()에 실제 턴 주사위 처리를 요청한 뒤 게이지를 초기 상태로 되돌린다.
+    /// 이어서 Manager를 경유해 BattleDiceSystem에 실제 턴 주사위 처리를 요청한 뒤 게이지를 초기 상태로 되돌린다.
     /// </summary>
     public void OnPointerUp(PointerEventData eventData)
     {
