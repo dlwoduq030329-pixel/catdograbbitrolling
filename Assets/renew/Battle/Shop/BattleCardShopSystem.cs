@@ -105,11 +105,6 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         Close();
     }
 
-    /// <summary>기존 호출부 호환용으로 카드 Database 참조를 명시적으로 교체한다.</summary>
-    // (2026-08-22 정리, 사용자 확인: Configure(BattleCardDatabase, CardDatabase) 삭제됨 - 저장소
-    // 전체에서 호출부 0개였다. battleCardDatabase/originalCardDatabase는 이미 [SerializeField]로
-    // 인스펙터에서 직접 채워지므로 별도 재설정 메서드가 필요 없다.)
-
     /// <summary>
     /// 상점 타일에 진입을 시도한다. 이미 한 번 들어갔던 타일(enteredStores)이면 즉시 실패해
     /// 같은 상점 타일에 재진입 자체가 안 되게 막는다(2026-08-22 추가, 사용자 확인 — Chest의
@@ -174,9 +169,9 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         // 끝까지 전부 — 카드와 달리 별도 자격 조건 없이 전체 장비가 후보다. 두 목록 다 아래 for문에서
         // 슬롯 하나를 채울 때마다 RemoveAt/Remove로 실제로 줄어든다(그래야 같은 상품이 한 상점 안에서
         // 중복으로 안 뜬다).
-        List<int> cardCandidates = BuildEligibleCards();
-        List<int> equipmentCandidates = new List<int>();
-        CollectValidEquipmentIndices(equipmentCandidates);
+        List<int> cardCandidates = BuildEligibleCards(); // 카드 후보는 보유 2장 미만 등 조건을 만족하는 카드만 포함
+        List<int> equipmentCandidates = new List<int>(); // 장비 후보는 장비 데이터베이스 전체(0번은 "미장착"이라 제외)로 시작
+        CollectValidEquipmentIndices(equipmentCandidates); // 0번 제외한 data만
         // cardFallbacks/equipmentFallbacks: 위 두 목록을 소모되기 "전" 시점에 통째로 복사해둔 원본이다.
         // 아래 fallback 분기(카드/장비 후보가 바닥나 슬롯이 빈 채로 남을 때)에서만 쓰이며, 여기서 뽑은
         // 상품은 이미 다른 슬롯에 나온 것과 중복될 수 있다(원본 개수 부족을 메우기 위한 최후 수단이라
@@ -372,12 +367,12 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         // 이미 팔린 슬롯이거나 범위 밖이면 아무 것도 안 한다(연타 방지 겸 방어 코드).
         if (currentState == null || slot < 0 || slot >= SlotCount || currentState.Sold[slot]) return;
 
-        if (currentState.Kinds[slot] == OfferKind.Equipment)
+        if (currentState.Kinds[slot] == OfferKind.Equipment) // 장비를 구매하려는 경우
         {
             BuyEquipment(slot);
             return;
         }
-        if (currentState.Kinds[slot] != OfferKind.Card || currentState.OfferedCards[slot] < 0) return;
+        if (currentState.Kinds[slot] != OfferKind.Card || currentState.OfferedCards[slot] < 0) return; // 카드 슬롯이 아니거나 카드 인덱스가 유효하지 않으면 아무 것도 안 한다.
 
         int cardIndex = currentState.OfferedCards[slot];
         CardData originalCard = BattleCardConnector.FindOriginalCard(cardIndex, originalCardDatabase);
@@ -452,46 +447,13 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             out removedPrimaryEquipment,
             out removedSecondaryEquipment);
 
-        AddEquipmentSaleGold(wallet, removedPrimaryEquipment);
-        AddEquipmentSaleGold(wallet, removedSecondaryEquipment);
-        ApplyEquipmentVisual();
+        // 구매로 강제 교체된 장비는 Player가 판매를 선택한 것이 아니므로 원가 전액을 돌려준다.
+        // 직접 SELL을 누른 장비만 shopBalanceData.equipmentSaleRefundRate를 적용한다.
+        RefundReplacedEquipmentAtFullValue(wallet, removedPrimaryEquipment);
+        RefundReplacedEquipmentAtFullValue(wallet, removedSecondaryEquipment);
         currentState.Sold[slot] = true;
         Debug.Log($"[Shop] Equipment purchased: {equipment.cardname} ({equipment.weapon}) / {price}G", this);
         RefreshView();
-    }
-
-    /// <summary>
-    /// weaponSet(main.unity 구버전 캐릭터)도 BattlePlayerEquip(Assets/Game/Characters의
-    /// 다른 캐릭터 세트)도 실제로 Battle씬(moon.unity)에서 SpawnPlayer가 생성하는 프리팹
-    /// (Assets/renew/Battle/Player/Prefabs/Bunny_Player 등)에는 붙어있지 않았다. 셋 다
-    /// 골격 본 이름(handslot.l_end / handslot.r_end / chest / head_end)은 동일해서,
-    /// main.unity의 weaponSet Inspector 참조가 가리키던 것과 같은 이름으로 런타임에 찾아
-    /// 붙이는 BattleEquipVisualBinder를 사용한다. 프리팹 파일은 건드리지 않는다.
-    ///
-    /// 장비 상태 원본은 BattleGameManager가 등록한 PlayerWeapon만 사용한다.
-    /// </summary>
-    private void ApplyEquipmentVisual()
-    {
-        if (BattleGameManager.Instance == null || BattleGameManager.Instance.CurrentPlayer == null)
-        {
-            Debug.LogWarning("[Shop] CurrentPlayer가 없어 장비 모델을 갱신하지 못했습니다.", this);
-            return;
-        }
-        GameObject playerObject = BattleGameManager.Instance.CurrentPlayer;
-
-        try
-        {
-            BattleEquipVisualBinder equipmentView = BattleComponentResolver.GetOrAdd<BattleEquipVisualBinder>(playerObject, null);
-            equipmentView.Bind(ResolveCurrentPlayerWeapon());
-            CharacterListUIStatusController statusController =
-                FindFirstObjectByType<CharacterListUIStatusController>(FindObjectsInactive.Include);
-            statusController?.Refresh();
-            Debug.Log($"[Shop] PlayerWeapon 기준 장비 모델 갱신 완료: {playerObject.name}", this);
-        }
-        catch (System.Exception exception)
-        {
-            Debug.LogException(exception, this);
-        }
     }
 
     // (2026-08-22 정리, 사용자 확인: GetComparableEquipment/GetReplacementRefund/FormatEquipment/
@@ -590,7 +552,8 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         PlayerWallet wallet = ResolveCurrentPlayerWallet();
         int currentGold = wallet != null ? wallet.Gold : 0;
         if (goldText != null) goldText.text = $"Gold : {currentGold}G";
-        if (rerollText != null) rerollText.text = $"REROLL {currentState.RerollPrice}G";
+        // 리롤 아이콘 자체가 기능을 설명하므로 중복 영문은 빼고 실제 지불 금액만 표시한다.
+        if (rerollText != null) rerollText.text = $"{currentState.RerollPrice}G";
         if (rerollButton != null)
             rerollButton.interactable = wallet != null && wallet.CanAfford(currentState.RerollPrice);
         PlayerDeck playerDeck = ResolveCurrentPlayerDeck();
@@ -631,8 +594,15 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             }
             if (offerTexts != null && i < offerTexts.Length && offerTexts[i] != null)
             {
-                offerTexts[i].text = string.Empty;
-                offerTexts[i].gameObject.SetActive(false);
+                // 상품 카드 안의 기존 설명 영역을 재사용한다. 가격만 보고 상세 패널을 매번 열어야 했던
+                // 문제를 줄이기 위해 카드 효과 또는 장비 보정치를 슬롯 자체에서도 바로 확인하게 한다.
+                string inlineSummary = card != null
+                    ? BuildInlineCardSummary(card)
+                    : equipment != null
+                        ? BuildInlineEquipmentSummary(equipment)
+                        : string.Empty;
+                offerTexts[i].text = inlineSummary;
+                offerTexts[i].gameObject.SetActive(hasOffer);
             }
             if (offerPriceTexts != null && i < offerPriceTexts.Length && offerPriceTexts[i] != null)
             {
@@ -666,19 +636,22 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             if (state.Kinds[i] != OfferKind.None) continue;
             if (eligibleCards.Count > 0)
             {
+                int selectedCandidateListIndex = Random.Range(0, eligibleCards.Count);
                 state.Kinds[i] = OfferKind.Card;
-                state.OfferedCards[i] = eligibleCards[Random.Range(0, eligibleCards.Count)];
+                state.OfferedCards[i] = eligibleCards[selectedCandidateListIndex];
+                // 여러 빈 슬롯을 복구할 때 같은 카드를 반복 선택하지 않도록 사용한 후보를 제거한다.
+                eligibleCards.RemoveAt(selectedCandidateListIndex);
             }
             else if (eligibleEquipment.Count > 0)
             {
+                int selectedEquipmentIndex = PickEquipmentCandidate(eligibleEquipment);
                 state.Kinds[i] = OfferKind.Equipment;
-                state.OfferedEquipment[i] = CreateRandomEquipment(PickEquipmentCandidate(eligibleEquipment));
+                state.OfferedEquipment[i] = CreateRandomEquipment(selectedEquipmentIndex);
+                // 카드와 동일하게 한 번 채운 장비는 이번 빈 슬롯 복구 후보에서 제외한다.
+                eligibleEquipment.Remove(selectedEquipmentIndex);
             }
         }
     }
-
-    // (2026-08-22 정리, 사용자 확인: GetRarityColor 삭제됨 - 저장소 전체에서 호출부 0개.
-    // 등급별 색상을 표시하려던 흔적으로 보이나 실제로 UI에 연결된 적이 없다.)
 
     /// <summary>
     /// 상점 뷰가 아직 없으면(viewRoot == null) Inspector의 BattleShopView 참조를 딱 한 번 연결한다. TryEnter가
@@ -752,8 +725,15 @@ public sealed class BattleCardShopSystem : MonoBehaviour
             }
             if (offerImages[i] != null)
                 offerImages[i].rectTransform.localScale = new Vector3(OfferImageScale, OfferImageScale, 1f);
-            GameObject hoverRoot = configuredSlots[i].Root;
-            BattleShopOfferHover hover = BattleComponentResolver.GetOrAdd<BattleShopOfferHover>(hoverRoot, null);
+            // 상품 이미지뿐 아니라 이름·설명·빈 여백을 눌러도 같은 상품으로 처리해야 하므로,
+            // Item01 전체를 덮는 입력 릴레이를 SlotView가 Inspector 직접 참조로 제공한다.
+            BattleShopOfferHover hover = configuredSlots[i].PointerEvents;
+            if (hover == null)
+            {
+                Debug.LogError($"[Shop] {i + 1}번 상품 슬롯에 BattleShopOfferHover가 연결되지 않았습니다.",
+                    configuredSlots[i]);
+                return false;
+            }
             // Item01 안의 슬롯별 "Button" 오브젝트는 프리팹 기본값이 비활성 상태다(레거시 설계상
             // 다른 곳 클릭 후에야 보이게 돼 있었음), 그래서 이 버튼은 스스로 레이캐스트 클릭을
             // 받을 수 없다. 슬롯 루트는 항상 활성 상태이므로, 클릭도 같은 호버 릴레이(hover)를
@@ -811,20 +791,20 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         if (card != null)
         {
             BattleCardData battleCard = battleCardDatabase?.FindByLegacyCardIndex(card.index);
-            SetTextVisible(tagText, true, $"TAG  {GetTargetLabel(battleCard)}");
-            SetTextVisible(propertyText, true, $"PROPERTY  {GetPropertyLabel(battleCard)}");
-            SetTextVisible(damageText, true, $"{Mathf.Max(0, card.damage)} DAMAGE");
-            SetTextVisible(equipmentInfoText, false, string.Empty);
+            SetDetailText(tagText, true, $"TAG  {GetTargetLabel(battleCard)}");
+            SetDetailText(propertyText, true, $"PROPERTY  {GetPropertyLabel(battleCard)}");
+            SetDetailText(damageText, true, $"{Mathf.Max(0, card.damage)} DAMAGE");
+            SetDetailText(equipmentInfoText, false, string.Empty);
             SetPreviewImage(CardArtResolver.ResolveDisplaySprite(card.myCardSprite), card.name);
             return;
         }
 
         if (equipment != null)
         {
-            SetTextVisible(tagText, false, string.Empty);
-            SetTextVisible(propertyText, false, string.Empty);
-            SetTextVisible(damageText, false, string.Empty);
-            SetTextVisible(equipmentInfoText, true,
+            SetDetailText(tagText, false, string.Empty);
+            SetDetailText(propertyText, false, string.Empty);
+            SetDetailText(damageText, false, string.Empty);
+            SetDetailText(equipmentInfoText, true,
                 $"STR +{equipment.stroffset}\nDEX +{equipment.dexoffset}\nINT +{equipment.intoffset}\n" +
                 $"WIS +{equipment.wisoffset}\nCAR +{equipment.caroffset}\nVIT +{equipment.vitoffset}\n" +
                 $"공격 사거리 +{equipment.attackRange:0.##}");
@@ -833,6 +813,47 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         }
 
         HideOfferDetails();
+    }
+
+    /// <summary>
+    /// 상품 슬롯 안에 표시할 카드 핵심 정보를 만든다. 별도 상세 패널은 전체 설명을 담당하고,
+    /// 슬롯에는 구매 비교에 필요한 MP·피해·회복만 짧게 표시한다.
+    /// </summary>
+    private static string BuildInlineCardSummary(CardData card)
+    {
+        if (card == null) return string.Empty;
+
+        List<string> lines = new List<string> { $"MP {Mathf.Max(0, card.cost)}" };
+        if (card.damage > 0) lines.Add($"DMG {card.damage}");
+        if (card.heal > 0) lines.Add($"HEAL {card.heal}");
+        if (!string.IsNullOrWhiteSpace(card.cardInfo)) lines.Add(card.cardInfo);
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// 상품 슬롯 안에 표시할 장비 핵심 정보를 만든다. 0인 보정치는 숨겨 실제로 바뀌는 능력치와
+    /// 공격 사거리만 한눈에 비교할 수 있게 한다.
+    /// </summary>
+    private static string BuildInlineEquipmentSummary(EquipData equipment)
+    {
+        if (equipment == null) return string.Empty;
+
+        List<string> bonuses = new List<string>();
+        AddNonZeroStat(bonuses, "STR", equipment.stroffset);
+        AddNonZeroStat(bonuses, "DEX", equipment.dexoffset);
+        AddNonZeroStat(bonuses, "INT", equipment.intoffset);
+        AddNonZeroStat(bonuses, "WIS", equipment.wisoffset);
+        AddNonZeroStat(bonuses, "CAR", equipment.caroffset);
+        AddNonZeroStat(bonuses, "VIT", equipment.vitoffset);
+        if (!Mathf.Approximately(equipment.attackRange, 0f))
+            bonuses.Add($"RANGE +{equipment.attackRange:0.##}");
+        return string.Join("  ", bonuses);
+    }
+
+    /// <summary>0이 아닌 장비 능력치만 슬롯 요약 목록에 추가한다.</summary>
+    private static void AddNonZeroStat(List<string> target, string statName, int value)
+    {
+        if (value != 0) target.Add($"{statName} {(value > 0 ? "+" : string.Empty)}{value}");
     }
 
     /// <summary>
@@ -999,8 +1020,6 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         int saleGold = AddEquipmentSaleGold(wallet, removedEquipment);
         Debug.Log($"[Shop] 장비 판매: {slotType} / {saleGold}G", this);
 
-        ApplyEquipmentVisual();
-
         ResetPurchaseSelection();
         RefreshView();
     }
@@ -1024,10 +1043,10 @@ public sealed class BattleCardShopSystem : MonoBehaviour
     /// </summary>
     private void HideOfferDetails()
     {
-        SetTextVisible(tagText, false, string.Empty);
-        SetTextVisible(propertyText, false, string.Empty);
-        SetTextVisible(damageText, false, string.Empty);
-        SetTextVisible(equipmentInfoText, false, string.Empty);
+        SetDetailText(tagText, false, string.Empty);
+        SetDetailText(propertyText, false, string.Empty);
+        SetDetailText(damageText, false, string.Empty);
+        SetDetailText(equipmentInfoText, false, string.Empty);
         SetPreviewImage(null, string.Empty);
     }
 
@@ -1148,6 +1167,19 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         return saleGold;
     }
 
+    /// <summary>
+    /// 새 장비 구매 때문에 자동으로 밀려난 기존 장비의 원가를 전액 반환한다.
+    /// Player가 SELL을 선택한 경우의 할인 환급은 <see cref="AddEquipmentSaleGold"/>가 별도로 담당한다.
+    /// </summary>
+    private static int RefundReplacedEquipmentAtFullValue(PlayerWallet wallet, EquipData equipment)
+    {
+        if (wallet == null || equipment == null) return 0;
+
+        int refundGold = Mathf.Max(0, equipment.cost);
+        wallet.AddGold(refundGold);
+        return refundGold;
+    }
+
     /// <summary>EquipDatabase의 0번 빈 슬롯과 null 항목을 제외한 실제 장비 인덱스만 수집한다.</summary>
     private void CollectValidEquipmentIndices(List<int> targetIndices)
     {
@@ -1205,10 +1237,10 @@ public sealed class BattleCardShopSystem : MonoBehaviour
         shopBalanceData != null ? shopBalanceData.legendaryPriceMultiplier : 4f;
 
     /// <summary>
-    /// 텍스트 오브젝트를 값과 함께 켜거나(visible=true) 통째로 숨긴다(visible=false, 이때는 value를
-    /// 빈 문자열로 넘기는 게 관례). ShowOfferDetails/HideOfferDetails가 4개 텍스트를 한 줄씩 켜고 끄는 데 씀.
+    /// 이미 Inspector에 연결된 상세정보 TMP에 값을 쓰고 표시 여부만 바꾼다.
+    /// 오브젝트를 생성하거나 크기·위치를 변경하지 않으며, ShowOfferDetails/HideOfferDetails가 공유한다.
     /// </summary>
-    private static void SetTextVisible(TMP_Text target, bool visible, string value)
+    private static void SetDetailText(TMP_Text target, bool visible, string value)
     {
         if (target == null) return;
         target.text = value;

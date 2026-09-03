@@ -14,6 +14,8 @@ public sealed class BattleShopOfferSlotView : MonoBehaviour
     [SerializeField] private Image itemImage;
     [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text priceText;
+    [Tooltip("상품 카드 전체의 호버·클릭 입력을 BattleCardShopSystem에 전달한다.")]
+    [SerializeField] private BattleShopOfferHover pointerEvents;
 
     // Inspector 참조 필드는 private이라 외부 코드가 다른 UI로 교체할 수 없다.
     // 아래 읽기 전용 Property를 통해 BattleCardShopSystem은 연결된 참조를 가져오기만 한다.
@@ -22,6 +24,7 @@ public sealed class BattleShopOfferSlotView : MonoBehaviour
     public Image ItemImage => itemImage;
     public TMP_Text ItemNameText => itemNameText;
     public TMP_Text PriceText => priceText;
+    public BattleShopOfferHover PointerEvents => pointerEvents;
 
     /// <summary>
     /// Inspector에서 상품 선택 버튼, 상품 이미지, 이름, 가격 텍스트가 모두 연결됐는지 계산한다.
@@ -31,5 +34,6 @@ public sealed class BattleShopOfferSlotView : MonoBehaviour
         selectButton != null &&
         itemImage != null &&
         itemNameText != null &&
-        priceText != null;
+        priceText != null &&
+        pointerEvents != null;
 }
