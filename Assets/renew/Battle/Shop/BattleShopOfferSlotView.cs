@@ -15,13 +15,18 @@ public sealed class BattleShopOfferSlotView : MonoBehaviour
     [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text priceText;
 
+    // Inspector 참조 필드는 private이라 외부 코드가 다른 UI로 교체할 수 없다.
+    // 아래 읽기 전용 Property를 통해 BattleCardShopSystem은 연결된 참조를 가져오기만 한다.
     public GameObject Root => gameObject;
     public Button SelectButton => selectButton;
     public Image ItemImage => itemImage;
     public TMP_Text ItemNameText => itemNameText;
     public TMP_Text PriceText => priceText;
 
-    /// <summary>Inspector에서 필수 UI가 모두 연결됐는지 검사한다.</summary>
+    /// <summary>
+    /// Inspector에서 상품 선택 버튼, 상품 이미지, 이름, 가격 텍스트가 모두 연결됐는지 계산한다.
+    /// 값을 저장하는 bool 필드가 아니라, 조회할 때마다 네 참조의 null 여부를 다시 검사하는 읽기 전용 Property다.
+    /// </summary>
     public bool HasAllRequiredReferences =>
         selectButton != null &&
         itemImage != null &&

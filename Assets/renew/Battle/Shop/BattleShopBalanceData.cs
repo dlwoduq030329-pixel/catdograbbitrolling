@@ -12,9 +12,9 @@ public sealed class BattleShopStageRarityWeights
     /// <summary>이 구간이 적용되는 최소 스테이지.</summary>
     [Min(1)] public int minimumStage = 1;
     [FormerlySerializedAs("common")]
-    [Min(0)] public int commonWeight = 80;
+    [Min(0)] public int commonWeight;
     [FormerlySerializedAs("rare")]
-    [Min(0)] public int rareWeight = 20;
+    [Min(0)] public int rareWeight;
     [FormerlySerializedAs("epic")]
     [Min(0)] public int epicWeight;
     [FormerlySerializedAs("legendary")]
@@ -31,13 +31,13 @@ public sealed class BattleShopStageEquipmentWeights
     /// <summary>이 구간이 적용되는 최소 스테이지.</summary>
     [Min(1)] public int minimumStage = 1;
     [FormerlySerializedAs("hand")]
-    [Min(0)] public int handWeight = 50;
+    [Min(0)] public int handWeight;
     [FormerlySerializedAs("body")]
-    [Min(0)] public int bodyWeight = 20;
+    [Min(0)] public int bodyWeight;
     [FormerlySerializedAs("head")]
-    [Min(0)] public int headWeight = 20;
+    [Min(0)] public int headWeight;
     [FormerlySerializedAs("twoHand")]
-    [Min(0)] public int twoHandWeight = 10;
+    [Min(0)] public int twoHandWeight;
 }
 
 /// <summary>
@@ -77,21 +77,10 @@ public sealed class BattleShopBalanceData : ScriptableObject
     [Min(0)] public int epicBonusStatRolls = 6;
     [Min(0)] public int legendaryBonusStatRolls = 10;
 
-    public BattleShopStageRarityWeights[] rarityByStage =
-    {
-        new BattleShopStageRarityWeights { minimumStage = 1, commonWeight = 80, rareWeight = 20 },
-        new BattleShopStageRarityWeights { minimumStage = 2, commonWeight = 55, rareWeight = 35, epicWeight = 10 },
-        new BattleShopStageRarityWeights { minimumStage = 3, commonWeight = 35, rareWeight = 40, epicWeight = 20, legendaryWeight = 5 },
-        new BattleShopStageRarityWeights { minimumStage = 4, commonWeight = 20, rareWeight = 35, epicWeight = 30, legendaryWeight = 15 },
-    };
-    public BattleShopStageEquipmentWeights[] equipmentByStage =
-    {
-        // 2026-08-22 정리+밸런스 조정(사용자 확인): 이 배열이 필드 rename 이후에도 옛 이름(hand/body/head/twoHand)을
-        // 그대로 쓰고 있어 실제로는 컴파일이 안 되는 상태였다 — 새 필드명으로 고치면서 손55~40/몸통·머리 고정20/
-        // 양손5~20으로 스테이지마다 달랐던 표를 손40/몸통30/머리20/양손10 고정 비율로 전체 스테이지 동일하게 통일했다.
-        new BattleShopStageEquipmentWeights { minimumStage = 1, handWeight = 40, bodyWeight = 30, headWeight = 20, twoHandWeight = 10 },
-        new BattleShopStageEquipmentWeights { minimumStage = 2, handWeight = 40, bodyWeight = 30, headWeight = 20, twoHandWeight = 10 },
-        new BattleShopStageEquipmentWeights { minimumStage = 3, handWeight = 40, bodyWeight = 30, headWeight = 20, twoHandWeight = 10 },
-    };
+    [Tooltip("Stage별 장비 등급 가중치입니다. 실제 값은 이 ScriptableObject 자산에서만 관리합니다.")]
+    public BattleShopStageRarityWeights[] rarityByStage = Array.Empty<BattleShopStageRarityWeights>();
+
+    [Tooltip("Stage별 장비 부위 가중치입니다. 실제 값은 이 ScriptableObject 자산에서만 관리합니다.")]
+    public BattleShopStageEquipmentWeights[] equipmentByStage = Array.Empty<BattleShopStageEquipmentWeights>();
 
 }

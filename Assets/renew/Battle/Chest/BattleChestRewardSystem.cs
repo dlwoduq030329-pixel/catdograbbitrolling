@@ -7,15 +7,18 @@ using UnityEngine.UI;
 public enum BattleChestRewardType { Card, Equipment }
 
 /// <summary>
-/// 맵의 보상 상자(Box 타일)를 열고, 카드/장비/골드 중 하나를 무작위로 지급하는 UI·상태를 담당한다.
+/// 맵의 보상 상자(Box 타일)를 열고, 카드 또는 장비 하나와 공통 골드를 지급하는 상태·진행을 담당한다.
 /// 타일별로 한 번 결정된 보상은 <c>pendingRewards</c>에 저장돼 다시 열어도(문 닫고 다시 클릭 등) 같은
 /// 보상을 유지한다. 상자가 열려 있는 동안은 <c>BattleGameManager.LockBattleInputForOverlay</c>로
-/// 뒤쪽 전투 조작을 잠그고, 닫히면 <c>UnlockBattleInputAfterOverlay</c>로 되돌린다(Player 사망 시에는
-/// <see cref="ForceClose"/>로 강제 정리).
+/// 뒤쪽 전투 조작을 잠그고, 닫히면 <c>UnlockBattleInputAfterOverlay</c>로 되돌린다
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleChestRewardSystem : MonoBehaviour
 {
+    /// <summary>
+    /// 상자 타일 하나에 결정됐지만 아직 Player에게 지급되지 않은 보상이다.
+    /// 전체 상자의 보관은 pendingRewards Dictionary가 담당하고, 이 객체 하나는 타일 하나만 나타낸다.
+    /// </summary>
     private sealed class PendingReward
     {
         public BattleChestRewardType Type;
@@ -24,10 +27,10 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
         public int Gold;
     }
 
-    // 레거시 Drop 연출이 끝나는 2.05초 뒤 보상을 공개하고, 전체 약 3초 시점에 자동 지급·종료한다.
+    // Drop 연출이 끝나는 2.05초 뒤 보상을 공개하고, 전체 약 3초 시점에 자동 지급·종료한다.
     private const float DropAnimationSeconds = 2f;
     private const float RewardVisibleSeconds = 2f;
-    private const int CommonGoldRewardAmount = 25;
+    private const int CommonGoldRewardAmount = 50;
 
     private readonly HashSet<MapInfo> openedTiles = new HashSet<MapInfo>();
     private readonly Dictionary<MapInfo, PendingReward> pendingRewards = new Dictionary<MapInfo, PendingReward>();
@@ -40,7 +43,7 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     [Tooltip("상점과 공유하는 장비 등급 및 부위 추첨 가중치입니다.")]
     [SerializeField] private BattleShopBalanceData shopBalanceData;
     [Header("상자 연출 UI")]
-    [Tooltip("Battle 전용으로 복사한 상자 연출 프리팹입니다. 레거시 원본이 아니라 renew/Battle 아래의 사본을 직접 참조합니다.")]
+    [Tooltip("Battle 전용으로 복사한 상자 연출 프리팹입니다. 원본이 아니라 renew/Battle 아래의 사본을 직접 참조합니다.")]
     [SerializeField] private GameObject chestOverlayPrefab;
     private Canvas chestOverlayCanvas;
     private BattleChestView chestView;
@@ -97,38 +100,43 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     /// </summary>
     private PendingReward GetOrCreatePendingReward(MapInfo tile)
     {
-        if (pendingRewards.TryGetValue(tile, out PendingReward cachedReward) && cachedReward != null)
-            return cachedReward;
+        if (pendingRewards.TryGetValue(tile, out PendingReward tileReward) && tileReward != null)
+            return tileReward;
 
-        List<CardData> cards = CollectCardRewardCandidates();
-        List<int> equipment = CollectEquipmentRewardIndices();
-        if (cards.Count == 0 && equipment.Count == 0)
+        // 카드 후보는 현재 Player의 보유 수량에 따라 달라지고, 장비 후보는 EquipDatabase에서 가져온다.
+        List<CardData> availableCardRewards = CollectCardRewardCandidates();
+        List<int> availableEquipmentIndices = CollectEquipmentRewardIndices();
+        if (availableCardRewards.Count == 0 && availableEquipmentIndices.Count == 0)
         {
             Debug.LogError("[Chest] 지급 가능한 카드와 장비가 모두 없어 상자 보상을 생성할 수 없습니다.", tile);
             return null;
         }
 
-        bool chooseCard = cards.Count > 0 && (equipment.Count == 0 || Random.value < 0.5f);
+        // 한쪽 후보가 비었다면 남은 종류를 확정하고, 둘 다 있다면 카드/장비를 동일 확률로 선택한다.
+        bool chooseCard = availableCardRewards.Count > 0 &&
+            (availableEquipmentIndices.Count == 0 || Random.value < 0.5f);
         if (chooseCard)
         {
-            cachedReward = new PendingReward
+            tileReward = new PendingReward
             {
                 Type = BattleChestRewardType.Card,
-                Card = cards[Random.Range(0, cards.Count)]
+                Card = availableCardRewards[Random.Range(0, availableCardRewards.Count)]
             };
         }
         else
         {
-            cachedReward = new PendingReward
+            tileReward = new PendingReward
             {
                 Type = BattleChestRewardType.Equipment,
-                Equipment = CreateEquipmentReward(equipment[Random.Range(0, equipment.Count)])
+                Equipment = CreateEquipmentReward(
+                    availableEquipmentIndices[Random.Range(0, availableEquipmentIndices.Count)])
             };
         }
 
-        cachedReward.Gold = CommonGoldRewardAmount;
-        pendingRewards[tile] = cachedReward;
-        return cachedReward;
+        // 골드는 카드/장비 선택과 무관하게 모든 상자에 공통으로 포함한다.
+        tileReward.Gold = CommonGoldRewardAmount;
+        pendingRewards[tile] = tileReward;
+        return tileReward;
     }
 
     /// <summary>
@@ -140,13 +148,16 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     {
         List<CardData> result = new List<CardData>();
         if (battleCardDatabase == null || originalCardDatabase == null) return result;
+        // PlayerDeck을 찾지 못하면 보유량을 안전하게 확인할 수 없으므로 카드를 후보에 넣지 않는다.
         PlayerDeck playerDeck = GetCurrentPlayerDeck();
         foreach (BattleCardData battleCard in battleCardDatabase.Cards)
         {
             if (battleCard == null || battleCard.legacyCardIndex < 0) continue;
+            // 같은 카드가 이미 최대 수량이면 상자에서 다시 나오지 않게 제외한다.
             int owned = playerDeck != null
                 ? playerDeck.GetOwnedCardCount(battleCard.legacyCardIndex)
                 : PlayerDeck.MaximumOwnedCopiesPerCard;
+            // Battle용 카드와 실제 PlayerDeck에 저장할 원본 CardData를 legacyCardIndex로 연결한다.
             CardData original = BattleCardConnector.FindOriginalCard(battleCard.legacyCardIndex, originalCardDatabase);
             if (owned < PlayerDeck.MaximumOwnedCopiesPerCard && original != null) result.Add(original);
         }
@@ -172,19 +183,22 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     /// STR/DEX/INT/WIS/CAR/VIT 중 하나씩 +1)를 부여한다. 상점 장비와 같은 등급 확률표를 재사용하기 위해
     /// 인스펙터에 연결된 shopBalanceData의 가중치를 사용한다.
     /// </summary>
-    private EquipData CreateEquipmentReward(int index)
+    private EquipData CreateEquipmentReward(int equipmentIndex)
     {
-        EquipData reward = equipmentDatabase.equip[index].Clone();
+        // Database 원본을 직접 수정하지 않도록 상자 전용 장비 인스턴스를 복제한다.
+        EquipData reward = equipmentDatabase.equip[equipmentIndex].Clone();
         int currentStage = BattleGameManager.Instance != null ? BattleGameManager.Instance.CurrentStage : 1;
+        // 장비 종류가 아니라 등급만 Stage별 가중치로 새로 결정한다.
         reward.weapon = BattleEquipmentRewardRoller.RollRarity(shopBalanceData, currentStage);
         int basePrice = reward.weaponKind == WeaponKind.TwoHand ? 90 :
             reward.weaponKind == WeaponKind.Body ? 75 : reward.weaponKind == WeaponKind.Head ? 70 : 60;
         reward.cost = reward.weapon == weaponSt.Legendary ? basePrice * 4 :
             reward.weapon == weaponSt.Epic ? Mathf.RoundToInt(basePrice * 2.5f) :
             reward.weapon == weaponSt.Rare ? Mathf.RoundToInt(basePrice * 1.6f) : basePrice;
-        int rolls = reward.weapon == weaponSt.Legendary ? 10 :
+        int bonusStatRollCount = reward.weapon == weaponSt.Legendary ? 10 :
             reward.weapon == weaponSt.Epic ? 6 : reward.weapon == weaponSt.Rare ? 4 : 0;
-        for (int i = 0; i < rolls; i++)
+        // 등급별 횟수만큼 여섯 능력치 중 하나를 무작위로 골라 1씩 더한다.
+        for (int i = 0; i < bonusStatRollCount; i++)
         {
             switch (Random.Range(0, 6))
             {
@@ -202,7 +216,7 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     /// <summary>
     /// 레거시 상자 프리팹(TreasureChest_Start)의 숨겨진 이벤트 버튼을 코드로 호출해
     /// 원래 붙어 있던 애니메이션·사운드만 재사용한다. Drop 연출이 끝나면 뚜껑과 보상을 표시하고,
-    /// 상자를 연 시점부터 총 약 3초가 되면 <see cref="GrantCurrentRewardAndCloseChest"/>로 자동 지급한다.
+    /// 상자를 연 시점부터 총 약 4초가 되면 <see cref="GrantCurrentRewardAndCloseChest"/>로 자동 지급한다.
     /// </summary>
     private IEnumerator PlayOpenSequence()
     {
@@ -287,8 +301,8 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
 
     /// <summary>
     /// 지금 이 보상 종류를 실제로 지급해도 되는 상태인지 검사한다. 뚜껑이 열려 보상이 준비됐고,
-    /// 현재 열린 타일·보상이 있고, 요청한 타입과 실제 보상 타입이 같고, 아직 이 타일을 수령한 적이
-    /// 없어야 true다. Claim* 계열 메서드가 실제 데이터를 건드리기 전에 공통으로 거치는 방어 검사다.
+    /// 현재 열린 타일과 보상이 있고, 아직 이 타일을 수령한 적이 없어야 true다.
+    /// 실제 Player 데이터를 변경하기 직전에 거치는 공통 방어 검사다.
     /// </summary>
     private bool IsCurrentRewardReadyToClaim()
     {
@@ -375,14 +389,15 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Player 사망 등으로 전투가 즉시 정지될 때 <c>BattleGameManager</c>가 호출한다.
-    /// 열려 있는 보상 상자 UI와 입력 잠금을 정상 닫기(Close)와 동일하게 정리한다.
+    /// 전투 종료나 Scene 전환처럼 외부 시스템이 상자 이벤트를 즉시 끝내야 할 때 호출한다.
+    /// 보상은 지급하거나 완료 처리하지 않고, 열린 UI와 입력 잠금만 Close와 동일하게 정리한다.
     /// </summary>
     public void ForceClose()
     {
         Close();
     }
 
+    /// <summary>상자 이벤트 동안 뒤쪽 Player·카메라·전투 UI 입력을 한 번만 잠근다.</summary>
     private void AcquireModalLock()
     {
         if (holdsModalLock) return;
@@ -390,6 +405,7 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
         holdsModalLock = true;
     }
 
+    /// <summary>이 상자 이벤트가 획득했던 전투 입력 잠금을 정확히 한 번 해제한다.</summary>
     private void ReleaseModalLock()
     {
         if (!holdsModalLock) return;
@@ -397,12 +413,13 @@ public sealed class BattleChestRewardSystem : MonoBehaviour
         BattleGameManager.Instance?.UnlockBattleInputAfterOverlay();
     }
 
+    /// <summary>
+    /// 컴포넌트가 비활성화될 때도 정상 종료와 같은 Close 경로를 사용한다.
+    /// 따라서 진행 중인 연출, 현재 타일·보상, 화면 상태와 입력 잠금이 모두 함께 초기화된다.
+    /// </summary>
     private void OnDisable()
     {
-        if (openingRoutine != null) StopCoroutine(openingRoutine);
-        openingRoutine = null;
-        ChestOpen = false;
-        ReleaseModalLock();
+        Close();
     }
 
     /// <summary>
