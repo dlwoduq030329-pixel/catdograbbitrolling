@@ -77,6 +77,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
 
         // 대상 선택 안내·사용 성공·취소·사거리 표시 상태를 Player UI와 입력 흐름에 반영한다.
         battleCardActionController.TargetSelectionRequested += HandleTargetSelectionRequested;
+        battleCardActionController.ConfirmationRequested += HandleConfirmationRequested;
         battleCardActionController.Confirmed += HandleConfirmed;
         battleCardActionController.Cancelled += HandleCancelled;
         battleCardActionController.RangeVisibilityChanged += owner.SetRangeVisible;
@@ -182,6 +183,13 @@ public class BattlePlayerCardFlow : MonoBehaviour
     }
 
     /// <summary>
+    /// 카드 대상 선택이 끝나 확인 대기 상태로 들어갔음을 BattleCardActionController가 알리면,
+    /// 기본 공격과 같은 방식으로 확인(사용) 버튼을 다시 띄운다. 이 이벤트가 연결되기 전에는
+    /// 대상을 고른 뒤 확정할 방법이 UI에 전혀 없었다.
+    /// </summary>
+    private void HandleConfirmationRequested(string message) => owner.ShowActionConfirmationUI(message);
+
+    /// <summary>
     /// 카드 효과와 자원 소비가 모두 성공한 뒤 호출된다. 확인 안내를 비우고 카드 패널을 숨긴 다음,
     /// 결과에 기록된 카드 이름·소모 MP와 현재 Player MP를 QA용 Console Log로 남긴다.
     /// 피해·회복·이동 효과는 이 Handler 전에 이미 실행됐으며 여기서는 결과 UI만 정리한다.
@@ -223,6 +231,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
         }
 
         battleCardActionController.TargetSelectionRequested -= HandleTargetSelectionRequested;
+        battleCardActionController.ConfirmationRequested -= HandleConfirmationRequested;
         battleCardActionController.Confirmed -= HandleConfirmed;
         battleCardActionController.Cancelled -= HandleCancelled;
         if (owner != null)

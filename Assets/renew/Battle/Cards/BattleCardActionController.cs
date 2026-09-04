@@ -56,6 +56,11 @@ public sealed class BattleCardActionController : MonoBehaviour
     // [7] 외부 UI·Coordinator 통지
     // Controller가 UI를 직접 만들거나 조작하지 않고 단계 변화와 결과만 외부에 알린다.
     public event Action<string> TargetSelectionRequested;
+    /// <summary>대상 선택이 끝나 Player 클릭(확인 버튼)으로 확정할 수 있는 상태가 됐을 때 안내 문구와 함께 알린다.
+    /// 예전에는 확인 버튼 UI를 직접 켜지 않고 재클릭으로만 확정하도록 바꿨었는데, 실제로는 재클릭 입력 경로가
+    /// 연결돼 있지 않아 대상 선택 뒤 확정할 방법이 아예 없어지는 문제가 있었다. 기본 공격(BattleUnitAttackFlow)과
+    /// 같은 방식으로 다시 확인 버튼을 띄우도록 이 이벤트를 되살렸다.</summary>
+    public event Action<string> ConfirmationRequested;
     public event Action<BattleActionResult> Confirmed;
     public event Action Cancelled;
     public event Action<bool> RangeVisibilityChanged;
@@ -409,10 +414,11 @@ public sealed class BattleCardActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// 대상 선택을 끝내고 Player 클릭으로 카드 사용을 확정할 수 있는 대기 상태로 전환한다.
+    /// 대상 선택을 끝내고 확인 버튼을 눌러 카드 사용을 확정할 수 있는 대기 상태로 전환한다.
     /// 밀치기·돌진 카드라면 확정 전에 예상 이동 결과를 갱신한다.
-    /// 기존 확인/취소 버튼 UI는 호출하지 않는다. Player 클릭 입력은 BattlePlayerActionController.ConfirmCurrentPlayerAction()
-    /// → BattlePlayerCardFlow.Confirm() → TryConfirmCardUse() 순서로 이 대기 상태를 확정한다.
+    /// ConfirmationRequested로 기본 공격과 같은 확인(사용) 버튼을 다시 띄우며, 실제 확정 입력은
+    /// BattlePlayerActionController.ConfirmCurrentPlayerAction() → BattlePlayerCardFlow.Confirm()
+    /// → TryConfirmCardUse() 순서로 처리된다.
     /// </summary>
     private void EnterCardUseConfirmationState()
     {
@@ -422,6 +428,11 @@ public sealed class BattleCardActionController : MonoBehaviour
 
         // [5] Push가 없는 카드는 기존 Preview를 숨기고, Push가 있으면 예상 충돌 위치를 표시한다.
         RefreshPushPreview();
+
+        // [7] 확인 버튼(사용 버튼)을 다시 띄워 Player가 무엇을 눌러야 확정되는지 보이게 한다.
+        // MP 비용은 상태이상 등으로 확정 직전 다시 계산될 수 있어 여기서는 카드 기본 비용만 안내에 쓴다.
+        ConfirmationRequested?.Invoke(
+            $"{selectedCardInfo.ActionInfo.DisplayName}을(를) 사용하시겠습니까? (필요 MP {selectedCardInfo.ActionInfo.MPCost})");
     }
 
     /// <summary>

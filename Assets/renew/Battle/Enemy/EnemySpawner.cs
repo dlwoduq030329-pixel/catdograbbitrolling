@@ -3,7 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// MapGenerator가 만든 Enemy 타일 위에 BattleEnemyDatabase 기반 Enemy를 생성하고 필수 런타임 컴포넌트를 조립한다.
-/// 스폰 위치의 Y축은 타일 자체의 Y값과 무관하게 defaultSpawnHeight(기본 0.5)로 고정한다.
+/// 스폰 위치의 Y축은 MapGenerator가 Player를 세울 때와 같은 방식으로, 이 타일의 실제 Y에
+/// defaultSpawnHeight(기본 0.5)만큼 오프셋을 더해서 정한다(고정된 월드 Y로 덮어쓰지 않는다).
+/// 그래야 나중에 타일마다 높이가 달라져도 Enemy가 그 타일을 그대로 따라간다.
 /// 2026-08-21 정리: 예전에 "DB 미연결 시 기본 프리팹으로 대체" 호환 경로가 있었으나, enemyDatabase는
 /// 항상 채워져 있는 것을 전제로 하는 구조라 실제로 DB가 비는 상황을 정상 케이스로 다루지 않기로 하고
 /// 그 호환 필드를 제거했다. DB가 비어 있으면 지금처럼 명확한 Debug.LogError로 실패를 알린다.
@@ -141,8 +143,11 @@ public class EnemySpawner : MonoBehaviour
             return null;
         }
 
-        Vector3 spawnPosition = enemyTile.position;
-        spawnPosition.y = defaultSpawnHeight;
+        // MapGenerator.DrawGrid가 Player를 세울 때(pos + new Vector3(0, 0.5f, 0))와 같은 방식이다.
+        // 이전에는 spawnPosition.y = defaultSpawnHeight로 타일의 실제 Y를 무시하고 고정 월드 Y로
+        // 덮어썼는데, 그러면 타일 프리팹의 실제 높이가 0이 아니거나 나중에 바뀌면 적이 바닥 위/아래로
+        // 어긋난다. 타일 위치에 오프셋만 더해서 항상 "그 타일 기준 0.5 위"에 서게 한다.
+        Vector3 spawnPosition = enemyTile.position + new Vector3(0f, defaultSpawnHeight, 0f);
 
         // 월드 좌표에 우선 Instantiate한다. enemyTile을 parent로 바로 넘겨 Instantiate하면 Road 타일
         // 프리팹의 Scale을 그대로 물려받아서, 아직 원래 크기를 모르는 상태로 NormalizeEnemyFootprint의
@@ -224,6 +229,10 @@ public class EnemySpawner : MonoBehaviour
     /// 스폰된 이 인스턴스만(원본 프리팹 에셋은 그대로 두고) 균등 스케일을 곱해 XZ 기준 모델 크기가
     /// 타일 하나(enemyTileFillRatio 비율)에 맞도록 줄이거나(allowEnemyUpscaling이 true면) 키운다.
     /// 아직 enemyTile의 자식이 되기 전(Road의 Scale을 물려받기 전) 시점에 호출해야 정확히 측정된다.
+    /// 스케일 적용 뒤에는 실제 렌더러 Bounds를 다시 재서 발(가장 낮은 지점)을 스폰 높이에 다시
+    /// 맞춘다. 모델 피벗이 발밑이 아니라 중앙 등에 있으면 균등 스케일이 피벗 기준으로 수축·확대되며
+    /// 발이 목표 높이보다 위/아래로 어긋나는데("타일 바닥에 파묻힘"), 이 보정으로 피벗 위치와 무관하게
+    /// 항상 타일 바닥에 발이 붙게 만든다.
     /// </summary>
     private void NormalizeEnemyFootprint(GameObject enemy, Transform tile)
     {
@@ -247,7 +256,39 @@ public class EnemySpawner : MonoBehaviour
             multiplier = Mathf.Min(1f, multiplier);
         }
         multiplier = Mathf.Max(minimumScaleMultiplier, multiplier);
+
+        // "발이 닿아야 할 높이"는 이 함수가 호출된 시점의 enemy.transform.position.y를 그대로 쓴다
+        // (SpawnEnemy에서 이미 enemyTile.position + defaultSpawnHeight로 타일 기준으로 잡아 둔 값).
+        // 한때 tileBounds.max.y(타일 Collider/Renderer 윗면 실측값)를 기준으로 바꿔봤지만, 타일
+        // Collider가 걸어 다니는 표면보다 두껍게 잡혀 있어서 오히려 적이 공중에 뜨는 결과가 나왔다.
+        // groundY는 스케일을 적용하기 "전" 값을 미리 기억해 둬야 한다 — 스케일 적용 후에는
+        // transform.position.y 자체는 안 바뀌지만, 아래에서 이 값을 기준으로 발 위치를 다시 계산하기
+        // 때문에 스케일 적용 전 시점의 값을 명확히 고정해 두는 것이다.
+        float groundY = enemy.transform.position.y;
+
+        // 스케일 적용 "전"에 한 번만 Bounds를 재서 "피벗에서 발(min.y)까지의 오프셋"을 구해 둔다.
+        // 이 오프셋은 균등 스케일을 곱하면 그대로 같은 배율만큼 커지거나 작아지므로, 스케일 적용
+        // 뒤에 Bounds를 다시 재지 않고도 산수만으로 정확한 발 위치를 계산할 수 있다.
+        // (스케일을 바꾼 "같은 프레임" 안에서 SkinnedMeshRenderer.bounds를 다시 읽으면 아직 갱신되지
+        // 않은 값을 돌려주는 유니티의 알려진 문제가 있어서, 재측정 자체를 없애는 쪽이 더 안전하다.)
+        float footOffsetAtUnitScale = enemyBounds.min.y - enemy.transform.position.y;
+
         enemy.transform.localScale *= multiplier;
+
+        // 재측정 없이, 위에서 구해 둔 발 오프셋에 스케일 배율만 곱해서 새 발 위치를 계산한다.
+        // groundY(목표 바닥 높이) - (오프셋 * multiplier) = 발이 그 오프셋만큼 아래에 있을 때
+        // 필요한 피벗의 새 Y 위치.
+        float scaledFootOffset = footOffsetAtUnitScale * multiplier;
+        float correctedY = groundY - scaledFootOffset;
+        enemy.transform.position = new Vector3(
+            enemy.transform.position.x, correctedY, enemy.transform.position.z);
+
+        Debug.Log(
+            $"[Enemy Ground Fix] {enemy.name}: 목표 바닥 Y={groundY:0.###}, " +
+            $"발 오프셋(스케일 적용 전)={footOffsetAtUnitScale:0.###}, " +
+            $"발 오프셋(스케일 적용 후)={scaledFootOffset:0.###}, 최종 위치 Y={correctedY:0.###}",
+            enemy);
+
         Debug.Log(
             $"[Enemy Scale] {enemy.name}: model footprint {enemyFootprint:0.##}, " +
             $"tile target {tileFootprint:0.##}, scale multiplier {multiplier:0.###}",

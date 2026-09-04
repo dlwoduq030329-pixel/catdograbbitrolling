@@ -21000,6 +21000,7 @@ GameObject:
   - component: {fileID: 1943288772}
   - component: {fileID: 1943288774}
   - component: {fileID: 1943288775}
+  - component: {fileID: 1943288780}
   m_Layer: 0
   m_Name: BattleGameManager
   m_TagString: Untagged
@@ -21131,6 +21132,7 @@ MonoBehaviour:
   turnButtonController: {fileID: 1943288767}
   diceRollButton: {fileID: 1826625744}
   cardPanelToggle: {fileID: 1062061998}
+  diceSystem: {fileID: 1943288780}
   overlayUi: {fileID: 1943288776}
   playerHealthBinding: {fileID: 1943288777}
   playerActionController: {fileID: 1263296889}
@@ -21147,9 +21149,21 @@ MonoBehaviour:
   debugMaxMoveRange: 6
   currentTurnNumber: 1
   isPlayerTurnActive: 1
-  hasRolledDiceThisTurn: 0
-  currentDiceRoll: 0
   isBattleStopped: 0
+--- !u!114 &1943288780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1943288758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f8e4d21b5364d01a9946e12af33c9b5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  minimumDiceValue: 1
+  maximumDiceValue: 6
 --- !u!114 &1943288766
 MonoBehaviour:
   m_ObjectHideFlags: 0
