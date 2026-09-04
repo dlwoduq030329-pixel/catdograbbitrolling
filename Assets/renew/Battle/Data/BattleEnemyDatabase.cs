@@ -28,9 +28,11 @@ public enum BattleEnemyAttackType
 }
 
 /// <summary>
-/// 플레이어를 감지하지 못했을 때 수행할 기본 행동(설계 의도).
-/// idleBehavior와 아래 wanderRadiusTiles·wanderTilesPerTurn·wanderChance는 현재 어떤 AI 코드에서도 읽지 않는다.
-/// 배회(Wander) 행동 자체가 아직 구현되어 있지 않으므로 기획자가 Inspector에 값을 넣어도 실제 동작에는 영향이 없다.
+/// 플레이어를 감지하지 못했을 때 수행할 기본 행동.
+/// idleBehavior와 아래 wanderRadiusTiles·wanderTilesPerTurn·wanderChance는 EnemyTurnActor.TryWanderStep이
+/// 읽어서 실제로 동작한다(2026-09-04 구현). Wander면 매 턴 wanderChance 확률로 배회 여부를 굴리고,
+/// 성공하면 최초 배회 시도 위치(스폰 지점 근사) 기준 wanderRadiusTiles 반경 안에서 매턴
+/// wanderTilesPerTurn 칸까지 무작위로 인접 이동한다.
 /// </summary>
 public enum EnemyIdleBehavior
 {

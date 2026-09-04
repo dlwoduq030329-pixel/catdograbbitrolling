@@ -158,6 +158,14 @@ public class EnemySpawner : MonoBehaviour
         NormalizeEnemyFootprint(enemy, enemyTile);
         enemy.transform.SetParent(enemyTile, true);
 
+        // 2026-09-05: Enemy 데이터의 prefab이 대부분 콜라이더 없는 순수 모델(FBX)이라, Physics Raycast로
+        // 대상을 찾는 BattleRaycaster.TryGetEnemy/BattleUnitHoverHighlighter가 이 Enemy를 아예 못 맞혀서
+        // 호버 강조·카드 공격·평타가 전부 먹통이었다("카드 및 평타 아예 안 됨" 피드백). Enemy는 Tag가 아니라
+        // Collider를 맞힌 뒤 GetComponentInParent<EnemyTurnActor>()로 찾는 방식이라, 최소한의 Collider가
+        // 반드시 있어야 한다. 이미 (원본 프리팹에) Collider가 있으면 그대로 두고, 없을 때만 모델 Renderer
+        // Bounds(NormalizeEnemyFootprint와 같은 측정 기준) 크기로 BoxCollider를 추가해 채워 넣는다.
+        EnsureEnemyCollider(enemy);
+
         // GetComponentInChildren로 찾는 이유: EnemyDetector는 Prefab에 따라 루트가 아니라
         // 눈 위치를 표현하는 자식 오브젝트에 붙어있을 수 있다(EnemyDetector.eyePoint 참고).
         // BattleComponentResolver.GetOrAdd는 루트에서만 찾고 없으면 루트에 새로 붙이므로,
@@ -206,6 +214,39 @@ public class EnemySpawner : MonoBehaviour
         spawnedEnemies.Add(enemy);
         EnemySpawned?.Invoke(enemy);
         return enemy;
+    }
+
+    /// <summary>
+    /// enemy 하위에 Physics Raycast가 맞힐 Collider가 하나도 없으면(콜라이더 없는 순수 모델 프리팹인 경우)
+    /// 모델의 실제 Renderer Bounds 크기로 BoxCollider를 새로 추가한다. 이미 Collider가 있으면 아무 것도
+    /// 하지 않는다(원본 프리팹이 직접 준비한 Collider를 존중).
+    /// </summary>
+    private static void EnsureEnemyCollider(GameObject enemy)
+    {
+        if (enemy == null || enemy.GetComponentInChildren<Collider>() != null)
+        {
+            return;
+        }
+
+        if (!TryGetVisualBounds(enemy, out Bounds worldBounds))
+        {
+            Debug.LogWarning($"적 생성: Collider·Renderer가 모두 없어 클릭 판정용 Collider를 만들지 못했습니다: {enemy.name}", enemy);
+            return;
+        }
+
+        Vector3 lossyScale = enemy.transform.lossyScale;
+        BoxCollider addedCollider = enemy.AddComponent<BoxCollider>();
+        addedCollider.center = enemy.transform.InverseTransformPoint(worldBounds.center);
+        addedCollider.size = new Vector3(
+            SafeDivide(worldBounds.size.x, lossyScale.x),
+            SafeDivide(worldBounds.size.y, lossyScale.y),
+            SafeDivide(worldBounds.size.z, lossyScale.z));
+    }
+
+    /// <summary>lossyScale 성분이 0에 가까워 나누기가 불안정해지는 경우를 막기 위한 안전한 나눗셈이다.</summary>
+    private static float SafeDivide(float worldSize, float scaleComponent)
+    {
+        return Mathf.Abs(scaleComponent) > 0.0001f ? worldSize / Mathf.Abs(scaleComponent) : worldSize;
     }
 
     /// <summary>

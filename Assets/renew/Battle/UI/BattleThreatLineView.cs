@@ -43,11 +43,47 @@ public sealed class BattleThreatLineView : MonoBehaviour
             int sharedCount = destinationCounts.TryGetValue(lineDestination, out int total) ? total : 1;
             Vector3 endpointOffset = CalculateRadialOffset(slot, sharedCount);
 
-            // 굵은 시작점이 Enemy 쪽에 오도록 position 0을 항상 Enemy로 유지한다.
-            lines[i].SetPosition(0, threat.Enemy.transform.position + Vector3.up * lineHeight);
-            lines[i].SetPosition(1, lineDestination.transform.position + Vector3.up * lineHeight + endpointOffset);
+            LineRenderer line = lines[i];
+
+            // 2026-09-05: 예전에는 Enemy와 목적지, 딱 2점만 직선으로 이었다. 맵에 단차(높이 차이)가
+            // 생긴 뒤로는 그 직선이 두 타일 사이의 지형을 그대로 뚫고 지나가서 이상하게 떠 보이거나
+            // 파묻힌 것처럼 보였다("선이 엉뚱한 데 위치함" 피드백). PathDebugView(AI 경로 디버그 선)와
+            // 같은 방식으로, 계획에 이미 계산돼 있는 경로(threat.Plan.Path)의 타일마다 점을 찍어서
+            // 실제 지형 단차를 따라 꺾이는 선으로 그린다. 겹치는 목적지를 위한 endpointOffset은
+            // 실제 도착 지점인 마지막 점에만 적용한다.
+            IReadOnlyList<MapInfo> path = threat.Plan != null ? threat.Plan.Path : null;
+            int pathTileCount = path != null ? path.Count : 0;
+
+            if (pathTileCount == 0)
+            {
+                // 계획에 경로가 없으면(예: 이동 없이 바로 공격) 예전처럼 Enemy-목적지 2점만 잇는다.
+                line.positionCount = 2;
+                line.SetPosition(0, threat.Enemy.transform.position + Vector3.up * lineHeight);
+                line.SetPosition(1, lineDestination.transform.position + Vector3.up * lineHeight + endpointOffset);
+            }
+            else
+            {
+                line.positionCount = pathTileCount + 1;
+                // 굵은 시작점이 Enemy 쪽에 오도록 position 0을 항상 Enemy로 유지한다.
+                line.SetPosition(0, threat.Enemy.transform.position + Vector3.up * lineHeight);
+                for (int p = 0; p < pathTileCount; p++)
+                {
+                    MapInfo tile = path[p];
+                    Vector3 point = (tile != null ? tile.transform.position : lineDestination.transform.position)
+                        + Vector3.up * lineHeight;
+                    if (p == pathTileCount - 1)
+                    {
+                        // 마지막 점 = 실제 표시 목적지. 여러 Enemy가 같은 칸을 노릴 때 서로 겹치지
+                        // 않도록 여기에만 방사형 분산 오프셋을 더한다.
+                        point += endpointOffset;
+                    }
+
+                    line.SetPosition(p + 1, point);
+                }
+            }
+
             Color color = threat.Intent == EnemyThreatIntent.Attack ? attackColor : chaseColor;
-            lines[i].startColor = lines[i].endColor = color;
+            line.startColor = line.endColor = color;
         }
     }
 

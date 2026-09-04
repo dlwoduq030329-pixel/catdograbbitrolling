@@ -147,14 +147,30 @@ public sealed class BattleHealthBarView : MonoBehaviour
             return;
         }
 
+        Bounds colliderBounds;
         BoxCollider ownerCollider = owner.GetComponentInChildren<BoxCollider>();
-        if (ownerCollider == null)
+        if (ownerCollider != null)
         {
-            Debug.LogWarning($"HP 바 배치에 사용할 BoxCollider가 없습니다: {owner.name}", owner);
+            colliderBounds = ownerCollider.bounds;
+        }
+        else if (TryGetOwnerVisualBounds(owner, out Bounds visualBounds))
+        {
+            // 2026-09-05: 지금 Enemy 데이터의 prefab은 콜라이더 없는 순수 모델(FBX)인 경우가 많다.
+            // 예전에는 BoxCollider가 없으면 여기서 그냥 return해버려서 HP 바가 처음 생성된 위치
+            // (부모 오브젝트 피벗, 보통 발밑 근처)에 그대로 남아 Enemy 모델과 겹쳐 보였다
+            // ("HP가 너무 낮아 Enemy랑 겹친다" 피드백). BoxCollider가 없을 때는 EnemySpawner의
+            // 발판 크기 계산과 같은 방식(MeshRenderer/SkinnedMeshRenderer 합산 Bounds)으로 대체해서
+            // 최소한 모델 머리 위로는 항상 배치되게 한다.
+            colliderBounds = visualBounds;
+            Debug.LogWarning(
+                $"HP 바 배치용 BoxCollider가 없어 모델 Renderer Bounds로 대체합니다: {owner.name}", owner);
+        }
+        else
+        {
+            Debug.LogWarning($"HP 바 배치에 사용할 BoxCollider나 Renderer가 없습니다: {owner.name}", owner);
             return;
         }
 
-        Bounds colliderBounds = ownerCollider.bounds;
         Vector3 center = colliderBounds.center;
         center.y = colliderBounds.max.y + colliderHeightOffset;
 
@@ -372,7 +388,13 @@ public sealed class BattleHealthBarView : MonoBehaviour
             Camera camera = targetCamera != null ? targetCamera : Camera.main;
             if (camera != null)
             {
-                transform.rotation = camera.transform.rotation;
+                // 2026-09-05: 카메라 회전을 통째로(rotation 전체) 복사하면 카메라가 내려다보는
+                // 각도(피치)까지 HP 바가 그대로 물려받아, 카메라가 위에서 아래로 보는 전투 카메라에서는
+                // 바가 세워지지 않고 바닥 쪽으로 눕는 것처럼 보였다("x rotation 값이 이상함" 피드백).
+                // HP 바는 항상 똑바로 세워진 채로 카메라 쪽(좌우, Y축)만 따라 돌아야 하므로,
+                // 카메라의 Y축(좌우 회전)만 반영하고 X·Z는 항상 0으로 고정한다.
+                float cameraYawDegrees = camera.transform.eulerAngles.y;
+                transform.rotation = Quaternion.Euler(0f, cameraYawDegrees, 0f);
             }
 
             return;
@@ -406,6 +428,33 @@ public sealed class BattleHealthBarView : MonoBehaviour
         {
             runtimeProgressMaterial.SetFloat(progressProperty, ratio);
         }
+    }
+
+    /// <summary>
+    /// owner(HP 바 소유자, 보통 Enemy 루트)의 실제 모델 Renderer(MeshRenderer/SkinnedMeshRenderer만) Bounds를
+    /// 합산한다. BoxCollider가 없는 순수 모델 프리팹에서 AlignToBoxCollider가 대신 사용하는 대체 기준이다.
+    /// EnemySpawner.TryGetVisualBounds와 같은 필터링 기준(파티클·UI Renderer 제외)을 그대로 따른다.
+    /// </summary>
+    private static bool TryGetOwnerVisualBounds(GameObject owner, out Bounds bounds)
+    {
+        Renderer[] renderers = owner.GetComponentsInChildren<Renderer>(true);
+        bool found = false;
+        bounds = default;
+        foreach (Renderer renderer in renderers)
+        {
+            if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+            if (!found)
+            {
+                bounds = renderer.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return found;
     }
 
     private void Unsubscribe()
