@@ -96,7 +96,7 @@ public class PlayerMPUI : MonoBehaviour
 
         if (playerManaValueText != null)
         {
-            playerManaValueText.text = $"{currentMana} / {maximumMana}";
+            playerManaValueText.text = $"{currentMana}/{maximumMana}";
         }
 
         UpdateManaCrystals(currentMana, maximumMana);

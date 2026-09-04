@@ -27,10 +27,12 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
 
     private Slider strSlider, vitSlider, dexSlider, wisSlider;
     private DrawState drawState;
+    private PlayerWeapon playerWeapon;
 
     private void OnEnable()
     {
         BindIfNeeded();
+        BindPlayerWeapon();
         Refresh();
         EnsureIgnoresParentHudLock();
         LockBattleInput();
@@ -38,6 +40,10 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged -= HandleEquipmentChanged;
+        // 다시 열릴 때 같은 PlayerWeapon이라도 BindPlayerWeapon이 구독을 복구하도록 참조도 비운다.
+        playerWeapon = null;
         UnlockBattleInput();
     }
 
@@ -80,6 +86,13 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
         weaponBody = FindChild("WeaponBody")?.GetComponent<Image>();
         weaponHead = FindChild("WeaponHead")?.GetComponent<Image>();
 
+        // 이 네 Image에는 구형 weaponIMG도 붙어 있어 OnEnable 때 DataConfig의 0번 장비 이미지를
+        // 다시 덮어쓴다. 현재 Battle에서는 PlayerWeapon이 유일한 장비 상태 원본이므로 구형 갱신을 끈다.
+        DisableLegacyWeaponImageUpdater(weaponR);
+        DisableLegacyWeaponImageUpdater(weaponL);
+        DisableLegacyWeaponImageUpdater(weaponBody);
+        DisableLegacyWeaponImageUpdater(weaponHead);
+
         strSlider = FindChild("STR_Slider")?.GetComponent<Slider>();
         vitSlider = FindChild("VIT_Slider")?.GetComponent<Slider>();
         dexSlider = FindChild("DEX_Slider")?.GetComponent<Slider>();
@@ -93,28 +106,35 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
         drawState = FindChild("Status")?.GetComponent<DrawState>();
     }
 
+    private static void DisableLegacyWeaponImageUpdater(Image equipmentImage)
+    {
+        weaponIMG legacyUpdater = equipmentImage != null
+            ? equipmentImage.GetComponent<weaponIMG>()
+            : null;
+        if (legacyUpdater != null)
+            legacyUpdater.enabled = false;
+    }
+
     public void Refresh()
     {
         BindIfNeeded();
+        BindPlayerWeapon();
         RefreshWeaponIcons();
         RefreshStats();
     }
 
     private void RefreshWeaponIcons()
     {
-        EquipDatabase database = DataPool.Instance != null ? DataPool.Instance.equipDatabase : null;
-        SetEquipIcon(weaponL, database, DataConfig.leftHand);
-        SetEquipIcon(weaponR, database, DataConfig.rightHand);
-        SetEquipIcon(weaponBody, database, DataConfig.body);
-        SetEquipIcon(weaponHead, database, DataConfig.head);
+        SetEquipIcon(weaponL, playerWeapon?.LeftArm.CurrentEquipment);
+        SetEquipIcon(weaponR, playerWeapon?.RightArm.CurrentEquipment);
+        SetEquipIcon(weaponBody, playerWeapon?.Body.CurrentEquipment);
+        SetEquipIcon(weaponHead, playerWeapon?.Head.CurrentEquipment);
     }
 
-    private static void SetEquipIcon(Image image, EquipDatabase database, int equipIndex)
+    private static void SetEquipIcon(Image image, EquipData equipment)
     {
         if (image == null) return;
-        bool valid = database != null && database.equip != null &&
-            equipIndex > 0 && equipIndex < database.equip.Count;
-        image.sprite = valid ? database.equip[equipIndex].myEquipSprite : null;
+        image.sprite = equipment?.myEquipSprite;
         image.enabled = image.sprite != null;
     }
 
@@ -124,9 +144,8 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
     // 씬에 CharactorStatus 인스턴스가 정확히 하나뿐이라 FindFirstObjectByType으로 안전하게
     // 찾을 수 있다.
     //
-    // 장비를 장착해도 그래프가 그대로였던 이유: CharactorStatus는 기본 스탯만 담고 있고,
-    // 장비 스탯 보너스(stroffset 등)는 DataConfig.leftDa/rightDa/bodyDa/headDa(현재 장착된
-    // EquipData 4개)에 들어있다. 이 둘을 합산해서 보여줘야 한다.
+    // CharactorStatus는 기본 스탯을, PlayerWeapon은 현재 장착 장비의 합산 보너스를 소유한다.
+    // 표시할 때만 두 값을 합쳐 기본 스탯 원본이 장비 교체마다 누적 변경되지 않게 한다.
     private void RefreshStats()
     {
         CharactorStatus status = FindFirstObjectByType<CharactorStatus>();
@@ -136,40 +155,46 @@ public sealed class CharacterListUIStatusController : MonoBehaviour
             return;
         }
 
-        int strBonus = 0, dexBonus = 0, wisBonus = 0, vitBonus = 0;
-        AddEquipmentOffsets(DataConfig.leftDa, ref strBonus, ref dexBonus, ref wisBonus, ref vitBonus);
-        // 양손무기는 leftDa와 rightDa가 같은 EquipData를 가리키므로 두 번 더하지 않는다.
-        if (!ReferenceEquals(DataConfig.leftDa, DataConfig.rightDa))
-            AddEquipmentOffsets(DataConfig.rightDa, ref strBonus, ref dexBonus, ref wisBonus, ref vitBonus);
-        AddEquipmentOffsets(DataConfig.bodyDa, ref strBonus, ref dexBonus, ref wisBonus, ref vitBonus);
-        AddEquipmentOffsets(DataConfig.headDa, ref strBonus, ref dexBonus, ref wisBonus, ref vitBonus);
+        PlayerEquipmentStats equipmentStats = playerWeapon != null
+            ? playerWeapon.TotalEquipmentStats
+            : default;
 
         if (drawState != null)
         {
-            // 레이더 차트 + 6개 스탯 텍스트(STR/DEX/INT/WIS/CAR/VIT)를 한 번에 갱신. INT/CAR은
-            // 장비 보너스 시스템이 없어 0으로 둔다.
+            // 레이더 차트와 6개 스탯 텍스트에 기본 스탯과 PlayerWeapon 장비 보너스를 함께 표시한다.
             drawState.SetStatus(status);
-            drawState.SetEquipmentBonus(strBonus, dexBonus, 0, wisBonus, 0, vitBonus);
+            drawState.SetEquipmentBonus(
+                equipmentStats.StrengthBonus,
+                equipmentStats.DexterityBonus,
+                equipmentStats.IntelligenceBonus,
+                equipmentStats.WisdomBonus,
+                equipmentStats.CharismaBonus,
+                equipmentStats.VitalityBonus);
         }
         else
         {
             Debug.LogWarning("[CharacterListUIStatusController] 'Status' 자식에서 DrawState를 찾지 못했습니다.", this);
         }
 
-        SetSlider(strSlider, status.STR + strBonus);
-        SetSlider(vitSlider, status.VIT + vitBonus);
-        SetSlider(dexSlider, status.DEX + dexBonus);
-        SetSlider(wisSlider, status.WIS + wisBonus);
+        SetSlider(strSlider, status.STR + equipmentStats.StrengthBonus);
+        SetSlider(vitSlider, status.VIT + equipmentStats.VitalityBonus);
+        SetSlider(dexSlider, status.DEX + equipmentStats.DexterityBonus);
+        SetSlider(wisSlider, status.WIS + equipmentStats.WisdomBonus);
     }
 
-    private static void AddEquipmentOffsets(EquipData equip, ref int str, ref int dex, ref int wis, ref int vit)
+    private void BindPlayerWeapon()
     {
-        if (equip == null) return;
-        str += equip.stroffset;
-        dex += equip.dexoffset;
-        wis += equip.wisoffset;
-        vit += equip.vitoffset;
+        PlayerWeapon currentPlayerWeapon = BattleGameManager.Instance?.CurrentPlayerWeapon;
+        if (ReferenceEquals(playerWeapon, currentPlayerWeapon)) return;
+
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged -= HandleEquipmentChanged;
+        playerWeapon = currentPlayerWeapon;
+        if (playerWeapon != null)
+            playerWeapon.EquipmentChanged += HandleEquipmentChanged;
     }
+
+    private void HandleEquipmentChanged(PlayerWeapon changedPlayerWeapon) => Refresh();
 
     private static void SetSlider(Slider slider, int value)
     {

@@ -109,15 +109,17 @@ public sealed class BattleHudStatusBridge : MonoBehaviour
     }
 
     /// <summary>
-    /// BattleGameManager의 현재 턴과 DataConfig의 스테이지·골드를 읽어 마지막 표시값과 비교한다.
+    /// BattleGameManager의 현재 턴·스테이지와 현재 Player 지갑의 골드를 읽어 마지막 표시값과 비교한다.
     /// 값이 바뀌었거나 강제 갱신이 요청된 항목만 TMP 텍스트에 다시 쓰고 새 표시값을 캐시에 저장한다.
     /// </summary>
     private void RefreshHudTextIfChanged(bool forceRefresh)
     {
         BattleGameManager battleManager = BattleGameManager.Instance;
         int currentTurn = battleManager != null ? battleManager.CurrentTurn : 0;
-        int currentStage = Mathf.Max(1, DataConfig.stage);
-        int currentGold = Mathf.Max(0, DataConfig.playerMoney);
+        int currentStage = battleManager != null ? battleManager.CurrentStage : 1;
+        int currentGold = battleManager != null && battleManager.CurrentPlayerWallet != null
+            ? battleManager.CurrentPlayerWallet.Gold
+            : 0;
 
         if (hudTurnText != null && (forceRefresh || currentTurn != lastDisplayedTurn))
         {

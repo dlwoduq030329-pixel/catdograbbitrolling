@@ -4,12 +4,12 @@ using UnityEngine.Serialization;
 
 /// <summary>
 /// 전투 씬의 큰 진행 순서를 연결하는 최상위 조정자다.
-/// Player/Enemy 턴 전환, 주사위 사용 여부, 전투 조작 차단 UI, 생성된 Player 배포를 담당한다.
+/// Player/Enemy 턴 전환, 전투 조작 차단 UI, 생성된 Player 배포를 담당한다.
 /// 이동 경로 계산, 카드 효과 계산, Enemy AI 판단은 직접 수행하지 않고 각 전용 컴포넌트에 위임한다.
 ///
 /// 주요 호출 흐름:
 /// BattleUIFlowController가 Player 등록 및 최초 StartPlayerTurn을 요청한다.
-/// RollDice가 이동 범위와 카드 패널을 연 뒤, EndTurn이 Enemy 순차 행동을 시작한다.
+/// BattleDiceSystem의 연출 완료 신호로 이동 범위와 카드 패널을 연 뒤, EndTurn이 Enemy 순차 행동을 시작한다.
 /// BattleEnemyTurnRunner가 모든 Enemy 행동을 마치면 다시 StartPlayerTurn으로 돌아온다.
 /// 상점·보상·캐릭터 정보 UI는 LockBattleInputForOverlay/UnlockBattleInputAfterOverlay로 전투 입력을 잠근다.
 ///
@@ -34,6 +34,9 @@ public class BattleGameManager : MonoBehaviour
     [InspectorName("주사위 버튼 입력·표시 모듈")]
     [Tooltip("주사위 버튼의 누르기 연출과 버튼 표시·활성 상태를 직접 관리합니다.")]
     [SerializeField] private BattleDiceRollButton diceRollButton;
+    [InspectorName("주사위 규칙 시스템")]
+    [Tooltip("이번 턴의 굴림 여부, 주사위 결과와 연출 완료 신호를 관리합니다.")]
+    [SerializeField] private BattleDiceSystem diceSystem;
     [InspectorName("카드 패널 표시 제어 모듈")]
     [Tooltip("주사위를 굴리면 손패를 열고 새 턴 또는 적 턴에는 숨길 카드 패널입니다. 턴 버튼 제어기를 경유하지 않고 직접 제어합니다.")]
     [SerializeField] private BattleCardPanelToggle cardPanelToggle;
@@ -70,6 +73,7 @@ public class BattleGameManager : MonoBehaviour
     [SerializeField, Range(1, 10)] private int debugPlayerMaxMP = 10;
     [InspectorName("Debug maximum movement tiles")]
     [SerializeField, Range(1, 12)] private int debugMaxMoveRange = 6;
+    private BattleQaTeleportController qaTeleportController;
 
     [Header("턴 상태 (런타임 확인용)")] // 턴 관리용 
     [InspectorName("현재 턴 번호")]
@@ -78,15 +82,12 @@ public class BattleGameManager : MonoBehaviour
     [InspectorName("플레이어 턴 여부")]
     [FormerlySerializedAs("isPlayerTurn")]
     [SerializeField] private bool isPlayerTurnActive = true;
-    [InspectorName("이번 턴 주사위 굴림 여부")]
-    [FormerlySerializedAs("diceRolledThisTurn")]
-    [SerializeField] private bool hasRolledDiceThisTurn = false;
-    [InspectorName("현재 주사위 값")]
-    [FormerlySerializedAs("currentDiceValue")]
-    [SerializeField] private int currentDiceRoll = 0;
     [InspectorName("전투 정지 여부")]
     [FormerlySerializedAs("battleStopped")]
     [SerializeField] private bool isBattleStopped;
+    [Header("전투 진행 상태")]
+    [InspectorName("현재 스테이지")]
+    [SerializeField, Min(1)] private int currentStage = 1;
 
 
     /// <summary>Player 등록이 끝난 뒤 카메라·Enemy 감지기 등에 생성된 Player 인스턴스를 전달한다.</summary>
@@ -98,18 +99,16 @@ public class BattleGameManager : MonoBehaviour
     /// <summary>턴·주사위·전투 조작 차단 UI 상태가 바뀌어 카드 사용 가능 여부가 달라졌음을 알린다.</summary>
     public event System.Action<bool> CardUseAvailabilityChanged;
 
-    /// <summary>
-    /// 주사위 입력 처리 결과를 연출 시스템에 알린다.
-    /// true는 실제 주사위 값이 생성됐다는 뜻이고 false는 잘못된 턴 또는 중복 입력으로 거절됐다는 뜻이다.
-    /// </summary>
-    public event System.Action<bool> DiceRolled;
-
     /// <summary>SpawnPlayer가 생성하고 RegisterPlayer가 등록한 실제 전투 Player 오브젝트다.</summary>
     public GameObject CurrentPlayer { get; private set; }
     /// <summary>현재 Player의 턴 자원(MP). 카드·이동·기본 공격 비용이 이 값을 공유한다.</summary>
     public BattleUnitMP CurrentPlayerMP { get; private set; }
     /// <summary>현재 Player의 공격력과 사거리 등 전투 계산에 필요한 읽기 전용 기준 데이터다.</summary>
     public PlayerCombatData CurrentPlayerCombatData { get; private set; }
+    /// <summary>현재 등록된 Player가 직접 소유하는 장비 슬롯과 장비 스탯이다.</summary>
+    public PlayerWeapon CurrentPlayerWeapon { get; private set; }
+    /// <summary>현재 등록된 Player가 직접 소유하는 골드 지갑이다.</summary>
+    public PlayerWallet CurrentPlayerWallet { get; private set; }
     /// <summary>현재 등록된 플레이어의 체력 컴포넌트를 참조한다.</summary>
     public BattleHealth CurrentPlayerHealth => playerHealthBinding?.CurrentHealth;
     /// <summary>전투 시작과 Player 턴 시작에 손패를 구성하는 기존 카드 드로우 시스템 참조다.</summary>
@@ -121,13 +120,17 @@ public class BattleGameManager : MonoBehaviour
     public bool IsBattleStopped => isBattleStopped;
     public bool IsDebugQaBoostEnabled => enableDebugQaBoost;
     public int CurrentTurn => currentTurnNumber;
+    public int CurrentStage => currentStage;
+    /// <summary>이번 Player 턴에 확정된 주사위 값. 아직 굴리지 않았거나 이동 후에는 0이다.</summary>
+    public BattleDiceSystem DiceSystem => diceSystem;
     /// <summary>상점·보상창처럼 뒤쪽 전투 조작을 막는 UI가 하나 이상 열려 있는지 나타낸다.</summary>
     public bool IsBattleBlockingUiOpen => overlayUi != null && overlayUi.IsOverlayOpen;
 
     /// <summary>기존 호출부 호환용 이름. 새 코드에서는 <see cref="IsBattleBlockingUiOpen"/>을 사용한다.</summary>
     public bool IsModalInteractionOpen => IsBattleBlockingUiOpen;
     public bool CanUsePlayerCards =>
-        !isBattleStopped && isPlayerTurnActive && hasRolledDiceThisTurn && !IsBattleBlockingUiOpen;
+        !isBattleStopped && isPlayerTurnActive && diceSystem != null &&
+        diceSystem.HasRolledThisTurn && !IsBattleBlockingUiOpen;
 
 
     /// <summary>
@@ -187,6 +190,9 @@ public class BattleGameManager : MonoBehaviour
 
         // 다른 전투 컴포넌트가 공용 Manager를 찾을 수 있도록 이 Scene의 공식 인스턴스로 등록한다.
         Instance = this;
+        // 현재 메인 진행 코드는 아직 DataConfig에 스테이지를 저장하므로 전투 진입 경계에서 한 번만 가져온다.
+        // 추후 Run/Stage 진행 관리자가 생기면 SetCurrentStage 호출로 교체하고 이 호환 줄을 삭제한다.
+        currentStage = Mathf.Max(1, DataConfig.stage);
         // 이전 전투의 정지 상태와 TimeScale이 남아 새 전투가 멈춘 채 시작되는 것을 방지한다.
         isBattleStopped = false;
         Time.timeScale = 1f;
@@ -200,8 +206,20 @@ public class BattleGameManager : MonoBehaviour
         // 누락된 Inspector 참조를 런타임 자동 생성으로 숨기지 않고 시작 즉시 Console에 표시한다.
         ValidateRequiredReferences();
 
+        // 동적 맵의 상점·상자 UI를 빠르게 검증할 수 있도록 Editor 전용 QA 텔레포트 입력을 연결한다.
+        if (enableDebugQaBoost)
+        {
+            qaTeleportController = BattleComponentResolver.GetOrAdd(gameObject, qaTeleportController);
+            qaTeleportController.Attach(this);
+        }
+
         // UI 모듈은 버튼 클릭을 해석하고, 실제 턴 규칙은 이 Manager의 공개 함수를 호출한다.
         turnButtonController?.BindEndTurnAction(EndTurn);
+        if (diceSystem != null)
+        {
+            diceSystem.DicePresentationCompleted -= HandleDicePresentationCompleted;
+            diceSystem.DicePresentationCompleted += HandleDicePresentationCompleted;
+        }
 
         // Scene에 저장된 최초 턴 상태를 버튼·카드 사용 가능 상태에 즉시 반영한다.
         SyncTurnUI();
@@ -221,9 +239,9 @@ public class BattleGameManager : MonoBehaviour
             return;
         }
 
-        if (!isPlayerTurnActive || !hasRolledDiceThisTurn)
+        if (!isPlayerTurnActive || diceSystem == null || !diceSystem.HasRolledThisTurn)
         {
-            if (isPlayerTurnActive && !hasRolledDiceThisTurn)
+            if (isPlayerTurnActive && (diceSystem == null || !diceSystem.HasRolledThisTurn))
             {
                 Debug.Log("주사위를 굴린 뒤 턴을 종료할 수 있습니다.", this);
             }
@@ -233,8 +251,7 @@ public class BattleGameManager : MonoBehaviour
 
         // 여기서부터 Player 입력 조건을 먼저 끈 뒤 Enemy 턴 코루틴으로 제어권을 넘긴다.
         isPlayerTurnActive = false;
-        hasRolledDiceThisTurn = false;
-        currentDiceRoll = 0;
+        diceSystem.ResetForNewTurn();
         currentTurnNumber++;
         HideCardPanelUntilDice();
         SyncTurnUI();
@@ -278,8 +295,7 @@ public class BattleGameManager : MonoBehaviour
         if (playerTurnSkipped)
         {
             isPlayerTurnActive = false;
-            hasRolledDiceThisTurn = false;
-            currentDiceRoll = 0;
+            diceSystem?.ResetForNewTurn();
             currentTurnNumber++;
             // 실제 버그 수정(2026-08-22, 사용자 확인): 기절로 Player 턴을 건너뛰어도 바로 이어지는
             // Enemy 턴은 그대로 진행되므로, 여기서도 다음 Enemy 턴 MP를 새로 굴려둬야 한다.
@@ -295,8 +311,7 @@ public class BattleGameManager : MonoBehaviour
         // 보호막은 한 Player 턴만 유지되는 규칙이므로 새 Player 턴 시작 시 제거한다.
         CurrentPlayerHealth?.ClearShield();
         // 새 턴에는 아직 주사위를 굴리지 않았으므로 주사위 값과 사용 여부를 초기화한다.
-        hasRolledDiceThisTurn = false;
-        currentDiceRoll = 0;
+        diceSystem?.ResetForNewTurn();
         // 이동·기본 공격·카드가 함께 쓰는 Player MP를 최대치까지 회복한다.
         CurrentPlayerMP?.RestoreFull();
         // Player가 미리 위협 정보를 확인할 수 있도록 다음 Enemy 턴의 MP를 지금 결정한다.
@@ -381,7 +396,7 @@ public class BattleGameManager : MonoBehaviour
     {
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
-        yield return turnAnnouncementView.ShowStageAnnouncement(Mathf.Max(1, DataConfig.stage), 2f);
+        yield return turnAnnouncementView.ShowStageAnnouncement(currentStage, 2f);
         BattleMapCameraInput.SetEnabledOnMainCamera(true);
         UnlockBattleInputAfterOverlay();
     }
@@ -414,6 +429,9 @@ public class BattleGameManager : MonoBehaviour
     /// </summary>
     public void RegisterPlayer(GameObject player)
     {
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged -= HandlePlayerGoldChanged;
+
         // Binder가 Player의 MP·전투 데이터·체력을 찾고 MP UI, 덱, 행동 제어기에 연결한다.
         // Manager는 연결 방법을 알지 않고 성공 여부와 완성된 참조만 돌려받는다.
         if (playerRuntimeBinder == null || !playerRuntimeBinder.TryBind(
@@ -429,6 +447,8 @@ public class BattleGameManager : MonoBehaviour
             CurrentPlayer = null;
             CurrentPlayerMP = null;
             CurrentPlayerCombatData = null;
+            CurrentPlayerWeapon = null;
+            CurrentPlayerWallet = null;
             playerHealthBinding?.Bind(null);
             return;
         }
@@ -437,6 +457,22 @@ public class BattleGameManager : MonoBehaviour
         CurrentPlayer = player;
         CurrentPlayerMP = playerMP;
         CurrentPlayerCombatData = combatData;
+        CurrentPlayerWeapon = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<PlayerWeapon>());
+        CurrentPlayerWallet = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<PlayerWallet>());
+        // 메인 씬의 기존 재화를 잃지 않도록 Player 등록 시 한 번만 레거시 값을 새 지갑으로 이전한다.
+        CurrentPlayerWallet?.InitializeGold(DataConfig.playerMoney);
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged += HandlePlayerGoldChanged;
+
+        BattleEquipVisualBinder equipmentVisualBinder = BattleComponentResolver.GetOrAdd(
+            player,
+            player.GetComponent<BattleEquipVisualBinder>());
+        CurrentPlayerCombatData.Bind(CurrentPlayerWeapon);
+        equipmentVisualBinder?.Bind(CurrentPlayerWeapon);
 
         // SpawnPlayer가 Player Body의 CharactorStatus에 저장한 선택 인덱스를 UI 표현 컴포넌트에 전달한다.
         // 캐릭터 이름이나 Prefab 이름을 검색하지 않으며 Player 등록 시 한 번만 버튼 이미지를 결정한다.
@@ -493,54 +529,69 @@ public class BattleGameManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance != this) return;
+        if (diceSystem != null)
+            diceSystem.DicePresentationCompleted -= HandleDicePresentationCompleted;
+        if (CurrentPlayerWallet != null)
+            CurrentPlayerWallet.GoldChanged -= HandlePlayerGoldChanged;
         overlayUi?.ResetOverlayInputState();
         playerHealthBinding?.ClearBinding();
         Instance = null;
     }
 
+    /// <summary>현재 전투 스테이지를 변경하고 아직 남아 있는 구 진행 코드에도 같은 값을 동기화한다.</summary>
+    public void SetCurrentStage(int stage)
+    {
+        currentStage = Mathf.Max(1, stage);
+        DataConfig.stage = currentStage;
+    }
+
+    /// <summary>PlayerWallet을 재화 원본으로 유지하면서 구 저장 구조에는 결과만 동기화한다.</summary>
+    private static void HandlePlayerGoldChanged(int currentGold)
+    {
+        DataConfig.playerMoney = Mathf.Max(0, currentGold);
+    }
+
 
     /// <summary>
-    /// BattleDiceRollButton이 호출한다. Player 턴에 정확히 한 번만 1~6을 뽑고,
-    /// 결과를 BattlePlayerActionController의 이동 가능 거리로 전달한다. 그 다음 카드 패널을 표시하고
-    /// DiceRolled(true)를 발행한다. 조건 불충족 입력은 상태를 바꾸지 않고 DiceRolled(false)를 발행한다.
+    /// 기존 주사위 버튼 연결을 유지하는 전달 함수다. 실제 굴림과 상태 저장은 BattleDiceSystem이 담당한다.
     /// </summary>
     public void RollDice()
     {
-        if (isBattleStopped || IsBattleBlockingUiOpen)
+        if (diceSystem == null)
         {
+            Debug.LogError("주사위 규칙 시스템 참조가 없어 굴릴 수 없습니다.", this);
             return;
         }
 
-        if (!isPlayerTurnActive || hasRolledDiceThisTurn)
-        {
-            Debug.LogWarning($"주사위 입력 무시: 플레이어 턴={isPlayerTurnActive}, 이미 굴림={hasRolledDiceThisTurn}", this);
-            DiceRolled?.Invoke(false);
-            return;
-        }
-
-        hasRolledDiceThisTurn = true;
-        currentDiceRoll = Random.Range(1, 7);
+        bool canRollNow = !isBattleStopped && !IsBattleBlockingUiOpen && isPlayerTurnActive;
+        if (!diceSystem.TryRollDice(canRollNow))
+            Debug.LogWarning(
+                $"주사위 입력 무시: 플레이어 턴={isPlayerTurnActive}, " +
+                $"이미 굴림={diceSystem.HasRolledThisTurn}", this);
         SyncTurnUI();
+    }
 
-        if (playerActionController != null)
-        {
-            playerActionController.SetMoveRange(currentDiceRoll);
-        }
+    /// <summary>
+    /// Dice System이 연출 완료를 알리면 현재 Player 턴에서 이동 범위와 카드 패널을 연다.
+    /// </summary>
+    private void HandleDicePresentationCompleted(int presentedDiceValue)
+    {
+        if (!isPlayerTurnActive || diceSystem == null ||
+            presentedDiceValue <= 0 || diceSystem.CurrentDiceValue != presentedDiceValue)
+            return;
 
+        playerActionController?.SetMoveRange(presentedDiceValue);
         cardPanelToggle?.Show();
-
-        // 주사위를 실제로 굴렸을 때만 true로 알린다. 추후 주사위 굴리는 연출(VFX)을 여기 걸면 된다.
-        DiceRolled?.Invoke(true);
     }
 
     /// <summary>
     /// 이동이 확정된 뒤 이번 주사위의 숫자 보관값만 0으로 지운다.
-    /// hasRolledDiceThisTurn은 유지하므로 같은 턴에 주사위를 다시 굴릴 수 있게 만드는 함수가 아니다.
+    /// Dice System의 굴림 완료 상태는 유지하므로 같은 턴에 주사위를 다시 굴릴 수 있게 만드는 함수가 아니다.
     /// BattlePlayerActionController가 이동 완료 또는 이동 취소 상태 정리 과정에서 호출한다.
     /// </summary>
     public void ResetDiceOnMove()
     {
-        currentDiceRoll = 0;
+        diceSystem?.ClearDisplayedValueAfterMove();
     }
 
     /// <summary>
@@ -583,7 +634,7 @@ public class BattleGameManager : MonoBehaviour
 
         diceRollButton?.ApplyRollButtonState(
             isPlayerTurnActive,
-            hasRolledDiceThisTurn,
+            diceSystem != null && diceSystem.HasRolledThisTurn,
             isBattleStopped,
             IsBattleBlockingUiOpen);
 
@@ -614,6 +665,7 @@ public class BattleGameManager : MonoBehaviour
     {
         if (turnButtonController == null) Debug.LogError("턴 버튼 제어기 참조가 없습니다.", this);
         if (diceRollButton == null) Debug.LogError("주사위 버튼 입력·표시 모듈 참조가 없습니다.", this);
+        if (diceSystem == null) Debug.LogError("주사위 규칙 시스템 참조가 없습니다.", this);
         if (cardPanelToggle == null) Debug.LogError("카드 패널 표시 제어기 참조가 없습니다.", this);
         if (playerRuntimeBinder == null) Debug.LogError("Player 런타임 연결 모듈 참조가 없습니다.", this);
         if (cardDrawSystem == null) Debug.LogError("카드 드로우 시스템 참조가 없습니다.", this);

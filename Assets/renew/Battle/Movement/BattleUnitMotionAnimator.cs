@@ -14,6 +14,37 @@ public static class BattleUnitMotionAnimator
     private const float RotationDegreesPerSecond = 720f;
 
     /// <summary>
+    /// 현재 위치를 유지한 채 목표 위치의 XZ 방향을 바라볼 때까지 부드럽게 회전한다.
+    /// 점프처럼 이동 전에 방향 전환이 끝나야 하는 연출에서 사용한다.
+    /// </summary>
+    public static IEnumerator RotateTowards(Transform mover, Vector3 facePosition)
+    {
+        if (mover == null)
+        {
+            yield break;
+        }
+
+        Vector3 flatDirection = facePosition - mover.position;
+        flatDirection.y = 0f;
+        if (flatDirection.sqrMagnitude <= 0.0001f)
+        {
+            yield break;
+        }
+
+        Quaternion targetRotation = Quaternion.LookRotation(flatDirection.normalized, Vector3.up);
+        while (Quaternion.Angle(mover.rotation, targetRotation) > 0.1f)
+        {
+            mover.rotation = Quaternion.RotateTowards(
+                mover.rotation,
+                targetRotation,
+                RotationDegreesPerSecond * Time.unscaledDeltaTime);
+            yield return null;
+        }
+
+        mover.rotation = targetRotation;
+    }
+
+    /// <summary>
     /// 지정 시간 동안 현재 위치에서 목표 위치로 이동하고 마지막 위치를 정확히 맞춘다.
     /// 이동하는 동안 진행 방향(XZ 평면 기준)을 바라보도록 함께 회전한다.
     /// </summary>
@@ -70,6 +101,7 @@ public static class BattleUnitMotionAnimator
     /// 시작점과 도착점 사이를 이동하면서 Y축에 포물선 높이를 더해 한 번 뛰는 움직임을 만든다.
     /// 기본 높이 변화는 Vector3.Lerp가 처리하고, sin 곡선은 이동 중간에만 추가 높이를 더하므로
     /// 높은 타일과 낮은 타일 어느 방향으로 이동해도 마지막 위치는 정확히 destinationPosition이 된다.
+    /// 방향 전환은 호출 전에 RotateTowards로 끝내며, 이 함수는 점프 위치 이동만 담당한다.
     /// </summary>
     public static IEnumerator MoveToPositionWithJumpArc(
         Transform mover,
@@ -86,12 +118,6 @@ public static class BattleUnitMotionAnimator
         float clampedJumpHeight = Mathf.Max(0f, jumpArcHeight);
         Vector3 startPosition = mover.position;
 
-        Vector3 flatDirection = destinationPosition - startPosition;
-        flatDirection.y = 0f;
-        Quaternion? lookRotation = flatDirection.sqrMagnitude > 0.0001f
-            ? Quaternion.LookRotation(flatDirection.normalized, Vector3.up)
-            : (Quaternion?)null;
-
         float elapsedSeconds = 0f;
         while (elapsedSeconds < clampedDurationSeconds)
         {
@@ -101,22 +127,10 @@ public static class BattleUnitMotionAnimator
             positionOnDirectPath.y += Mathf.Sin(movementProgress * Mathf.PI) * clampedJumpHeight;
             mover.position = positionOnDirectPath;
 
-            if (lookRotation.HasValue)
-            {
-                mover.rotation = Quaternion.RotateTowards(
-                    mover.rotation,
-                    lookRotation.Value,
-                    RotationDegreesPerSecond * Time.unscaledDeltaTime);
-            }
-
             yield return null;
         }
 
         mover.position = destinationPosition;
-        if (lookRotation.HasValue)
-        {
-            mover.rotation = lookRotation.Value;
-        }
     }
 
     /// <summary>

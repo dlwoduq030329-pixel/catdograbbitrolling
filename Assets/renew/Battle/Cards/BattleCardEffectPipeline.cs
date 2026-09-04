@@ -451,8 +451,12 @@ internal static class BattleCardEffectPipeline
         // 기본 공격 연동 카드는 플레이어의 현재 평타 수치가 바뀌면 카드 피해도 함께 바뀌어야 한다.
         PlayerCombatData playerCombatData = context.Player.GetComponent<PlayerCombatData>();
         BattleBasicAttackBuff basicAttackBuff = context.Player.GetComponent<BattleBasicAttackBuff>();
+        BattleDamageType basicAttackDamageType =
+            context.Card.cardType == BattleCardType.MagicDamage
+                ? BattleDamageType.Magic
+                : BattleDamageType.Physical;
         float baseAttackDamage = playerCombatData != null
-            ? playerCombatData.BasicAttackPower
+            ? playerCombatData.GetBasicAttackPower(basicAttackDamageType)
             : 0f;
         float temporaryBonusDamage = basicAttackBuff != null
             ? basicAttackBuff.BonusDamage

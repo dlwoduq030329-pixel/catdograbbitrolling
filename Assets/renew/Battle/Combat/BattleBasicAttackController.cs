@@ -90,7 +90,7 @@ public sealed class BattleBasicAttackController : MonoBehaviour
             BattleActionType.BasicAttack,
             attackRange,
             actionCost,
-            combatData.BasicAttackPower + GetBasicAttackBonus());
+            combatData.PhysicalBasicAttackPower + GetBasicAttackBonus());
         pendingEnemy = enemy;
         pendingMovementPath = new List<MapInfo>(movementPath);
         originalTile = playerTile;
