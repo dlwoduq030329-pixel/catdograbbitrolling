@@ -66,7 +66,11 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
         // 모델 Animator에 점프 State가 있으면 함께 재생한다. 없는 모델도 위치 포물선은 정상 동작한다.
         BattleCharacterAnimationBridge.PlayState(gameObject, JumpStartAnimationState);
 
-        // 점프 State를 재생한 프레임에 바로 위치 이동을 시작하면 준비 동작이 거의 보이지 않는다.
+        // 이 yield가 실제로 "점프 준비 시간(windup)"을 만드는 지점이다: WaitForSeconds가 끝날 때까지
+        // 코루틴이 여기서 멈춰 있으므로, 바로 위에서 재생한 점프 시작 State(Jump_Idle)만 먼저 화면에
+        // 보이고, 실제 위치 이동(MoveToPositionWithJumpArc)은 jumpTakeoffDelaySeconds가 다 지난 뒤에야
+        // 시작된다. 이 대기가 없으면 State 재생과 포물선 이동이 같은 프레임에 겹쳐서 준비 동작 없이
+        // 순간이동하듯 보인다.
         if (jumpTakeoffDelaySeconds > 0f)
         {
             yield return new WaitForSeconds(jumpTakeoffDelaySeconds);

@@ -52,7 +52,19 @@ public sealed class BattleThreatLineView : MonoBehaviour
             // 실제 지형 단차를 따라 꺾이는 선으로 그린다. 겹치는 목적지를 위한 endpointOffset은
             // 실제 도착 지점인 마지막 점에만 적용한다.
             IReadOnlyList<MapInfo> path = threat.Plan != null ? threat.Plan.Path : null;
-            int pathTileCount = path != null ? path.Count : 0;
+            int fullPathTileCount = path != null ? path.Count : 0;
+
+            // 2026-09-05: 추격(Move) 계획의 threat.Plan.Path는 "목표 타일까지의 전체 최단 경로"이지,
+            // 이번 턴에 실제로 이동하는 칸 수가 아니다(공격 사거리·MP 때문에 도중에 멈춘다). 여기서
+            // 전체 경로를 그대로 그리면 실제로는 몇 칸만 가고 멈추는 Enemy인데도 경고선이 거의
+            // 플레이어 타일까지 쭉 이어져 보였다("추격선이 실제 정지 위치보다 훨씬 더 나가서 그려짐").
+            // PlannedMoveTileCount(이번 턴에 실제로 이동할 칸 수, EnemyTurnPlanner가 계산)까지만 잘라서
+            // 그리면 마지막 점이 정확히 EnemyPredictedDestination과 같은 타일이 된다. 공격(Attack)
+            // 계획은 애초에 Path 전체 길이가 공격 사거리 이내라서 자르면 오히려 목적지에 못 미치게
+            // 짧아지므로 자르지 않는다.
+            int pathTileCount = threat.Intent == EnemyThreatIntent.Attack || threat.Plan == null
+                ? fullPathTileCount
+                : Mathf.Min(fullPathTileCount, threat.Plan.PlannedMoveTileCount);
 
             if (pathTileCount == 0)
             {
@@ -73,8 +85,10 @@ public sealed class BattleThreatLineView : MonoBehaviour
                         + Vector3.up * lineHeight;
                     if (p == pathTileCount - 1)
                     {
-                        // 마지막 점 = 실제 표시 목적지. 여러 Enemy가 같은 칸을 노릴 때 서로 겹치지
-                        // 않도록 여기에만 방사형 분산 오프셋을 더한다.
+                        // 마지막 점 = 실제 표시 목적지(Attack은 PlayerDestination, Move는 위에서 자른
+                        // pathTileCount 덕분에 이 tile이 곧 EnemyPredictedDestination과 같은 타일이
+                        // 된다). 여러 Enemy가 같은 칸을 노릴 때 서로 겹치지 않도록 여기에만 방사형
+                        // 분산 오프셋을 더한다.
                         point += endpointOffset;
                     }
 

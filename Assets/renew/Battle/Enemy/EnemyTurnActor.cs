@@ -8,16 +8,24 @@ using UnityEngine;
 /// EnemyIdleBehavior/wanderRadiusTiles/wanderTilesPerTurn/wanderChance는 이 클래스가 새로 만들지 않고
 /// BattleEnemyDatabase.cs에 이미 있던 BattleEnemyData의 같은 이름 필드(runtimeData.Data)를 그대로 읽는다
 /// (2026-09-04: 배회 행동 자체가 미구현이라는 주석이 있던 그 필드들을 여기서 실제로 구현했다).
+///
+/// 2026-09-05: 파일 하나가 너무 길어져서(원래 580줄대) 같은 클래스를 C# partial class로 4개 파일에
+/// 나눠 담았다 — 로직·필드 접근 범위는 그대로고 어느 파일에 물리적으로 있는지만 바뀐다.
+/// 이 파일(EnemyTurnActor.cs)에는 핵심 턴 진행(TakeTurn)과 컴포넌트/풀 확보만 남기고, 배회(idle
+/// wander) 관련 코드는 EnemyTurnActor.Wander.cs로, MP·공격 비용 계산은 EnemyTurnActor.Costs.cs로,
+/// "이번 턴 쫓을 대상을 누구로 볼지"(ResolveTarget/ResolveNormalTarget)는 EnemyTurnActor.Targeting.cs로
+/// 옮겼다. 타겟팅을 따로 뗀 이유는 나중에 NPC를 지원할 때 정확히 이 부분만 갈아끼우면 되기
+/// 때문이다 — NPC는 이 파일을 건드리지 않고 ResolveTarget이 항상 null만 반환하게 하면, TakeTurn의
+/// "target == null → 배회 분기"가 그대로 타서 자연스럽게 NPC 이동으로 이어진다(설계 논의 참고).
+/// 네 파일 다 반드시 같은 GameObject의 같은 컴포넌트로 합쳐지며, 컴파일 시 한 클래스로 병합된다.
 /// </summary>
-public class EnemyTurnActor : MonoBehaviour
+public partial class EnemyTurnActor : MonoBehaviour
 {
     [Header("적 이동 및 공격 설정")]
     [InspectorName("한 칸 이동 시간")]
     [SerializeField, Min(0.01f)] private float secondsPerTile = 0.2f;
     [InspectorName("공격 사거리 (칸)")]
     [SerializeField, Min(1)] private int attackRangeTiles = 1;
-    [InspectorName("턴당 기본 공격 최대 횟수")]
-    [SerializeField, Min(1)] private int maxBasicAttacksPerTurn = 1;
     [InspectorName("턴당 최대 행동 트리 평가 횟수")]
     [SerializeField, Min(1)] private int maxTreeEvaluationsPerTurn = 16;
     [InspectorName("Attack Damage Type")]
@@ -33,10 +41,7 @@ public class EnemyTurnActor : MonoBehaviour
     [SerializeField, Min(0f)] private float jumpTakeoffDelaySeconds = 0.1f;
     [InspectorName("점프 최고 높이")]
     [SerializeField, Min(0f)] private float jumpArcHeight = 1.5f;
-     
-    /// <summary>배회 중 원래 자리를 기억해 wanderRadiusTiles 밖으로 못 벗어나게 하는 기준점.
-    /// 첫 배회 시도 시점의 타일로 한 번만 설정되고 이후 바뀌지 않는다(스폰 위치 근사).</summary>
-    private MapInfo homeTile;
+
     private float focusLeadInSeconds = 0.5f;
     private float attackImpactDelaySeconds = 0.3f;
     private float afterActionSeconds = 0.4f;
@@ -115,8 +120,11 @@ public class EnemyTurnActor : MonoBehaviour
             return false;
         }
 
-        BattleEnemyControlState controlState = GetComponent<BattleEnemyControlState>();
-        if (controlState != null && controlState.StunTurns > 0)
+        // 2026-09-05: 기절·속박을 BattleEnemyControlState 전용 필드가 아니라 BattleStatusEffects(공용
+        // 상태이상 저장소)에서 직접 읽도록 통합했다(ControlState 클래스는 삭제됨). Player와 완전히 같은
+        // 저장소·같은 감소 시점(플레이어 턴 시작마다)을 쓰므로 표시값과 실제 판정이 항상 일치한다.
+        BattleStatusEffects statusEffects = GetComponent<BattleStatusEffects>();
+        if (statusEffects != null && statusEffects.Has(BattleStatusType.Stun))
         {
             // 기절 중인 Enemy는 다음 자기 턴에 행동하지 않으므로 공격·추격 표시를 만들지 않는다.
             return false;
@@ -135,14 +143,14 @@ public class EnemyTurnActor : MonoBehaviour
                 attackRangeTiles,
                 characterMP.CurrentMP,
                 GetMoveCostPerTile(),
-                GetBasicAttackCost(0),
+                GetBasicAttackCost(),
                 out plan))
         {
             return false;
         }
 
         // 속박은 공격은 허용하지만 이동은 막는다. 실제 TakeTurn과 같은 규칙으로 Move 예측만 제거한다.
-        return controlState == null || controlState.RootTurns <= 0 || !plan.WillChase;
+        return statusEffects == null || !statusEffects.Has(BattleStatusType.Root) || !plan.WillChase;
     }
 
     /// <summary>적 행동에 필요한 감지, 인식, 경로 표시 참조와 공용 행동 트리를 준비한다.
@@ -167,17 +175,17 @@ public class EnemyTurnActor : MonoBehaviour
         ResolveComponents();
         ResolveBattleDataPool();
         ActedThisTurn = false;
-        BattleEnemyControlState controlState = GetComponent<BattleEnemyControlState>();
-        bool isRooted = false;
-        if (controlState != null)
+        // 2026-09-05: 예전에는 BattleEnemyControlState가 기절·속박 지속 턴을 따로 들고 있다가 이 Enemy의
+        // 공식 턴이 돌 때마다 한 번씩 스스로 깎았다(ConsumeTurn). 지금은 BattleStatusEffects(Player와
+        // 공유하는 공용 상태이상 저장소) 하나만 쓰고, 감소는 BattleGameManager가 플레이어 턴 시작마다
+        // 호출하는 BattleStatusEffects.ProcessAllPlayerTurnStart()에서 다른 상태이상(독·화상 등)과 함께
+        // 똑같이 처리되므로, 여기서는 더 이상 턴을 깎지 않고 현재 상태만 읽는다.
+        BattleStatusEffects statusEffects = GetComponent<BattleStatusEffects>();
+        bool isRooted = statusEffects != null && statusEffects.Has(BattleStatusType.Root);
+        if (statusEffects != null && statusEffects.Has(BattleStatusType.Stun))
         {
-            // 상태 지속 턴은 Enemy 자신의 공식 턴 시작 시 한 번만 소비한다. Preview는 이 함수를 호출하지 않는다.
-            controlState.ConsumeTurn(out bool isStunned, out isRooted);
-            if (isStunned)
-            {
-                Debug.Log($"{name}: 기절 상태로 이번 턴을 행동하지 않습니다.", this);
-                yield break;
-            }
+            Debug.Log($"{name}: 기절 상태로 이번 턴을 행동하지 않습니다.", this);
+            yield break;
         }
         int basicAttackCount = 0;
 
@@ -201,7 +209,7 @@ public class EnemyTurnActor : MonoBehaviour
             HashSet<MapInfo> occupiedTiles =
                 mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
             int moveCostPerTile = GetMoveCostPerTile();
-            int basicAttackCost = GetBasicAttackCost(basicAttackCount);
+            int basicAttackCost = GetBasicAttackCost();
 
             bool planCreated = EnemyTurnPlanner.TryCreatePlan(
                 this,
@@ -307,112 +315,6 @@ public class EnemyTurnActor : MonoBehaviour
         Debug.LogWarning($"{name}: 행동 트리 최대 평가 횟수에 도달하여 턴을 종료합니다.", this);
     }
 
-    /// <summary>attackRangeTiles/attackDamageType과 같은 패턴으로, ConfigureFromData가 이미 복사해 둔
-    /// idleBehavior 필드를 그대로 반환한다(= 원본 BattleEnemyData.idleBehavior와 같은 값이면서, Play 모드
-    /// Inspector의 "Movement Type"에서 지금 이 Enemy가 정적/배회 중 뭔지 바로 확인할 수 있다).</summary>
-    private EnemyIdleBehavior GetIdleBehavior()
-    {
-        return idleBehavior;
-    }
-
-    /// <summary>
-    /// idleBehavior가 Wander이고 이번 턴 감지된 Player가 없을 때 호출된다. BattleEnemyData의
-    /// wanderChance 확률로 이번 턴 배회 여부를 먼저 굴리고, 성공하면 wanderTilesPerTurn 만큼
-    /// 한 칸씩 인접 타일로 이동한다. 이동 가능(IsWalkable), 다른 Enemy 비점유, homeTile(첫 배회 시점
-    /// 위치, 스폰 지점 근사) 기준 wanderRadiusTiles 이내라는 세 조건을 모두 만족하는 타일만 후보로 삼는다.
-    /// 매 스텝을 완전히 독립적으로 무작위 선택하면(2026-09-04 초기 구현) 방금 온 칸으로 바로 되돌아가는
-    /// 왔다갔다 지그재그가 자주 나와 "멍청해 보인다"는 피드백을 받아, 직전에 있던 칸(previousTile)은
-    /// 다른 후보가 있는 한 이번 스텝 후보에서 제외해 최소한 제자리 왕복은 피하게 했다.
-    /// 목표를 향한 추격이 아니라 그냥 주변을 서성이는 용도라 공격 사거리 개념이 없고, 매 칸마다
-    /// 후보가 없거나 MP가 부족해지면 그 자리에서 조용히 배회를 멈춘다.
-    /// </summary>
-    private IEnumerator TryWanderStep(BattleCameraRig cameraRig)
-    {
-        BattleEnemyData data = runtimeData != null ? runtimeData.Data : null;
-        float wanderChance = data != null ? data.wanderChance : 0.6f;
-        int wanderRadiusTiles = data != null ? data.wanderRadiusTiles : 3;
-        int wanderTilesPerTurn = Mathf.Max(1, data != null ? data.wanderTilesPerTurn : 1);
-
-        if (UnityEngine.Random.value > wanderChance)
-        {
-            // 배회 확률 실패 — 이번 턴은 그냥 가만히 있는다.
-            yield break;
-        }
-
-        ResolveBattleDataPool();
-        IReadOnlyList<MapInfo> mapTiles = mapContext.GetMapTiles(battleDataPool);
-        MapInfo currentTile = MapPathfinder.FindClosestTile(transform.position, mapTiles);
-        if (currentTile == null)
-        {
-            yield break;
-        }
-
-        // homeTile은 처음 배회를 시도한 그 위치로 한 번만 고정한다(스폰 지점 근사). 이후 계속 이 기준으로
-        // wanderRadiusTiles를 재는데, 정확한 스폰 타일을 별도로 기억하지 않는 현재 구조에서 가장 단순하고
-        // 안전한 근사치다(스폰 직후 첫 배회 시도 위치 = 스폰 위치와 사실상 같다).
-        if (homeTile == null)
-        {
-            homeTile = currentTile;
-        }
-
-        int movedTiles = 0;
-        MapInfo previousTile = null;
-        for (int step = 0; step < wanderTilesPerTurn; step++)
-        {
-            HashSet<MapInfo> occupiedTiles = mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
-
-            List<MapInfo> wanderCandidates = new List<MapInfo>(4);
-            List<MapInfo> wanderCandidatesExcludingBacktrack = new List<MapInfo>(4);
-            MapInfo[] neighbours = { currentTile.Up, currentTile.Down, currentTile.Left, currentTile.Right };
-            foreach (MapInfo neighbour in neighbours)
-            {
-                if (neighbour == null || !neighbour.IsWalkable || occupiedTiles.Contains(neighbour))
-                {
-                    continue;
-                }
-
-                int distanceFromHome =
-                    Mathf.Abs(neighbour.Index.x - homeTile.Index.x) +
-                    Mathf.Abs(neighbour.Index.y - homeTile.Index.y);
-                if (distanceFromHome > wanderRadiusTiles)
-                {
-                    continue;
-                }
-
-                wanderCandidates.Add(neighbour);
-                if (neighbour != previousTile)
-                {
-                    wanderCandidatesExcludingBacktrack.Add(neighbour);
-                }
-            }
-
-            // 방금 있던 칸으로 되돌아가는 선택지는, 그것 말고 갈 곳이 아예 없을 때(막다른 길)만 허용한다.
-            List<MapInfo> effectiveCandidates =
-                wanderCandidatesExcludingBacktrack.Count > 0 ? wanderCandidatesExcludingBacktrack : wanderCandidates;
-
-            if (effectiveCandidates.Count == 0)
-            {
-                break;
-            }
-
-            int moveCostPerTile = GetMoveCostPerTile();
-            if (characterMP == null || characterMP.CurrentMP < Mathf.Max(1, moveCostPerTile))
-            {
-                break;
-            }
-
-            MapInfo destinationTile = effectiveCandidates[UnityEngine.Random.Range(0, effectiveCandidates.Count)];
-            yield return BeginActionFocus(cameraRig);
-            yield return actionExecutor.MoveToSingleTile(destinationTile, currentTile, moveCostPerTile);
-            movedTiles++;
-            previousTile = currentTile;
-            currentTile = destinationTile;
-        }
-
-        if (movedTiles > 0 && afterActionSeconds > 0f)
-            yield return new WaitForSecondsRealtime(afterActionSeconds);
-    }
-
     /// <summary>이번 턴 첫 실제 행동(이동 또는 공격) 직전에 한 번만 카메라를 이 Enemy로 포커스하고
     /// 기존과 동일하게 0.2초 대기한다. 같은 턴에 이동 후 공격처럼 행동이 이어져도 카메라 포커스와
     /// 대기는 한 번만 발생한다.</summary>
@@ -452,99 +354,6 @@ public class EnemyTurnActor : MonoBehaviour
 
         if (target == null || !target.gameObject.activeInHierarchy) yield break;
         actionExecutor.TryApplyBasicAttackDamage(gameObject, target.gameObject, damage, attackDamageType);
-    }
-
-    /// <summary>도발(허수아비) 대상이 있으면 최우선으로 반환하고, 없으면 평소 타겟팅(ResolveNormalTarget)으로
-    /// 넘어간다. null 대비용 보험 코드가 아니라 "도발 우선순위"를 구현하는 실제 분기다.</summary>
-    private Transform ResolveTarget()
-    {
-        Transform tauntTarget = BattleScarecrowSummon.FindNearest(transform.position);
-        return tauntTarget != null ? tauntTarget : ResolveNormalTarget();
-    }
-
-    /// <summary>도발이 없을 때의 일반 타겟팅. awareness가 이미 기억 중인 Target이 있으면 그대로 쓰고,
-    /// 없으면 detector가 직접 감지한 Player를 확인해 처음으로 발견됐다면 awareness에 기억시킨다.
-    /// "해제"가 아니라 "결정/획득" 의미의 Resolve다.</summary>
-    private Transform ResolveNormalTarget()
-    {
-        if (awareness != null && awareness.HasTarget)
-        {
-            return awareness.Target;
-        }
-
-        Transform detectedTarget = detector != null ? detector.PlayerTarget : null;
-        if (detectedTarget != null && detector.CanDetectPlayer(detectedTarget))
-        {
-            awareness?.SetTarget(detectedTarget);
-            return detectedTarget;
-        }
-
-        return null;
-    }
-
-    /// <summary>DB(runtimeData.Data)에 설정된 타일당 이동 MP 비용을 반환한다. runtimeData/Data가
-    /// 비어 있는 것은 정상 상황이 아니므로, 기본값 1로 대체하되 경고 로그를 남겨 데이터 연결 누락을
-    /// 바로 알아챌 수 있게 한다(사용자 요청: 보험 코드가 조용히 넘어가지 않도록).</summary>
-    private int GetMoveCostPerTile()
-    {
-        int cost;
-        if (runtimeData != null && runtimeData.Data != null)
-        {
-            cost = Mathf.Max(1, runtimeData.Data.moveMPCostPerTile);
-        }
-        else
-        {
-            cost = 1;
-            Debug.LogWarning($"{name}: runtimeData/Data가 없어 이동 MP 비용을 기본값 1로 사용합니다.", this);
-        }
-
-        BattleStatusEffects status = GetComponent<BattleStatusEffects>();
-        return status != null ? status.ModifyMoveCost(cost) : cost;
-    }
-
-    /// <summary>이번 적 턴에 사용할 MP를 data.minTurnMP~maxTurnMP 범위에서 매번 새로 무작위로 뽑는다
-    /// (누적/회복이 아니라 매 턴 새 값으로 덮어씀). data가 없으면 MaxMP까지 전부 회복시킨다.</summary>
-    private void RollTurnMP()
-    {
-        if (characterMP == null) return;
-
-        BattleEnemyData data = runtimeData != null ? runtimeData.Data : null;
-        if (data == null)
-        {
-            characterMP.RestoreFull();
-            return;
-        }
-
-        int minimum = Mathf.Clamp(data.minTurnMP, 0, characterMP.MaxMP);
-        int maximum = Mathf.Clamp(data.maxTurnMP, minimum, characterMP.MaxMP);
-        int turnMP = Random.Range(minimum, maximum + 1);
-        characterMP.SetCurrentMP(turnMP);
-        Debug.Log($"{name}: turn MP rolled {turnMP} ({minimum}-{maximum})", this);
-    }
-
-    /// <summary>플레이어 턴 시작 시 다음 적 턴에 사용할 MP를 한 번만 결정한다.</summary>
-    public void PrepareNextTurnMP()
-    {
-        ResolveComponents();
-        RollTurnMP();
-    }
-
-    /// <summary>같은 턴 안에서 기본 공격을 반복할수록(successfulAttackCount) 비용이 (횟수+1)배로 커지는
-    /// 점진적 증가 계산이다. 이동 후 공격 비용을 다시 계산하는 코드가 아니다.
-    /// 단, 현재 TakeTurn은 기본 공격 1회 성공 시 바로 턴을 끝내므로(위 switch의 Attack 분기, basicAttackCount>=1 -> yield break)
-    /// successfulAttackCount가 0보다 커지는 경우가 실제로 없어 이 배율 로직은 현재 도달 불가 상태다.
-    /// 같은 이유로 위쪽 maxBasicAttacksPerTurn 필드도 선언만 되어 있고 어디서도 읽히지 않는 죽은 설정이다.
-    /// 턴당 여러 번 공격을 허용하는 기믹 Enemy를 만들 때 함께 정리해야 한다.</summary>
-    private int GetBasicAttackCost(int successfulAttackCount)
-    {
-        int baseCost = runtimeData != null && runtimeData.Data != null
-            ? Mathf.Max(0, runtimeData.Data.basicAttackMPCost)
-            : 1;
-        int cost = BattleAttackCostService.CalculateRepeatedAttackCost(
-            baseCost,
-            successfulAttackCount);
-        BattleStatusEffects status = GetComponent<BattleStatusEffects>();
-        return status != null ? status.ModifyAttackCost(cost) : cost;
     }
 
     /// <summary>Player가 아니라 씬에 하나 있는 공용 BattleDataPool(타일/유닛 데이터 풀)을 찾아 캐시한다.

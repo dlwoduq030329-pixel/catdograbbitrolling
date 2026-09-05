@@ -163,13 +163,9 @@ public class BattleEnemyDatabase : ScriptableObject
             : null;
     }
 
-    /// <summary>
-    /// 고유 ID가 일치하는 첫 데이터를 반환한다.
-    /// 2026-08-21 기준 코드베이스 전체에서 호출부가 없는 미사용 API다(유령 코드 후보). id 기반 조회가 필요한
-    /// 기능(예: 특정 보스 강제 스폰)이 생기기 전까지는 삭제 후보로 남겨둔다.
-    /// </summary>
-    public BattleEnemyData FindById(string id)
-    {
-        return enemies.Find(enemy => enemy != null && enemy.id == id);
-    }
+    // 2026-09-05: 여기 있던 FindById(string id)는 2026-08-21 기준으로도 이미 호출부가 없던 미사용
+    // API라 정리하며 제거했다. id 기반 조회가 필요한 기능(예: 특정 보스 강제 스폰)이 생기면
+    // `enemies.Find(enemy => enemy != null && enemy.id == id)` 한 줄로 다시 만들 수 있다(git 이력
+    // 참고). 리뷰에서 읽은 파일 범위 안에서는 호출부를 찾지 못했지만, 전체 코드베이스를 grep한 것은
+    // 아니므로 IDE의 "모든 참조 찾기"로 한 번 더 확인해보는 걸 권장한다.
 }

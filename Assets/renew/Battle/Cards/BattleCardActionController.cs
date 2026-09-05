@@ -530,9 +530,12 @@ public sealed class BattleCardActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// [2] 카드 Pipeline이 요청한 상태이상을 대상 Unit의 공용 상태 저장소에 적용한다.
-    /// BattleStatusEffects는 독·화상·동상 같은 공용 상태를 저장하고, BattleEnemyControlState는
-    /// 실제 행동을 막아야 하는 기절·속박을 별도로 적용한다. 두 저장소의 중복은 상태 시스템 통합 전 기술부채다.
+    /// [2] 카드 Pipeline이 요청한 상태이상을 대상 Unit의 공용 상태 저장소(BattleStatusEffects)에 적용한다.
+    /// 2026-09-05: 예전에는 기절·속박만 BattleEnemyControlState라는 Enemy 전용 저장소에 따로 한 번 더
+    /// 적용했다(같은 상태를 두 군데에 이중으로 기록). 그 중복은 표시되는 지속 턴(BattleStatusEffects,
+    /// 누적 합산)과 실제 행동 차단 판정(ControlState, 최댓값 갱신)이 서로 어긋나는 원인이었다. 지금은
+    /// EnemyTurnActor가 기절·속박도 BattleStatusEffects만 읽도록 바뀌어 ControlState 자체가 삭제됐으므로,
+    /// 여기서도 모든 상태이상을 BattleStatusEffects.Apply() 한 번으로만 적용하면 된다.
     /// </summary>
     private void ApplyStatusToUnit(GameObject unit, BattleStatusType type, int turns)
     {
@@ -547,23 +550,6 @@ public sealed class BattleCardActionController : MonoBehaviour
         // 상태 아이콘 View가 새 저장소를 구독하게 한다. BindStatusSource는 기존 구독을 먼저 해제해
         // 같은 저장소가 다시 전달돼도 Changed 이벤트가 중복 등록되지 않는다.
         unit.GetComponent<BattleEnemyStatusView>()?.BindStatusSource(effects);
-
-        // 기절·속박은 목록에 표시하는 것만으로 부족하고 Enemy 행동 자체를 막아야 한다.
-        if (type == BattleStatusType.Stun || type == BattleStatusType.Root)
-        {
-            BattleEnemyControlState control = unit.GetComponent<BattleEnemyControlState>();
-            if (control == null)
-            {
-                Debug.LogError(
-                    $"{unit.name}에게 {type}을 적용할 수 없습니다: " +
-                    "BattleEnemyControlState가 Enemy Prefab에 없습니다.",
-                    unit);
-                return;
-            }
-
-            if (type == BattleStatusType.Stun) control.ApplyStun(turns);
-            else control.ApplyRoot(turns);
-        }
     }
 
     /// <summary>[1][7] 카드 선택 상태를 초기화하고 상위 UI에도 사용 취소를 알린다.</summary>

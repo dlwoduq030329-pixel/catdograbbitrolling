@@ -8,9 +8,12 @@ using UnityEngine;
 /// </summary>
 public enum BattleStatusType
 {
-    /// <summary>기절: Player는 다음 행동 턴 전체를 건너뛴다. Enemy 제어는 현재 BattleEnemyControlState에도 중복되어 있어 통합 예정이다.</summary>
+    /// <summary>기절: Player와 Enemy 모두 다음 행동 턴 전체를 건너뛴다. 2026-09-05: Enemy 전용
+    /// BattleEnemyControlState 중복 저장소를 폐지하고 이 저장소 하나로 통합했다(EnemyTurnActor가
+    /// Has(Stun)을 직접 읽는다).</summary>
     Stun,
-    /// <summary>속박: 공격은 가능하지만 이동할 수 없다. 현재 Enemy 제어 데이터와 중복되어 있어 통합 예정이다.</summary>
+    /// <summary>속박: 공격은 가능하지만 이동할 수 없다. 2026-09-05: Enemy 전용 BattleEnemyControlState
+    /// 중복 저장소를 폐지하고 이 저장소 하나로 통합했다(EnemyTurnActor가 Has(Root)를 직접 읽는다).</summary>
     Root,
     /// <summary>독: Player 턴 시작마다 현재 HP의 10% × 중첩 피해를 받고 최대 2중첩된다.</summary>
     Poison,

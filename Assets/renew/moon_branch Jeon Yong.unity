@@ -6330,9 +6330,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   secondsPerTile: 0.2
   attackRangeTiles: 1
-  maxBasicAttacksPerTurn: 1
   maxTreeEvaluationsPerTurn: 16
   attackDamageType: 0
+  idleBehavior: 0
+  jumpTakeoffDelaySeconds: 0.1
+  jumpArcHeight: 1.5
 --- !u!114 &504054629 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4215891331075040105, guid: a033f65915b3b9b40a057c13c7a41897,
