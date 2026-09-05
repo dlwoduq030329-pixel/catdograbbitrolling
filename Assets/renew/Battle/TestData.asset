@@ -15,7 +15,9 @@ MonoBehaviour:
   enemies:
   - id: melee_physical_test
     displayName: Melee Physical
-    prefab: {fileID: 919132149155446097, guid: 4f7270712a10a0b42a60059d9da5147a, type: 3}
+    spawnRole: 0
+    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
+      type: 3}
     rank: 1
     attackType: 0
     attackDamageType: 0
@@ -38,7 +40,9 @@ MonoBehaviour:
     wanderChance: 1
   - id: melee_magic_test
     displayName: Melee Magic
-    prefab: {fileID: 919132149155446097, guid: 4f7270712a10a0b42a60059d9da5147a, type: 3}
+    spawnRole: 0
+    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
+      type: 3}
     rank: 1
     attackType: 0
     attackDamageType: 1
@@ -61,7 +65,9 @@ MonoBehaviour:
     wanderChance: 0
   - id: ranged_physical_test
     displayName: Ranged Physical
-    prefab: {fileID: 919132149155446097, guid: 4f7270712a10a0b42a60059d9da5147a, type: 3}
+    spawnRole: 0
+    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
+      type: 3}
     rank: 1
     attackType: 1
     attackDamageType: 0
@@ -84,7 +90,9 @@ MonoBehaviour:
     wanderChance: 0
   - id: ranged_magic_test
     displayName: Ranged Magic
-    prefab: {fileID: 919132149155446097, guid: 4f7270712a10a0b42a60059d9da5147a, type: 3}
+    spawnRole: 0
+    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
+      type: 3}
     rank: 1
     attackType: 1
     attackDamageType: 1

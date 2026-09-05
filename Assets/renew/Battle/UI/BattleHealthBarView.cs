@@ -193,6 +193,17 @@ public sealed class BattleHealthBarView : MonoBehaviour
 
         transform.position = center;
 
+        // 2026-09-05: 여기서 계산한 위치는 이번 프레임에만 유지된다 — 바로 아래 Bind() 호출로
+        // worldTarget이 채워지면, 그 다음부터는 매 프레임 LateUpdate의 UpdateWorldPosition()이
+        // "worldTarget.position + worldOffset"로 transform.position을 무조건 덮어써서 방금 계산한
+        // Collider 기준 위치가 다음 프레임에 바로 사라진다. worldOffset은 모든 Enemy가 공유하는
+        // 고정값(기본 +1.5)이라, Enemy 확대 배율이 커지면(예: allowEnemyUpscaling 활성화 후) 실제
+        // 모델 키를 못 따라가 HP 바가 모델 속에 파묻히는 원인이 됐다("업스케일 켰더니 HP바가 Enemy한테
+        // 숨겨짐" 피드백). 그래서 이 Enemy의 실제 피벗(owner.transform.position, Bind()가 넘길
+        // worldTarget과 같은 기준점) 대비 머리 위 높이를 여기서 직접 계산해 worldOffset에 담아두면,
+        // 이후 매 프레임 추적도 이 Enemy의 실제 크기에 맞는 높이를 그대로 쓰게 된다.
+        worldOffset = new Vector3(worldOffset.x, center.y - owner.transform.position.y, worldOffset.z);
+
         Renderer barRenderer = progressRenderer != null
             ? progressRenderer
             : GetComponentInChildren<Renderer>(true);

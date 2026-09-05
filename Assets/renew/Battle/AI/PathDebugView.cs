@@ -17,6 +17,10 @@ public class PathDebugView : MonoBehaviour
     [SerializeField] private float pathHeight = 0.35f;
     [InspectorName("경로 두께")]
     [SerializeField] private float pathWidth = 0.08f;
+    [InspectorName("선 재질 (비우면 기본 재질 사용)")]
+    [Tooltip("비워두면 예전처럼 Sprites/Default(안티앨리어싱 없는 각진 재질)로 자동 대체된다. " +
+             "글로우·그라디언트가 있는 재질을 여기 꽂으면 선이 거칠어 보이는 문제를 없앨 수 있다.")]
+    [SerializeField] private Material lineMaterial;
 
     private LineRenderer lineRenderer;
     private bool hasPath;
@@ -85,7 +89,9 @@ public class PathDebugView : MonoBehaviour
         lineRenderer.endWidth = pathWidth;
         lineRenderer.startColor = pathColor;
         lineRenderer.endColor = pathColor;
-        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        // 2026-09-05: lineMaterial을 인스펙터에 꽂아두면 그걸 그대로 쓰고, 비어 있을 때만 예전처럼
+        // 즉석 기본 재질(Sprites/Default, 안티앨리어싱 없는 각진 Unlit)로 대체한다("선이 거칠어 보임" 피드백).
+        lineRenderer.material = lineMaterial != null ? lineMaterial : new Material(Shader.Find("Sprites/Default"));
         lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         lineRenderer.receiveShadows = false;
     }

@@ -19,7 +19,7 @@ public sealed class BattleEnemyTurnRunner : MonoBehaviour
     [Header("Enemy 턴 페이싱")]
     [InspectorName("한 칸 이동 시간 (초)")]
     [Tooltip("값이 클수록 적이 타일 사이를 천천히 이동합니다.")]
-    [SerializeField, Min(0.01f)] private float movementSecondsPerTile = 0.35f;
+    [SerializeField, Min(0.01f)] private float movementSecondsPerTile = 0.5f;
     [InspectorName("행동 전 카메라 집중 시간 (초)")]
     [Tooltip("적이 실제 이동하거나 공격하기 전에 카메라가 적을 보여주는 시간입니다.")]
     [SerializeField, Min(0f)] private float focusLeadInSeconds = 0.5f;
@@ -34,7 +34,7 @@ public sealed class BattleEnemyTurnRunner : MonoBehaviour
     [SerializeField, Min(0f)] private float betweenEnemiesSeconds = 0.25f;
     [InspectorName("적 턴 종료 후 대기 시간 (초)")]
     [Tooltip("마지막 적 행동이 끝난 뒤 플레이어 턴 연출로 넘어가기 전까지의 시간입니다.")]
-    [SerializeField, Min(0f)] private float afterEnemyTurnSeconds = 0.7f;
+    [SerializeField, Min(0f)] private float afterEnemyTurnSeconds = 2f;
     /// <summary>가장 최근 RunAll 실행에서 실제로 이동/공격한 Enemy가 하나라도 있었는지 여부.
     /// BattleGameManager가 다음 Player 턴의 페이드·배너 표시 여부를 결정할 때 사용한다.</summary>
     public bool AnyEnemyActedLastRun { get; private set; }

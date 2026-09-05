@@ -5,8 +5,10 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// 전투 화면의 좌클릭, 우클릭, ESC 입력을 감지해 화면 좌표와 함께 전달한다.
+/// 전투 화면의 좌클릭, ESC 입력을 감지해 화면 좌표와 함께 전달한다.
 /// 입력에 따른 이동, 공격, 취소 규칙은 판단하지 않는다.
+/// 2026-09-05: 기본 공격 대상 지정과 카드 대상 지정에 쓰이던 우클릭 입력을 좌클릭으로 통합하면서
+/// RightClickRequested 이벤트와 우클릭 감지 코드를 제거했다. 구독자는 BattlePlayerActionController 하나뿐이었다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattlePlayerInputReader : MonoBehaviour
@@ -18,7 +20,6 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
     [InspectorName("이동·공격 사거리 토글 키")]
     [SerializeField] private KeyCode rangeToggleKey = KeyCode.R;
     public event Action<Vector2> LeftClickRequested;
-    public event Action<Vector2> RightClickRequested;
     public event Action CancelRequested;
     /// <summary>Player를 클릭하지 않고도 단축키로 이동·공격 사거리를 켜고 끌 때 발생한다.</summary>
     public event Action RangeToggleRequested;
@@ -48,13 +49,8 @@ public sealed class BattlePlayerInputReader : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             // 클릭 1회 = 좌클릭 이벤트 1회. 더블클릭이나 연타를 별도로 묶어서 처리하지 않고
-            // 매번 그대로 전달하며, 그 클릭이 이동 확정인지 취소인지는 구독자가 결정한다.
+            // 매번 그대로 전달하며, 그 클릭이 이동 확정·공격·카드 대상 지정 중 무엇인지는 구독자가 결정한다.
             LeftClickRequested?.Invoke(pointerPosition);
-        }
-
-        if (Input.GetMouseButtonDown(1))
-        {
-            RightClickRequested?.Invoke(pointerPosition);
         }
     }
 

@@ -32,6 +32,11 @@ public partial class EnemyTurnActor : MonoBehaviour
     [SerializeField] private BattleDamageType attackDamageType = BattleDamageType.Physical;
     [InspectorName("Movement Type")]
     [SerializeField] private EnemyIdleBehavior idleBehavior = EnemyIdleBehavior.Stationary;
+    [InspectorName("스폰 역할")]
+    [Tooltip("BattleEnemyData.spawnRole을 그대로 미러링한 값이다. 2026-09-05: NPC/Mercenary 파이프라인을 " +
+             "준비해 두기 위해 값만 여기까지 옮겨왔고, 이 값을 읽어서 실제로 다르게 동작하는 코드(예: " +
+             "ResolveTarget이 NPC일 때 null을 반환하는 것)는 아직 없다 ")]
+    [SerializeField] private SpawnRole spawnRole = SpawnRole.Enemy;
 
     // Player의 BattlePlayerActionController(jumpTakeoffDelaySeconds/jumpArcHeight)와 같은 역할이다.
     // 2026-09-04: Player처럼 단차 이동 시 방향 전환 후 점프하는 연출을 Enemy에도 옮겨달라는 요청으로 추가,
@@ -68,19 +73,27 @@ public partial class EnemyTurnActor : MonoBehaviour
     public bool ActedThisTurn { get; private set; }
 
     // 아래 9개는 전부 이 Enemy 하나가 자기 턴을 처리하는 데 필요한 "런타임 참조"다(공용/싱글턴 아님).
-    // detector: 시야 감지(EnemyDetector, 자식 오브젝트에 있을 수 있음). awareness: 감지 후 기억하는 Target.
-    // pathDebugView: 이동 경로 디버그 표시. characterMP: 이 Enemy의 MP. runtimeData: BattleEnemyData(공격력 등 원본 스탯)로 가는 다리.
-    // behaviorTree: 이동/공격 중 무엇을 할지 판단하는 공용 행동 트리 인스턴스. battleDataPool: 현재 전투의 타일/유닛 풀(Enemy 전체가 공유).
-    // actionExecutor: 실제 이동/기본공격 실행기. mapContext: 타일 조회/다른 Enemy 점유 타일 조회.
-    private EnemyDetector detector;
-    private EnemyAwareness awareness;
-    private PathDebugView pathDebugView;
-    private BattleUnitMP characterMP;
-    private BattleEnemyRuntimeData runtimeData;
+    // 2026-09-05: 역할별로 그룹을 나눠 정리했다 — 선언 순서만 바뀌었을 뿐 로직은 그대로다.
+
+    // 인지(Perception): "플레이어를 봤는지/기억하는지"만 담당. 실제 이동·공격 판단에는 관여하지 않는다.
+    private EnemyDetector detector;   // 시야 감지. 자식 오브젝트(eyePoint)에 붙을 수 있어 GetComponentInChildren로 찾는다.
+    private EnemyAwareness awareness; // 한 번 감지된 대상을 시야 밖에서도 계속 기억하는 저장소.
+
+    // 데이터/스탯(Data): 이 Enemy 개체의 원본 수치와 현재 자원.
+    private BattleEnemyRuntimeData runtimeData; // BattleEnemyData(공격력·MP 범위 등 원본 스탯)로 가는 다리.
+    private BattleUnitMP characterMP;           // 이 Enemy의 현재 MP.
+
+    // 판단(Decision): 이동/공격 중 뭘 할지 결정하는 공용 행동 트리 인스턴스.
     private BehaviorNode behaviorTree;
-    private BattleDataPool battleDataPool;
-    private BattleEnemyActionExecutor actionExecutor;
-    private BattleEnemyMapLookup mapContext;
+
+    // 월드/공유 자원(World): 씬에 하나뿐인 공용 풀과, 그걸 통해 타일을 조회하는 헬퍼.
+    private BattleDataPool battleDataPool;   // 현재 전투의 타일/유닛 풀(Enemy 전체가 공유).
+    private BattleEnemyMapLookup mapContext; // 타일 조회, 다른 Enemy가 점유한 타일 조회.
+
+    // 실행(Execution) / 디버그(Debug)
+    private BattleEnemyActionExecutor actionExecutor; // 실제 이동·기본공격 실행기.
+    private PathDebugView pathDebugView;              // 이동 경로 디버그 표시(플레이 중 R키 표시용).
+
 
     /// <summary>Spawner가 선택한 DB 데이터 중 행동 판단에 필요한 값을 적용한다.</summary>
     public void ConfigureFromData(BattleEnemyData data)
@@ -93,7 +106,22 @@ public partial class EnemyTurnActor : MonoBehaviour
         attackRangeTiles = Mathf.Max(1, data.attackRangeTiles);
         attackDamageType = data.attackDamageType;
         idleBehavior = data.idleBehavior;
+        spawnRole = data.spawnRole;
     }
+
+    /// <summary>
+    /// 이 Enemy가 스폰될 때 부여된 역할(Enemy/NPC/Mercenary)이다. NPC·Mercenary 전용 동작(예: 공격
+    /// 대상을 아예 찾지 않는 것)은 아직 이 값을 읽어서 분기하는 코드가 없다 — 이후 그 로직을 붙일 때
+    /// 이 접근자를 사용하면 된다.
+    /// </summary>
+    /// <summary>
+    /// 이 Enemy가 스폰될 때 데이터에서 지정된 역할이다. 값 자체는 BattleEnemyData.spawnRole →
+    /// ConfigureFromData()를 거쳐 여기 복사된 것뿐이고, 지금 이 클래스 어디에서도 이 값을 읽어서
+    /// 실제로 다르게 행동하는 코드는 없다(전부 SpawnRole.Enemy처럼 동작). NPC/Mercenary 전용 동작
+    /// (예: ResolveTarget이 NPC일 때 항상 null을 반환해 공격을 아예 안 하게 만드는 것)을 나중에
+    /// 붙일 때 이 값을 읽는 지점이 되라고 미리 열어둔 접근자다.
+    /// </summary>
+    public SpawnRole SpawnRole => spawnRole;
 
     /// <summary>
     /// Player가 후보 타일로 이동했다고 가정했을 때 이 Enemy가 다음 턴에 선택할 행동을 계산한다.
@@ -101,10 +129,10 @@ public partial class EnemyTurnActor : MonoBehaviour
     /// Preview 전용 추정 공식과 실제 AI 판단이 서로 달라지는 문제를 막는다.
     /// 이 함수는 상태이상 턴을 소비하거나 이동·공격을 실행하지 않는다.
     /// </summary>
-    public bool TryPredictResponseToPlayerTile(MapInfo hypotheticalPlayerTile, out EnemyTurnPlan plan)
+    public bool TryPredictResponseToPlayerTile(MapInfo previewPlayerTile, out EnemyTurnPlan plan)
     {
         plan = null;
-        if (hypotheticalPlayerTile == null)
+        if (previewPlayerTile == null)
         {
             return false;
         }
@@ -132,13 +160,15 @@ public partial class EnemyTurnActor : MonoBehaviour
 
         IReadOnlyList<MapInfo> mapTiles = mapContext.GetMapTiles(battleDataPool);
         MapInfo enemyTile = MapPathfinder.FindClosestTile(transform.position, mapTiles);
-        HashSet<MapInfo> occupiedTiles = mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
+        // previewPlayerTile을 넘겨서, 그 타일이 하필 Shop/Chest 타일이어도 예측 경로가 막히지 않게 한다.
+        HashSet<MapInfo> occupiedTiles =
+            mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles, previewPlayerTile);
         if (!EnemyTurnPlanner.TryCreatePlan(
                 this,
                 behaviorTree,
                 playerTarget,
                 enemyTile,
-                hypotheticalPlayerTile,
+                previewPlayerTile,
                 occupiedTiles,
                 attackRangeTiles,
                 characterMP.CurrentMP,
@@ -206,8 +236,9 @@ public partial class EnemyTurnActor : MonoBehaviour
             IReadOnlyList<MapInfo> mapTiles = mapContext.GetMapTiles(battleDataPool);
             MapInfo startTile = MapPathfinder.FindClosestTile(transform.position, mapTiles);
             MapInfo targetTile = MapPathfinder.FindClosestTile(target.position, mapTiles);
+            // targetTile을 넘겨서, 추격 대상이 하필 Shop/Chest 타일 위에 있어도 그 타일까지는 도달할 수 있게 한다.
             HashSet<MapInfo> occupiedTiles =
-                mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles);
+                mapContext.FindOtherEnemyTiles(battleDataPool, this, mapTiles, targetTile);
             int moveCostPerTile = GetMoveCostPerTile();
             int basicAttackCost = GetBasicAttackCost();
 
@@ -229,6 +260,12 @@ public partial class EnemyTurnActor : MonoBehaviour
                 // 허수아비에 접근할 수 없으면 도발 때문에 턴을 버리지 않고 원래 Player를 노린다.
                 target = ResolveNormalTarget();
                 targetTile = target != null ? MapPathfinder.FindClosestTile(target.position, mapTiles) : null;
+                // occupiedTiles는 위에서 이전 targetTile(허수아비 타일) 기준으로 만들어졌으므로, 새로
+                // 목표로 바뀐 targetTile이 Shop/Chest 타일이라면 여기서 다시 한번 빼줘야 도달 가능하다.
+                if (targetTile != null)
+                {
+                    occupiedTiles.Remove(targetTile);
+                }
                 planCreated = EnemyTurnPlanner.TryCreatePlan(
                     this,
                     behaviorTree,
@@ -263,6 +300,12 @@ public partial class EnemyTurnActor : MonoBehaviour
                         Debug.Log($"{name}: 속박 상태라 이번 턴에 이동할 수 없습니다.", this);
                         yield break;
                     }
+                    // 2026-09-05: DrawPath는 행동 실행 직전 딱 한 번 transform.position을 스냅샷 떠서
+                    // 그려두는데, 그 뒤 실제 이동(MoveAlongPath)이 몇 초에 걸쳐 진행되는 동안은 다시
+                    // 그려주지 않아 디버그선이 "출발 전 위치"에 멈춰 있는 것처럼 보였다("Enemy 이동 중
+                    // 선이 안 따라옴" 피드백). 실제 이동을 시작하는 이 시점에 선을 지워서, 걷는 동안은
+                    // 멈춘 선이 남지 않게 하고 다음 루프 평가 때 새 계획으로 다시 그리게 한다.
+                    pathDebugView?.Clear();
                     yield return BeginActionFocus(cameraRig);
                     yield return actionExecutor.MoveAlongPath(
                         currentPlan.Path,

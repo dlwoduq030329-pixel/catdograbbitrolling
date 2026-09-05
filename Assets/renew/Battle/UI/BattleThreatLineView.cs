@@ -11,6 +11,9 @@ public sealed class BattleThreatLineView : MonoBehaviour
     [SerializeField, Min(0.01f)] private float destinationEndWidth = 0.045f;
     [SerializeField] private float lineHeight = 0.65f;
     [SerializeField, Min(0f)] private float sharedDestinationSpread = 0.35f;
+    [Tooltip("비워두면 예전처럼 Sprites/Default(안티앨리어싱 없는 각진 재질)로 자동 대체된다. " +
+             "글로우·그라디언트가 있는 재질을 여기 꽂으면 선이 거칠어 보이는 문제를 없앨 수 있다.")]
+    [SerializeField] private Material lineMaterial;
 
     private readonly List<LineRenderer> lines = new List<LineRenderer>();
     private Material sharedMaterial;
@@ -130,7 +133,9 @@ public sealed class BattleThreatLineView : MonoBehaviour
 
     private void EnsureLineCount(int requiredCount)
     {
-        if (sharedMaterial == null) sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+        // 2026-09-05: lineMaterial을 인스펙터에 꽂아두면 그걸 공용 재질로 쓰고, 비어 있을 때만
+        // 예전처럼 즉석 기본 재질(Sprites/Default)로 대체한다("선이 거칠어 보임" 피드백).
+        if (sharedMaterial == null) sharedMaterial = lineMaterial != null ? lineMaterial : new Material(Shader.Find("Sprites/Default"));
         while (lines.Count < requiredCount)
         {
             GameObject child = new GameObject("Enemy Threat Line");
@@ -149,6 +154,8 @@ public sealed class BattleThreatLineView : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (sharedMaterial != null) Destroy(sharedMaterial);
+        // lineMaterial을 인스펙터에서 꽂아준 에셋이면 이 컴포넌트가 파괴할 소유권이 없으므로,
+        // 직접 즉석 생성한 기본 재질(lineMaterial이 비어 있었을 때)만 파괴한다.
+        if (sharedMaterial != null && sharedMaterial != lineMaterial) Destroy(sharedMaterial);
     }
 }

@@ -131,12 +131,13 @@ public class BattlePlayerCardFlow : MonoBehaviour
     }
 
     /// <summary>
-    /// BattlePlayerActionController.HandleRightClick()이 전달한 화면 좌표로 카드 대상 Enemy 또는 Tile을 찾는다.
+    /// BattlePlayerActionController.HandleLeftClick()이 카드 대상 선택 중(cardFlow.IsSelectingTarget)일 때
+    /// 최우선으로 전달하는 화면 좌표로 카드 대상 Enemy 또는 Tile을 찾는다.
     /// 이동 연출 중이거나 Pointer가 UI 위에 있으면 월드 선택을 막는다. 카드 데이터의 TargetType에 따라
     /// Enemy Raycast와 Tile Raycast 중 필요한 것만 실행하고, 유효한 대상을 카드 Controller에 저장한다.
-    /// 현재 우클릭 입력 구조이며 좌클릭 통일 작업에서는 상위 호출 경로와 함께 변경해야 한다.
+    /// 2026-09-05: 기본 공격 대상 지정과 함께 우클릭에서 좌클릭으로 통합했다(이름도 함께 변경).
     /// </summary>
-    public void HandleTargetRightClick(Vector2 pointerPosition)
+    public void HandleTargetClick(Vector2 pointerPosition)
     {
         if (owner.IsAnyActionMoving)
         {

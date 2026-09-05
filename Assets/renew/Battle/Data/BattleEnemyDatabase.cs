@@ -60,6 +60,23 @@ public enum EnemyAIProfileType
 }
 
 /// <summary>
+/// 스폰될 유닛이 Enemy(전투 대상)인지, 싸우지 않는 NPC인지, 나중에 추가될 용병(Mercenary)인지 구분한다.
+/// 2026-09-05: NPC/Mercenary 파이프라인 설계 논의에서 나온 값만 미리 준비해 둔 것이다 — 이 enum과
+/// 아래 BattleEnemyData.spawnRole 필드, EnemyTurnActor.ConfigureFromData의 복사 지점까지만 여기서
+/// 만들어 두고, 실제로 NPC/Mercenary가 이 값을 읽어서 다르게 동작하는 코드(예: EnemyTurnActor.Targeting.cs의
+/// ResolveTarget이 NPC일 때 null을 반환하게 하는 것 등)는 아직 구현하지 않았다 — 그건 다음 작업으로 남겨둔다.
+/// </summary>
+public enum SpawnRole
+{
+    [InspectorName("적 (Enemy)")]
+    Enemy,
+    [InspectorName("NPC")]
+    NPC,
+    [InspectorName("용병 (Mercenary)")]
+    Mercenary
+}
+
+/// <summary>
 /// Enemy 한 종류의 프리팹, 전투 수치, 고정 MP, AI 설정을 묶은 직렬화 데이터다.
 /// 런타임 상태는 저장하지 않으며 BattleEnemyDatabase 에셋 안에서 편집한다.
 /// </summary>
@@ -71,6 +88,10 @@ public class BattleEnemyData
     public string id;
     [InspectorName("표시 이름")]
     public string displayName;
+    [InspectorName("스폰 역할")]
+    [Tooltip("Enemy/NPC/Mercenary 구분만 담는 값이다. 지금은 어떤 코드도 이 값을 읽어서 분기하지 않으며, " +
+             "NPC·Mercenary 전용 동작은 이후 별도 작업에서 구현한다.")]
+    public SpawnRole spawnRole = SpawnRole.Enemy;
     [InspectorName("적 프리팹")]
     public GameObject prefab;
     [InspectorName("등급")]

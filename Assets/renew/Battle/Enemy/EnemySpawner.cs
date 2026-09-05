@@ -278,6 +278,10 @@ public class EnemySpawner : MonoBehaviour
             return;
         }
 
+        // lossyScale은 이 Transform 자신의 localScale이 아니라 부모 체인 전체를 다 곱한 "최종 월드 배율"이다
+        // (예: 부모가 2배, 이 오브젝트가 3배면 localScale은 3이지만 lossyScale은 2*3=6). worldBounds는
+        // 월드 좌표 기준 크기라서, 이걸 Collider.size(부모 기준 로컬 크기)로 되돌리려면 부모 배율까지
+        // 포함한 lossyScale로 나눠야 정확하다 — localScale로 나누면 부모가 스케일된 경우 값이 어긋난다.
         Vector3 lossyScale = enemy.transform.lossyScale;
         BoxCollider addedCollider = enemy.AddComponent<BoxCollider>();
         addedCollider.center = enemy.transform.InverseTransformPoint(worldBounds.center);
@@ -351,7 +355,7 @@ public class EnemySpawner : MonoBehaviour
         // 꺼져 있으면 1배를 넘겨서 확대하지 않고(원본보다 작은 모델만 축소 대상), minimumScaleMultiplier로
         // 너무 작아지는 것도 막는다.
         float multiplier = tileFootprint / enemyFootprint;
-        if (!allowEnemyUpscaling)
+        if (!allowEnemyUpscaling) 
         {
             multiplier = Mathf.Min(1f, multiplier);
         }
@@ -403,6 +407,14 @@ public class EnemySpawner : MonoBehaviour
     /// <summary>
     /// 이 Enemy의 실제 모델 크기(MeshRenderer·SkinnedMeshRenderer만)를 합산한 Bounds를 구한다.
     /// 파티클이나 런타임에 붙는 UI(체력바 등) Renderer는 모델 크기가 아니므로 측정에서 제외한다.
+    /// 2026-09-05: SkinnedMeshRenderer.bounds를 BakeMesh로 직접 다시 구워서 대체해보려 했으나(같은
+    /// 프레임 stale bounds 이론), 두 번의 시도 모두(useScale 처리 실수, 이후 TransformPoint 재계산까지)
+    /// GreenSlime 프리팹에서 실제 렌더 크기와 전혀 안 맞는 값(10배 과대, 이후엔 0.06m로 과소)만
+    /// 만들어냈다. 검증 없이 이론만으로 고친 게 원인이라 판단해 원래의 단순한 renderer.bounds
+    /// 읽기로 되돌린다 — Unity가 내부 컬링에도 쓰는 값이라 최소한 "말이 안 되는 숫자"는 안 나온다.
+    /// 참고: 이 함수는 클릭·호버 판정과는 무관하다(그건 BattleRaycaster가 Collider를 직접 맞히는 방식).
+    /// 여기서 구한 크기는 EnsureEnemyCollider(콜라이더 크기)와 NormalizeEnemyFootprint(타일 맞춤 배율)
+    /// 계산의 재료로만 쓰인다.
     /// </summary>
     private static bool TryGetVisualBounds(GameObject owner, out Bounds bounds)
     {

@@ -151,7 +151,6 @@ public class BattlePlayerActionController : MonoBehaviour
         if (battlePlayerInputReader != null)
         {
             battlePlayerInputReader.LeftClickRequested -= HandleLeftClick;
-            battlePlayerInputReader.RightClickRequested -= HandleRightClick;
             battlePlayerInputReader.CancelRequested -= HandleCancelInput;
             battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
         }
@@ -249,8 +248,12 @@ public class BattlePlayerActionController : MonoBehaviour
     }
 
     /// <summary>
-    /// 이동 가능 타일을 첫 번째 좌클릭으로 선택하고, 같은 타일을 제한 시간 안에
-    /// 두 번째로 좌클릭하면 이동을 확정한다. Player 본체 클릭은 더 이상 이동 확정 입력이 아니다.
+    /// 좌클릭 하나로 이동 목적지 선택/확정, 카드 대상 지정, Enemy 기본 공격 대상 지정을 모두 처리한다.
+    /// 2026-09-05: 원래 우클릭 전용이던 카드 대상 지정·기본 공격 지정을 좌클릭으로 통합했다.
+    /// 우선순위는 (1) 카드 대상 선택 중이면 카드 대상 지정 (2) Player 본체 클릭 (3) 기본 공격 대상 지정
+    /// (4) 이동 목적지 선택 순서다. 카드 대상 선택 중에는 다른 분기로 내려가지 않고 곧바로 반환하며,
+    /// 이동 가능 타일을 첫 번째 좌클릭으로 선택하고 같은 타일을 제한 시간 안에 두 번째로 좌클릭하면
+    /// 이동을 확정한다. Player 본체 클릭은 더 이상 이동 확정 입력이 아니다.
     /// </summary>
     private void HandleLeftClick(Vector2 pointerPosition)
     {
@@ -261,6 +264,14 @@ public class BattlePlayerActionController : MonoBehaviour
 
         if (BattlePlayerInputReader.IsPointerOverInteractiveUI(pointerPosition))
         {
+            return;
+        }
+
+        // 카드 대상 선택 중인 좌클릭은 오직 카드 대상 지정 용도로만 쓰인다. 이 상태에서는
+        // Player 클릭이나 이동 목적지 선택으로 새지 않도록 여기서 곧바로 처리하고 반환한다.
+        if (cardFlow.IsSelectingTarget)
+        {
+            cardFlow.HandleTargetClick(pointerPosition);
             return;
         }
 
@@ -287,6 +298,16 @@ public class BattlePlayerActionController : MonoBehaviour
             }
             else
                 moveFlow.ShowMoveRange();
+            return;
+        }
+
+        // 기본 공격 대상 지정: 예전에는 우클릭 전용이었던 분기를 그대로 좌클릭으로 옮긴 것이다.
+        // 조건(주사위 굴림, 사거리 표시 중, 다른 행동 진행 중 아님)은 기존 우클릭 분기와 동일하다.
+        if (turnActionState.DiceRolled && rangeVisible && !moveFlow.IsAwaitingConfirmation &&
+            !IsBasicAttackActive && !IsCardActionActive &&
+            TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
+        {
+            attackFlow.TryBegin(enemy);
             return;
         }
 
@@ -347,35 +368,6 @@ public class BattlePlayerActionController : MonoBehaviour
         }
     }
 
-    /// <summary>우클릭은 카드 대상 및 Enemy 기본 공격 선택에만 사용한다. 일반 이동은 좌클릭 전용이다.</summary>
-    private void HandleRightClick(Vector2 pointerPosition)
-    {
-        if (cardFlow.IsSelectingTarget)
-        {
-            cardFlow.HandleTargetRightClick(pointerPosition);
-            return;
-        }
-
-        if (!turnActionState.DiceRolled || !rangeVisible ||
-            IsAnyActionMoving || moveFlow.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
-        {
-            return;
-        }
-
-        if (BattlePlayerInputReader.IsPointerOverInteractiveUI(pointerPosition))
-        {
-            return;
-        }
-
-        if (TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
-        {
-            attackFlow.TryBegin(enemy);
-            return;
-        }
-
-        // 일반 이동 목적지는 좌클릭으로만 선택한다. 빈 바닥 우클릭은 현재 이동 선택을
-        // 변경하거나 범위를 닫지 않는다.
-    }
 
     /// <summary>Player 본체 또는 자식 Collider가 클릭됐는지 검사한다.</summary>
     private bool TryRaycastPlayer(Vector2 pointerPosition, out GameObject clickedPlayer)
@@ -598,11 +590,9 @@ public class BattlePlayerActionController : MonoBehaviour
     {
         battlePlayerInputReader = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerInputReader);
         battlePlayerInputReader.LeftClickRequested -= HandleLeftClick;
-        battlePlayerInputReader.RightClickRequested -= HandleRightClick;
         battlePlayerInputReader.CancelRequested -= HandleCancelInput;
         battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
         battlePlayerInputReader.LeftClickRequested += HandleLeftClick;
-        battlePlayerInputReader.RightClickRequested += HandleRightClick;
         battlePlayerInputReader.CancelRequested += HandleCancelInput;
         battlePlayerInputReader.RangeToggleRequested += HandleRangeToggleRequested;
     }
