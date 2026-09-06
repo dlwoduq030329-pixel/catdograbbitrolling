@@ -132,7 +132,14 @@ public class SpawnPlayer : MonoBehaviour
         // 여기서는 화면이 완전히 검게 덮인 뒤 HUD를 켜고 다시 밝게 되돌리기만 하면 된다.
         yield return new WaitForSeconds(1f);
         hudCanvas.gameObject.SetActive(true);
-
+        
+        yield return new WaitForSeconds(1f);
+        FogOfWarManager.Instance.Reveal(
+            player.transform.position
+        );
+        //RevealManager.Instance.StartReveal();
+        //FogOfWarManager.Instance.SetPlayer(playerBody.transform);
+        //FogOfWarManager.Instance.StartFog(); 
         loading.FadeIn();
     }
 }
