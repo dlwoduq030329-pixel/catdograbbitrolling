@@ -15,11 +15,13 @@ public sealed class BattleDamageNumberPresenter : MonoBehaviour
 {
     [Header("데미지 숫자 배치")]
     [InspectorName("플레이어 피격 위치 보정")]
-    [Tooltip("플레이어가 피해를 받았을 때 숫자를 띄울 기준점(피격 대상 Collider 중심)에서 더할 오프셋입니다.")]
-    [SerializeField] private Vector3 playerDamageNumberOffset = new Vector3(0f, 1.2f, 0f);
+    // 좌우(X)를 0으로 두면 숫자가 유닛 정중앙 위에 뜨는데, 그 자리는 HP바가 차지하고 있어서 숫자가
+    // HP바 뒤에 가려지거나 겹쳐 보인다. X에 살짝 값을 줘서 HP바를 피해 옆으로 비켜서 뜨게 한다.
+    [Tooltip("플레이어가 피해를 받았을 때 숫자를 띄울 기준점(피격 대상 Collider 중심)에서 더할 오프셋입니다. X를 살짝 틀어 HP바와 겹치지 않게 합니다.")]
+    [SerializeField] private Vector3 playerDamageNumberOffset = new Vector3(-0.8f, 1.2f, 0f);
     [InspectorName("적 피격 위치 보정")]
-    [Tooltip("적이 피해를 받았을 때 숫자를 띄울 기준점에서 더할 오프셋입니다.")]
-    [SerializeField] private Vector3 enemyDamageNumberOffset = new Vector3(0f, 1.2f, 0f);
+    [Tooltip("적이 피해를 받았을 때 숫자를 띄울 기준점에서 더할 오프셋입니다. X를 살짝 틀어 HP바와 겹치지 않게 합니다.")]
+    [SerializeField] private Vector3 enemyDamageNumberOffset = new Vector3(0.8f, 1.2f, 0f);
     [InspectorName("좌우 무작위 흩뿌림 범위")]
     [Tooltip("같은 대상이 짧은 시간 안에 여러 번 맞아 숫자가 완전히 겹쳐 보이지 않도록 스폰 위치에 좌우로 " +
              "더할 무작위 오프셋의 최대 폭입니다. 0이면 흩뿌리지 않습니다.")]

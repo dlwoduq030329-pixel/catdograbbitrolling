@@ -21,7 +21,7 @@ public class CamMoving : MonoBehaviour
         timelineGo.time = 0;
         timelineGo.Evaluate();
         timelineGo.Play();
-
+         
     }
 
     public void DiceEnd()

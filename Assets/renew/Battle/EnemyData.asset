@@ -13,51 +13,202 @@ MonoBehaviour:
   m_Name: EnemyData
   m_EditorClassIdentifier: 
   enemies:
-  - id: Test
-    displayName: Test
-    prefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3,
+  - id: green_slime
+    displayName: Green Slime
+    spawnRole: 0
+    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
       type: 3}
-    rank: 0
+    rank: 1
     attackType: 0
     attackDamageType: 0
     maxHP: 9
-    attackDamage: 1
+    attackDamage: 2
     attackRangeTiles: 1
     attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
-    minTurnMP: 1
+    minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
     basicAttackMPCost: 1
     aiProfile: 0
     detectRange: 10
     alertRange: 10
-    idleBehavior: 0
+    idleBehavior: 1
     wanderRadiusTiles: 5
-    wanderTilesPerTurn: 5
-    wanderChance: 0
-  - id: Test
-    displayName: Test
-    prefab: {fileID: 6131674962547215903, guid: e9b8d8407671b6740aff8dfbf15b86e3,
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: red_slime
+    displayName: Red Slime
+    spawnRole: 0
+    prefab: {fileID: 7283421184823144213, guid: 2662beb15d4e68c45bc26fd87c270920,
       type: 3}
-    rank: 0
+    rank: 1
     attackType: 0
     attackDamageType: 0
-    maxHP: 9
-    attackDamage: 1
+    maxHP: 8
+    attackDamage: 3
     attackRangeTiles: 1
     attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
-    minTurnMP: 1
+    minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
     basicAttackMPCost: 1
     aiProfile: 0
     detectRange: 10
     alertRange: 10
-    idleBehavior: 0
+    idleBehavior: 1
     wanderRadiusTiles: 5
-    wanderTilesPerTurn: 5
-    wanderChance: 0
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: blue_slime
+    displayName: Blue Slime
+    spawnRole: 0
+    prefab: {fileID: 780427262304984094, guid: 65b613408636f9745b6adefa8bfe6164, type: 3}
+    rank: 1
+    attackType: 0
+    attackDamageType: 0
+    maxHP: 11
+    attackDamage: 1
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: goblin
+    displayName: Goblin
+    spawnRole: 0
+    prefab: {fileID: 3812377382162701999, guid: 459e93d922c91cd4695017bc087b0fb3,
+      type: 3}
+    rank: 1
+    attackType: 0
+    attackDamageType: 0
+    maxHP: 9
+    attackDamage: 2
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: goblin_mage
+    displayName: Goblin Mage
+    spawnRole: 0
+    prefab: {fileID: 8626112183665077562, guid: 844df648dc2b3d843a54a8ba4abeb065,
+      type: 3}
+    rank: 1
+    attackType: 1
+    attackDamageType: 1
+    maxHP: 7
+    attackDamage: 2
+    attackRangeTiles: 4
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: werewolf
+    displayName: Werewolf
+    spawnRole: 0
+    prefab: {fileID: 6818404413805830165, guid: 2a46d2b72f04cae4fa65fe0452159f5e,
+      type: 3}
+    rank: 2
+    attackType: 0
+    attackDamageType: 0
+    maxHP: 18
+    attackDamage: 3
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: orc
+    displayName: Orc
+    spawnRole: 0
+    prefab: {fileID: 6663876601543625584, guid: bb45b7e50e02538459b33fd6d085bd9a,
+      type: 3}
+    rank: 2
+    attackType: 0
+    attackDamageType: 0
+    maxHP: 18
+    attackDamage: 3
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1
+  - id: minotaur
+    displayName: Minotaur
+    spawnRole: 0
+    prefab: {fileID: 6492908115424779681, guid: b5f7de3073646e24491ec7da78b60bd0,
+      type: 3}
+    rank: 3
+    attackType: 0
+    attackDamageType: 0
+    maxHP: 36
+    attackDamage: 4
+    attackRangeTiles: 1
+    attackSpeed: 1
+    pushWeight: 1
+    skillCooldown: 0
+    minTurnMP: 3
+    maxTurnMP: 5
+    moveMPCostPerTile: 1
+    basicAttackMPCost: 1
+    aiProfile: 0
+    detectRange: 10
+    alertRange: 10
+    idleBehavior: 1
+    wanderRadiusTiles: 5
+    wanderTilesPerTurn: 2
+    wanderChance: 1

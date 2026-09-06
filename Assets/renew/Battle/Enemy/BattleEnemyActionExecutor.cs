@@ -8,7 +8,7 @@ using UnityEngine;
 /// EnemySpawner가 스폰 시 부착하고 EnemyTurnActor가 Configure()로 초기화하며, Enemy 개체마다 각자
 /// 자기 전용 인스턴스를 갖는다(공용/싱글턴 아님, BattleComponentResolver.GetOrAdd가 개별 GameObject에 부착).
 /// </summary>
-[DisallowMultipleComponent]
+[DisallowMultipleComponent] 
 public sealed class BattleEnemyActionExecutor : MonoBehaviour
 {
     // Player의 BattlePlayerMover와 같은 State 이름을 그대로 쓴다. PlayState는 해당 State가 없는
@@ -29,7 +29,7 @@ public sealed class BattleEnemyActionExecutor : MonoBehaviour
     private float jumpArcHeight = 1.5f;
 
     /// <summary>
-    /// 행동 실행에 필요한 MP와 타일 이동 시간을 전달받는다.
+    /// 행동 실행에 필요한 MP와 타일 이동 시간을 전달받는다. 
     /// takeoffDelaySeconds/baseJumpArcHeight를 생략하면 Player 기본값(0.1초 / 1.5)과 같은 값을 쓴다.
     /// </summary>
     public void Configure(

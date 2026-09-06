@@ -4395,6 +4395,7 @@ GameObject:
   - component: {fileID: 286020528}
   - component: {fileID: 286020527}
   - component: {fileID: 286020526}
+  - component: {fileID: 256704499}
   - component: {fileID: 286020525}
   - component: {fileID: 286020524}
   - component: {fileID: 286020518}
@@ -4581,6 +4582,28 @@ MonoBehaviour:
   enemyHitVfxRotationMode: 0
   hitVfxCamera: {fileID: 0}
   hitVfxLifetimeSeconds: 2
+--- !u!114 &256704499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 286020516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0f2070e37df4824a8a781a5831fc47b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  playerDamageNumberOffset: {x: -0.8, y: 1.2, z: 0}
+  enemyDamageNumberOffset: {x: 0.8, y: 1.2, z: 0}
+  randomHorizontalJitter: 0.25
+  playerDamageNumberColor: {r: 1, g: 0.28, b: 0.24, a: 1}
+  enemyDamageNumberColor: {r: 1, g: 1, b: 1, a: 1}
+  fontSize: 4
+  riseDistance: 1.3
+  lifetimeSeconds: 0.9
+  holdBeforeFadeRatio: 0.45
+  billboardCamera: {fileID: 0}
 --- !u!114 &286020527
 MonoBehaviour:
   m_ObjectHideFlags: 0
