@@ -61,6 +61,18 @@ public sealed class BattleEnemyDeathHandler : MonoBehaviour
         StartCoroutine(DisappearRoutine());
     }
 
+    /// <summary>
+    /// 사망 연출로 두 가지를 동시에 진행한다: (1) transform을 sinkDistance만큼 아래로 가라앉히고,
+    /// (2) 이 Enemy의 모든 Renderer가 가진 모든 Material 인스턴스 알파값을 0까지 낮춰 투명해지게 한다.
+    /// Material을 이렇게 직접 순회하며 건드리는 이유는, 프리팹마다 셰이더가 달라 공용 Fade/Transparent
+    /// 모드를 보장할 수 없기 때문이다 — 그래서 각 Material이 "_Color" 프로퍼티를 갖고 있는지
+    /// HasProperty로 먼저 확인한 뒤에만 알파를 깎는, 가장 범용적이지만 그만큼 장황한 방식을 썼다.
+    /// originalColors가 Renderer[][] 형태인 이유는 Renderer마다 Material 개수가 다를 수 있어서이고,
+    /// 매 프레임 다시 만들지 않도록 시작 시점 색상만 한 번 캐시해 둔 것이다.
+    /// 클래스 상단 주석대로 사망 VFX는 나중에 별도로 확장될 예정이라, 지금 이 구현을 더 다듬기보다는
+    /// 설명만 남겨 둔다. 나중에 리팩토링할 때는 Material.Lerp/DOTween류 셰이더 페이드나 Animator
+    /// 트리거로 교체해서 이 이중 루프(Renderer x Material) 구조 자체를 단순화하는 걸 검토할 것.
+    /// </summary>
     private IEnumerator DisappearRoutine()
     {
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);

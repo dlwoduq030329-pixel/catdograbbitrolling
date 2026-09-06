@@ -601,6 +601,12 @@ public class BattleGameManager : MonoBehaviour
     /// </summary>
     private IEnumerator RunEnemyTurnSequence()
     {
+        // 2026-09-05: BattleMoveThreatPreview(마우스 호버 위협 예측선)는 Player 턴에만 계산되는 게
+        // 정상이라 이론적으로는 Enemy 턴이 시작되면 BattleRangeVisibilityTracker.IsAnyRangeVisible이
+        // 꺼지면서 자동으로 숨어야 하지만, 그건 Update() 프레임 타이밍에 기대는 방식이라 여기서
+        // Enemy 턴 시작과 동시에 명시적으로 한 번 더 숨겨서 확실히 한다(안전장치).
+        playerActionController?.moveFlow?.MoveThreatPreview?.ClearSelectedDestination();
+
         // 1. Enemy 턴 안내가 끝날 때까지 Player·카메라 입력을 잠근다.
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);

@@ -390,7 +390,6 @@ GameObject:
   - component: {fileID: 6806863124045239029}
   - component: {fileID: 5754337808105276201}
   - component: {fileID: 8218320518247064024}
-  - component: {fileID: 2447447571849057655}
   - component: {fileID: 3919681097775435115}
   m_Layer: 9
   m_Name: Cat_Player
@@ -516,18 +515,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &2447447571849057655
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2862251875130446745}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbb9ae5077a2442391d247e797eabab6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &3919681097775435115
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -41,6 +41,14 @@ public class BattleUnitMoveFlow : MonoBehaviour
         battleMoveTransaction != null ? battleMoveTransaction.PendingTarget : null;
 
     /// <summary>
+    /// Enemy 턴 시작 시 위협 예측선·아이콘을 확실히 숨기기 위한 외부 접근용 참조다(BattleGameManager 전용).
+    /// 원래는 BattleRangeVisibilityTracker.IsAnyRangeVisible이 꺼지면 BattleMoveThreatPreview.Update()가
+    /// 다음 프레임에 자동으로 숨기지만, Enemy 턴 시작 시점에 이걸 명시적으로 호출하는 곳이 없어서
+    /// 프레임 타이밍에 따라 위협선이 한두 프레임 남아있을 여지가 있었다.
+    /// </summary>
+    public BattleMoveThreatPreview MoveThreatPreview => battleMoveThreatPreview;
+
+    /// <summary>
     /// 소유자(BattlePlayerActionController)를 최초 1회 연결한다.
     /// 같은 소유자가 반복 전달되면 전체 초기화를 다시 하지 않고,
     /// 실제 Player가 교체된 경우에만 Player 의존성을 갱신한다.

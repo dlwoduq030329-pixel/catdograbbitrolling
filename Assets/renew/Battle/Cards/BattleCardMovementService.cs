@@ -374,28 +374,34 @@ public static class BattleCardMovementService
 
     /// <summary>
     /// 다른 Enemy와 충돌한 밀치기 대상에게 1턴 기절을 적용한다.
-    /// 현재는 Enemy Prefab 참조가 완성되지 않아 제어 상태와 상태 UI를 런타임 GetOrAdd로 보완한다.
+    /// 2026-09-05: 기절·속박 전용 저장소였던 BattleEnemyControlState는 폐지됐다. Player 카드가 상태이상을
+    /// 적용할 때(BattleCardActionController.ApplyStatusToUnit)와 동일하게 BattleStatusEffects.GetOrAdd로
+    /// 공용 저장소를 확보해 Apply()로 적용하고, 상태 아이콘 View가 그 저장소를 구독하도록 BindStatusSource로
+    /// 다시 연결한다 — Enemy Prefab 참조가 아직 완성되지 않아 두 컴포넌트를 런타임 GetOrAdd로 보완한다.
     /// 최종 Enemy Prefab에는 두 컴포넌트를 직접 부착하고 이 함수는 상태 API 호출만 남겨야 한다.
     /// </summary>
     private static void ApplyEnemyCollisionStun(GameObject pushedEnemy)
     {
-        BattleEnemyControlState enemyControlState =
-            BattleComponentResolver.GetOrAdd<BattleEnemyControlState>(pushedEnemy, null);
-        BattleComponentResolver.GetOrAdd<BattleEnemyStatusView>(pushedEnemy, null);
-        enemyControlState?.ApplyStun(1);
+        BattleStatusEffects statusEffects = BattleStatusEffects.GetOrAdd(pushedEnemy);
+        BattleEnemyStatusView statusView =
+            BattleComponentResolver.GetOrAdd<BattleEnemyStatusView>(pushedEnemy, null);
+        statusEffects?.Apply(BattleStatusType.Stun, 1);
+        statusView?.BindStatusSource(statusEffects);
     }
 
     /// <summary>
     /// 벽에 충돌한 밀치기 대상에게 1턴 기절과 1턴 이동 불가를 함께 적용한다.
     /// 상태 UI 생성까지 이동 서비스가 담당하는 현재 구조는 임시 호환 경로이며 Prefab 직접 참조로 이전한다.
+    /// 2026-09-05: 위 ApplyEnemyCollisionStun과 같은 이유로 BattleStatusEffects.Apply() 두 번으로 통합했다.
     /// </summary>
     private static void ApplyWallCollisionControlEffects(GameObject pushedEnemy)
     {
-        BattleEnemyControlState enemyControlState =
-            BattleComponentResolver.GetOrAdd<BattleEnemyControlState>(pushedEnemy, null);
-        BattleComponentResolver.GetOrAdd<BattleEnemyStatusView>(pushedEnemy, null);
-        enemyControlState?.ApplyStun(1);
-        enemyControlState?.ApplyRoot(1);
+        BattleStatusEffects statusEffects = BattleStatusEffects.GetOrAdd(pushedEnemy);
+        BattleEnemyStatusView statusView =
+            BattleComponentResolver.GetOrAdd<BattleEnemyStatusView>(pushedEnemy, null);
+        statusEffects?.Apply(BattleStatusType.Stun, 1);
+        statusEffects?.Apply(BattleStatusType.Root, 1);
+        statusView?.BindStatusSource(statusEffects);
     }
 
     /// <summary>

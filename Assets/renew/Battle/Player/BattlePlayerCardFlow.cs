@@ -77,6 +77,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
 
         // 대상 선택 안내·사용 성공·취소·사거리 표시 상태를 Player UI와 입력 흐름에 반영한다.
         battleCardActionController.TargetSelectionRequested += HandleTargetSelectionRequested;
+        battleCardActionController.ConfirmationRequested += HandleConfirmationRequested;
         battleCardActionController.Confirmed += HandleConfirmed;
         battleCardActionController.Cancelled += HandleCancelled;
         battleCardActionController.RangeVisibilityChanged += owner.SetRangeVisible;
@@ -130,12 +131,13 @@ public class BattlePlayerCardFlow : MonoBehaviour
     }
 
     /// <summary>
-    /// BattlePlayerActionController.HandleRightClick()이 전달한 화면 좌표로 카드 대상 Enemy 또는 Tile을 찾는다.
+    /// BattlePlayerActionController.HandleLeftClick()이 카드 대상 선택 중(cardFlow.IsSelectingTarget)일 때
+    /// 최우선으로 전달하는 화면 좌표로 카드 대상 Enemy 또는 Tile을 찾는다.
     /// 이동 연출 중이거나 Pointer가 UI 위에 있으면 월드 선택을 막는다. 카드 데이터의 TargetType에 따라
     /// Enemy Raycast와 Tile Raycast 중 필요한 것만 실행하고, 유효한 대상을 카드 Controller에 저장한다.
-    /// 현재 우클릭 입력 구조이며 좌클릭 통일 작업에서는 상위 호출 경로와 함께 변경해야 한다.
+    /// 2026-09-05: 기본 공격 대상 지정과 함께 우클릭에서 좌클릭으로 통합했다(이름도 함께 변경).
     /// </summary>
-    public void HandleTargetRightClick(Vector2 pointerPosition)
+    public void HandleTargetClick(Vector2 pointerPosition)
     {
         if (owner.IsAnyActionMoving)
         {
@@ -182,6 +184,13 @@ public class BattlePlayerCardFlow : MonoBehaviour
     }
 
     /// <summary>
+    /// 카드 대상 선택이 끝나 확인 대기 상태로 들어갔음을 BattleCardActionController가 알리면,
+    /// 기본 공격과 같은 방식으로 확인(사용) 버튼을 다시 띄운다. 이 이벤트가 연결되기 전에는
+    /// 대상을 고른 뒤 확정할 방법이 UI에 전혀 없었다.
+    /// </summary>
+    private void HandleConfirmationRequested(string message) => owner.ShowActionConfirmationUI(message);
+
+    /// <summary>
     /// 카드 효과와 자원 소비가 모두 성공한 뒤 호출된다. 확인 안내를 비우고 카드 패널을 숨긴 다음,
     /// 결과에 기록된 카드 이름·소모 MP와 현재 Player MP를 QA용 Console Log로 남긴다.
     /// 피해·회복·이동 효과는 이 Handler 전에 이미 실행됐으며 여기서는 결과 UI만 정리한다.
@@ -223,6 +232,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
         }
 
         battleCardActionController.TargetSelectionRequested -= HandleTargetSelectionRequested;
+        battleCardActionController.ConfirmationRequested -= HandleConfirmationRequested;
         battleCardActionController.Confirmed -= HandleConfirmed;
         battleCardActionController.Cancelled -= HandleCancelled;
         if (owner != null)

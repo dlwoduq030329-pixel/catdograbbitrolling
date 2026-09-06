@@ -1,14 +1,15 @@
 using UnityEngine;
 
 /// <summary>
-/// 밀치기 충돌 등으로 발생한 Enemy의 다음 턴 기절·속박 상태를 보관한다.
-/// 주의(2026-08-21 2차 검증): 이 클래스는 Combat/BattleStatusEffects.cs와 상태가 이중화되어 있다.
-/// BattleCardActionController.ApplyStatusToUnit()이 기절·속박을 걸 때마다 BattleStatusEffects.Apply()와
-/// 이 클래스의 ApplyStun/ApplyRoot에 항상 동시에 기록하지만, 실제 턴 스킵 판정(EnemyTurnActor.TakeTurn)은
-/// 이 클래스만 읽는다. 두 저장소의 갱신 규칙도 다르다 — BattleStatusEffects는 재적용 시 지속 턴을
-/// 더하고, 이 클래스는 Mathf.Max로 더 큰 값만 남긴다. 감소 시점도 BattleStatusEffects는 "플레이어 턴 시작마다",
-/// 이 클래스는 "그 Enemy 자신의 턴이 돌 때"로 서로 달라 표시값과 실제 동작이 어긋날 수 있다.
-/// Combat 폴더 리뷰 차례에 두 저장소를 하나로 통합하기 전까지는 이 불일치를 인지하고 있어야 한다.
+/// 2026-09-05: 이 클래스는 더 이상 사용되지 않는다(dead code). 기절·속박을 BattleStatusEffects(공용
+/// 상태이상 저장소)와 이중으로 관리하던 구조를 통합하면서, EnemyTurnActor·BattleCardActionController가
+/// 모두 BattleStatusEffects만 읽고 쓰도록 바뀌었고 이 클래스를 참조하는 코드는 하나도 남지 않았다.
+/// 이 세션에서는 파일 삭제 도구를 쓸 수 없어 코드만 비활성 상태로 남겨뒀다 — Unity 에디터에서
+/// 이 BattleEnemyControlState.cs와 짝인 .meta 파일을 직접 삭제해도 된다. 다만 삭제 전에 프리팹에
+/// 이 컴포넌트가 수동으로 붙어있는 곳이 있는지(EnemySpawner는 더 이상 런타임에 자동 추가하지 않음)
+/// 한 번 확인해서, 붙어있다면 먼저 그 컴포넌트도 제거해 두는 게 안전하다.
+/// 예전 문서(참고용, 더 이상 유효하지 않음): 밀치기 충돌 등으로 발생한 Enemy의 다음 턴 기절·속박
+/// 상태를 보관하던 클래스였다.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleEnemyControlState : MonoBehaviour
