@@ -6,6 +6,13 @@ using UnityEngine.UI;
 /// <summary>
 /// 직접 배치한 카드 버튼 5개에 현재 손패의 카드 이미지를 표시한다.
 /// 현재 MP로 사용할 수 없는 카드는 어둡게 처리(블러 대체 표현)하고 클릭을 막는다.
+/// 슬롯 자체는 5개로 고정이지만, 화면에는 부채꼴 배치를 추가하고 카드를 사용하면 남은 카드들이
+/// 즉시 앞으로 당겨져 채워지도록(압축 재배치) 만들어 밋밋한 일직선 배열 대신 슬더스류 손패에
+/// 가까운 느낌을 낸다. 압축된 카드들은 항상 원래 3번째(가운데) 슬롯을 기준으로 좌우로 균등하게
+/// 펼쳐진다(카드 수가 줄어도 화면 가운데에서 모이는 느낌을 유지). 드로우/사용/버림 시 별도의
+/// 날아가는 잔상 연출은 넣지 않는다 — 즉시 나타나거나 사라지며, 남은 카드는 그 프레임부터 바로
+/// 목표 위치로 보간 이동한다(날아가는 잔상이 "카드가 계속 호버되는 것처럼 보인다"는 피드백을
+/// 받아 2026-09-07에 완전히 제거함).
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattleCardHandView : MonoBehaviour
@@ -25,6 +32,14 @@ public sealed class BattleCardHandView : MonoBehaviour
     [Min(0.1f)]
     [SerializeField] private float cardInfoHoldSeconds = 0.4f;
 
+    [Header("부채꼴 배치")]
+    [Tooltip("가운데 카드가 위로 떠오르는 정도(px). 0이면 원래처럼 일직선으로 남습니다.")]
+    [SerializeField, Min(0f)] private float fanArcHeight = 16f;
+    [Tooltip("양 끝 카드가 기울어지는 최대 각도(도).")]
+    [SerializeField, Min(0f)] private float fanMaxTiltDegrees = 6f;
+    [Tooltip("위치·회전·크기가 목표 자세를 따라가는 속도. 클수록 더 빠르고 뻣뻣하게 반응합니다.")]
+    [SerializeField, Min(0.1f)] private float poseFollowSpeed = 14f;
+
     private BattleCardDrawSystem drawSystem;
     private BattlePlayerActionController playerActionController;
     private BattleCardInfoPresenter cardInfoPresenter;
@@ -36,6 +51,21 @@ public sealed class BattleCardHandView : MonoBehaviour
     // `RemoveListener(() => SelectCard(index))`처럼 새 람다를 만들면 모양만 같을 뿐 다른 객체라 제거되지 않는다.
     private readonly UnityAction[] cardClickCallbacks = new UnityAction[SlotCount];
 
+    // Awake에서 디자이너가 Editor에 배치한 원래 위치·회전·크기를 캡처해 부채꼴 계산의 기준으로 쓴다.
+    // 인덱스는 "손패 슬롯 번호"이며, 화면에 몇 번째로 보이는가(압축 순위)는 visualSlotForHandIndex로 따로 관리한다.
+    private readonly Vector2[] fanBaseAnchoredPosition = new Vector2[SlotCount];
+    private readonly Quaternion[] fanBaseRotation = new Quaternion[SlotCount];
+    private readonly Vector3[] fanBaseScale = new Vector3[SlotCount];
+    // 압축 배치의 기준점: 항상 원래 3번째(가운데) 슬롯의 위치. 카드 수가 줄어도 이 점을 중심으로
+    // 좌우 균등하게 펼치므로, 몇 장이 남든 화면 가운데에서 모이는 느낌이 유지된다.
+    private Vector2 fanCenterAnchoredPosition;
+    // 원래 5칸 사이 평균 가로 간격(px). 압축 시 이 간격만큼씩 좌우로 벌려 배치한다.
+    private float fanSlotSpacingX;
+    // 손패 슬롯 번호(원본 인덱스) -> 화면에 압축되어 보이는 순위(0=맨 왼쪽). 카드가 없는 슬롯은 -1.
+    // 예: 손패가 [카드,-1,카드,카드,-1]이면 [0,-1,1,2,-1]이 되어 남은 카드 3장이 왼쪽부터 붙어 보인다.
+    private readonly int[] visualSlotForHandIndex = new int[SlotCount];
+    private int occupiedSlotCount;
+
     /// <summary>클릭한 카드의 행동 요청이 생성됐을 때 호출된다.</summary>
     public event System.Action<int, SelectedCardUseInfo> CardSelected;
 
@@ -45,8 +75,105 @@ public sealed class BattleCardHandView : MonoBehaviour
         // 런타임 Player나 DrawSystem은 아직 생성되지 않았을 수 있으므로 여기서 연결하지 않는다.
         cardInfoPresenter = GetComponentInParent<BattleCardInfoPresenter>(true);
         ValidateReferences();
+        CaptureFanBasePoses();
         RegisterButtonEvents();
         ClearSlots();
+    }
+
+    /// <summary>
+    /// 디자이너가 Editor에서 배치한 각 카드 버튼의 원래 위치·회전·크기를 저장한다.
+    /// 부채꼴 배치는 이 값에 오프셋을 더하는 방식으로만 계산하므로, Editor에서 다시 배치를 바꾸면
+    /// 코드 수정 없이 그대로 새 기준으로 반영된다.
+    /// </summary>
+    private void CaptureFanBasePoses()
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (!TryGetButton(i, out Button button))
+            {
+                continue;
+            }
+
+            RectTransform rect = button.transform as RectTransform;
+            if (rect == null)
+            {
+                continue;
+            }
+
+            fanBaseAnchoredPosition[i] = rect.anchoredPosition;
+            fanBaseRotation[i] = rect.localRotation;
+            fanBaseScale[i] = rect.localScale;
+        }
+
+        // 압축 배치의 중심점(원래 3번째 슬롯)과 슬롯 간 평균 가로 간격을 여기서 한 번만 계산해 둔다.
+        const int centerSlotIndex = (SlotCount - 1) / 2;
+        fanCenterAnchoredPosition = fanBaseAnchoredPosition[centerSlotIndex];
+        fanSlotSpacingX = SlotCount > 1
+            ? (fanBaseAnchoredPosition[SlotCount - 1].x - fanBaseAnchoredPosition[0].x) / (SlotCount - 1)
+            : 0f;
+    }
+
+    /// <summary>
+    /// 매 프레임 카드 버튼의 실제 위치·회전을 목표(부채꼴 압축 배치) 자세로 부드럽게 따라가게 한다.
+    /// Refresh는 "무엇을 보여줄지·몇 번째 자리에 보일지"만 정하고, 실제 이동은 항상 여기서 처리한다.
+    /// </summary>
+    private void Update()
+    {
+        float lerpFactor = 1f - Mathf.Exp(-poseFollowSpeed * Time.unscaledDeltaTime);
+        int effectiveSlotCount = Mathf.Max(occupiedSlotCount, 1);
+
+        for (int i = 0; i < SlotCount; i++)
+        {
+            int visualRank = visualSlotForHandIndex[i];
+            if (visualRank < 0)
+            {
+                // 카드가 없는 슬롯은 비활성 상태이므로 자세를 갱신할 필요가 없다.
+                continue;
+            }
+
+            if (!TryGetButton(i, out Button button))
+            {
+                continue;
+            }
+
+            RectTransform rect = button.transform as RectTransform;
+            if (rect == null)
+            {
+                continue;
+            }
+
+            ComputeFanRestPose(visualRank, effectiveSlotCount, out Vector2 restPosition, out Quaternion restRotation);
+
+            rect.anchoredPosition = Vector2.Lerp(rect.anchoredPosition, restPosition, lerpFactor);
+            rect.localRotation = Quaternion.Slerp(rect.localRotation, restRotation, lerpFactor);
+            rect.localScale = Vector3.Lerp(rect.localScale, fanBaseScale[i], lerpFactor);
+        }
+    }
+
+    /// <summary>
+    /// 화면에 보이는 순위(visualRank, 0=맨 왼쪽)를 기준으로 부채꼴 배치의 자세(위치·회전)를 계산한다.
+    /// 항상 원래 3번째(가운데) 슬롯 위치(fanCenterAnchoredPosition)를 중심으로 좌우 균등 간격
+    /// (fanSlotSpacingX)만큼 벌려 배치하므로, 카드를 사용해 손패가 줄어들어도 남은 카드들이
+    /// 화면 왼쪽으로 쏠리지 않고 항상 가운데를 기준으로 압축되어 보인다.
+    /// </summary>
+    private void ComputeFanRestPose(int visualRank, int effectiveSlotCount, out Vector2 position, out Quaternion rotation)
+    {
+        // 가운데를 0으로, 양 끝을 -1~1로 정규화한다(현재 보이는 카드 수 기준).
+        float normalized = effectiveSlotCount <= 1
+            ? 0f
+            : (visualRank - (effectiveSlotCount - 1) / 2f) / ((effectiveSlotCount - 1) / 2f);
+        // 중앙이 가장 높고(fanArcHeight) 양 끝은 0이 되는 아치형 오프셋.
+        float arcOffsetY = fanArcHeight * (1f - normalized * normalized);
+        // 왼쪽 카드는 반시계, 오른쪽 카드는 시계 방향으로 살짝 벌어지듯 기울인다.
+        float tiltDegrees = fanMaxTiltDegrees * normalized;
+
+        // 예전에는 fanBaseAnchoredPosition[visualRank]를 그대로 써서, 카드가 줄면 항상 원래 맨 왼쪽
+        // 슬롯들 자리로만 모여 화면 왼쪽에 쏠려 보였다("pivot이 가운데가 아님" 피드백). 지금은 카드
+        // 수와 무관하게 항상 같은 중심점(원래 3번째 슬롯)을 기준으로 좌우로 균등하게 벌린 위치를
+        // 새로 계산해서 몇 장이 남든 화면 가운데에서 모이는 느낌을 유지한다.
+        float offsetFromCenterX = (visualRank - (effectiveSlotCount - 1) / 2f) * fanSlotSpacingX;
+        position = fanCenterAnchoredPosition + new Vector2(offsetFromCenterX, arcOffsetY);
+        rotation = fanBaseRotation[visualRank] * Quaternion.Euler(0f, 0f, -tiltDegrees);
     }
 
     private void OnEnable()
@@ -86,6 +213,10 @@ public sealed class BattleCardHandView : MonoBehaviour
     /// </summary>
     private void Refresh(IReadOnlyList<int> hand)
     {
+        // 이번 손패 기준으로 "각 슬롯이 화면에서 몇 번째 자리에 압축되어 보일지"를 먼저 계산한다.
+        // Update()가 매 프레임 이 값을 읽어 실제 이동을 처리한다.
+        RecomputeVisualSlotMapping(hand);
+
         for (int i = 0; i < SlotCount; i++)
         {
             if (!TryGetButton(i, out Button button))
@@ -107,13 +238,10 @@ public sealed class BattleCardHandView : MonoBehaviour
 
             if (hand[i] < 0)
             {
-                // 손패 목록 안에서 -1은 "이 위치에는 카드가 없음"을 나타내는 빈 슬롯 표식이다.
+                // 손패 목록 안에서 -1은 "이 위치에는 카드가 없음(사용되어 다음 드로우까지 대기 중)"을 나타낸다.
                 // 리스트 길이는 유지되므로 위의 i >= hand.Count 검사와 별도로 처리해야 한다.
-                button.gameObject.SetActive(true);
-                button.interactable = false;
-                SetButtonArtworkTint(button, new Color(0.32f, 0.32f, 0.32f, 1f));
-                CardCostLabelView.GetOrCreateCostLabel(button.transform)?.HideCostLabel();
-                SetGeneratedHighlight(button, false);
+                // 회색 자리표시자를 남기지 않고 완전히 숨겨, 남은 카드들이 그 자리를 메우도록(압축) 한다.
+                button.gameObject.SetActive(false);
                 continue;
             }
 
@@ -564,6 +692,24 @@ public sealed class BattleCardHandView : MonoBehaviour
         outline.effectDistance = new Vector2(4f, -4f);
         outline.useGraphicAlpha = true;
         outline.enabled = highlighted;
+    }
+
+    /// <summary>
+    /// 손패 슬롯 배열을 왼쪽부터 훑어, 카드가 있는 슬롯에만 0부터 순서대로 "화면 표시 순위"를 매긴다.
+    /// 예를 들어 [카드,-1,카드,카드,-1]이면 [0,-1,1,2,-1]이 된다. 이 순위는 ComputeFanRestPose에서
+    /// 화면 가운데를 기준으로 좌우로 펼쳐지므로, 실제 손패 슬롯 번호와 무관하게 남아 있는 카드들이
+    /// 항상 화면 가운데에 빈틈없이 모여 보인다(카드 사용 시 즉시 압축).
+    /// </summary>
+    private void RecomputeVisualSlotMapping(IReadOnlyList<int> hand)
+    {
+        int nextVisualRank = 0;
+        for (int i = 0; i < SlotCount; i++)
+        {
+            bool hasCard = hand != null && i < hand.Count && hand[i] >= 0;
+            visualSlotForHandIndex[i] = hasCard ? nextVisualRank++ : -1;
+        }
+
+        occupiedSlotCount = nextVisualRank;
     }
 
     /// <summary>필수 Inspector 구성 누락을 Play Mode 시작 시 Console 경고로 알려준다.</summary>

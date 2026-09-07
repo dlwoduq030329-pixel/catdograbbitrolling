@@ -27,6 +27,8 @@ public sealed class BattleHealingArea : MonoBehaviour
         if (player == null || centerTile == null || findClosestTile == null) return;
         GameObject root = new GameObject("Healing Area");
         root.transform.position = centerTile.transform.position;
+        // 맵이 교체되면 기존 타일의 성역 연출과 턴 구독도 함께 정리한다.
+        root.transform.SetParent(centerTile.transform, true);
         BattleHealingArea area = root.AddComponent<BattleHealingArea>();
         area.player = player;
         area.centerTile = centerTile;

@@ -443,16 +443,6 @@ public class FogOfWarManager : MonoBehaviour
                 "[FogOfWar] Debug Force Reveal All = " +
                 FogRevealVisibility.DebugForceRevealAll
             );
-
-            // F8을 다시 눌러 해제했을 때도, 마우스가 안 움직이면 Enemy 턴 예고선/아이콘이 방금 전
-            // "보임" 상태 그대로 남아있는 문제가 있었다(BattleMoveThreatPreview가 목적지 타일이 그대로면
-            // 다시 계산하지 않기 때문). ForceRefresh()로 다음 Update()에서 무조건 다시 계산하게 한다.
-            // FindObjectOfType는 F8을 누른 이 프레임에만 실행되므로 매 프레임 비용은 없다.
-            BattleMoveThreatPreview moveThreatPreview = FindObjectOfType<BattleMoveThreatPreview>();
-            if (moveThreatPreview != null)
-            {
-                moveThreatPreview.ForceRefresh();
-            }
         }
 
         if (!isReady)
@@ -460,45 +450,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         if (playerTransform == null)
-        {
-            // Start() 시점에는 Player가 아직 생성되지 않아 태그로 못 찾았을 수 있다.
-            // PlayerSpawner가 나중에 Player를 만들 수 있으므로 매 프레임 다시 찾아본다.
-            if (autoFindPlayerByTag)
-            {
-                GameObject player =
-                    GameObject.FindGameObjectWithTag(
-                        playerTag
-                    );
-
-                if (player != null)
-                {
-                    playerTransform =
-                        player.transform;
-                }
-            }
-
-            if (playerTransform == null)
-                return;
-
-            currentRevealPosition =
-                playerTransform.position;
-
-            lastBakedRevealPosition =
-                currentRevealPosition;
-
-            currentRevealRadius =
-                defaultRevealRadius;
-
-            hasRevealPosition =
-                true;
-
-            BakeReveal(
-                currentRevealPosition,
-                currentRevealRadius
-            );
-
-            UploadFogTexture();
-        }
+            return;
 
 
         // --------------------------------------------------------

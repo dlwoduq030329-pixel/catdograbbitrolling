@@ -41,6 +41,12 @@ public class BattleUIFlowController : MonoBehaviour
     [SerializeField, Tooltip("등록된 Player 위치를 기준으로 전투 Enemy 생성을 시작할 컴포넌트입니다.")]
     private EnemySpawner enemySpawner;
 
+    [Header("Stage별 적 배치")]
+    [SerializeField, Tooltip("통합 씬에서 켭니다. 끈 기존 씬은 EnemySpawner의 이전 배치 설정을 사용합니다.")]
+    private bool useStagePlacement;
+    [SerializeField, Tooltip("Stage 데이터에 따라 적만 배치합니다. Shop·Chest와 맵 생성은 변경하지 않습니다.")]
+    private StageSpawner stageSpawner;
+
     [Header("카메라 전환 완료 판정")]
     [InspectorName("전환 카메라")]
     [FormerlySerializedAs("transitionCamera")]
@@ -146,7 +152,21 @@ public class BattleUIFlowController : MonoBehaviour
 
         battleGameManager.RegisterPlayer(spawnedPlayerProvider.SpawnedPlayer);
 
-        enemySpawner?.SpawnEnemiesOnGeneratedMap(battleGameManager.CurrentPlayer.transform);
+        if (useStagePlacement)
+        {
+            if (stageSpawner == null || battleGameManager.CurrentPlayer == null ||
+                !stageSpawner.TrySpawnStageEnemies(battleGameManager.CurrentPlayer.transform))
+            {
+                Debug.LogWarning("Stage 적 배치를 완료하지 못했습니다. 설정을 확인하세요. 전투 UI는 계속 열립니다.", this);
+            }
+            if (stageSpawner != null && stageSpawner.CurrentStage != null)
+                battleGameManager.SetCurrentStage(stageSpawner.CurrentStage.stageNumber);
+        }
+        else
+        {
+            // StageSpawner를 아직 배치하지 않은 기존 씬 전용 호환 경로.
+            enemySpawner?.SpawnEnemiesOnGeneratedMap(battleGameManager.CurrentPlayer.transform);
+        }
 
         yield return WaitUntilBattleCameraStops();
 

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eefcb6f4acfc4bd9847c54a1f1320529, type: 3}
+  m_Name: Stage03
+  m_EditorClassIdentifier: 
+  stageNumber: 3
+  enemyDatabase: {fileID: 11400000, guid: ce0f2132c8fa5264d8c778e5f2bd3565, type: 2}
+  normalEnemies:
+    count: 8
+    enemyIds:
+    - red_slime
+    - blue_slime
+    - goblin
+    - goblin_mage
+  eliteEnemies:
+    count: 2
+    enemyIds:
+    - orc
+    - werewolf
+  bossEnemies:
+    count: 0
+    enemyIds: []
+  safeRadiusTiles: 1

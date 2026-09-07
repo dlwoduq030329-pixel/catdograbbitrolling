@@ -27,16 +27,6 @@ public class FogRevealVisibility : MonoBehaviour
     /// </summary>
     public static bool DebugForceRevealAll;
 
-    /// <summary>
-    /// 이번 RefreshAll() 순회에서 한 개 이상의 인스턴스가 실제로 보임/숨김 상태를 바꿨을 때 한 번 알린다.
-    /// BattleMoveThreatPreview처럼 "마우스가 같은 타일 위에 머무는 동안은 재계산하지 않는" 캐시를 쓰는
-    /// 화면은, Player가 이동해서 Fog가 자연스럽게 갱신될 때(F8 디버그 토글이 아니어도) 이 이벤트를
-    /// 받아 강제로 다시 계산해야 한다. 그러지 않으면 몸체는 이번 프레임부터 바로 가려지는데, 위협
-    /// 예고선/아이콘은 마우스가 움직이기 전까지 예전(보였던 시점) 상태로 남아 "몸은 안 보이는데
-    /// 예고선만 보인다"는 문제가 생긴다.
-    /// </summary>
-    public static event System.Action VisibilityChanged;
-
     [Header("가시성 대상")]
     [Tooltip("비워두면 자기 자신과 자식의 Renderer를 자동으로 모두 찾는다.")]
     [SerializeField] private Renderer[] targetRenderers;
@@ -45,15 +35,7 @@ public class FogRevealVisibility : MonoBehaviour
     [SerializeField] private GameObject[] extraVisualRoots;
 
     private bool isRevealedCache;
-
-    /// <summary>
-    /// 이 인스턴스가 ApplyVisibility로 최초 판정을 한 번이라도 거쳤는지를 나타낸다.
-    /// isRevealedCache는 bool이라 기본값이 false인데, 이 플래그가 없으면 "처음 판정 결과도
-    /// 마침 false(안 보임)로 나온 경우"에 ApplyVisibility가 "값이 안 바뀌었다"고 오판해서
-    /// Renderer/보조 오브젝트에 아예 적용을 안 하고 넘어가 버린다. 그래서 "최초 적용 여부"를
-    /// isRevealedCache와 별개로 추적한다.
-    /// </summary>
-    private bool isInitialized;
+    private bool hasEvaluatedOnce;
 
     /// <summary>Renderer 목록을 비워둔 경우 자기 자신과 자식에서 자동으로 채운다.</summary>
     private void Awake()
@@ -68,7 +50,7 @@ public class FogRevealVisibility : MonoBehaviour
     private void OnEnable()
     {
         registered.Add(this);
-        isInitialized = false;
+        hasEvaluatedOnce = false;
         Refresh();
     }
 
@@ -129,12 +111,12 @@ public class FogRevealVisibility : MonoBehaviour
     /// <summary>상태가 실제로 바뀔 때만 Renderer/보조 오브젝트를 갱신한다(불필요한 반복 대입 방지).</summary>
     private void ApplyVisibility(bool revealed)
     {
-        if (isInitialized && isRevealedCache == revealed)
+        if (hasEvaluatedOnce && isRevealedCache == revealed)
         {
             return;
         }
 
-        isInitialized = true;
+        hasEvaluatedOnce = true;
         isRevealedCache = revealed;
 
         if (targetRenderers != null)
@@ -166,28 +148,13 @@ public class FogRevealVisibility : MonoBehaviour
     /// </summary>
     public static void RefreshAll()
     {
-        bool anyVisibilityChanged = false;
         for (int i = 0; i < registered.Count; i++)
         {
             FogRevealVisibility instance = registered[i];
-            if (instance != null && instance.RefreshAndReportChange())
+            if (instance != null)
             {
-                anyVisibilityChanged = true;
+                instance.Refresh();
             }
         }
-
-        if (anyVisibilityChanged)
-        {
-            VisibilityChanged?.Invoke();
-        }
-    }
-
-    /// <summary>이 오브젝트 하나를 다시 판정하고, 그 결과로 실제 보임/숨김 상태가 바뀌었는지를 반환한다.</summary>
-    private bool RefreshAndReportChange()
-    {
-        bool wasInitialized = isInitialized;
-        bool wasRevealed = isRevealedCache;
-        ApplyVisibility(EvaluateRevealed());
-        return !wasInitialized || wasRevealed != isRevealedCache;
     }
 }

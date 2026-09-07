@@ -1,0 +1,18 @@
+{
+  "scripts": {
+    "StageObjData": "eefcb6f4acfc4bd9847c54a1f1320529",
+    "StagePlacement": "4ca1acefc2674bcfb79132f250f166a5",
+    "StageSpawner": "5daf0c0d0a46476d94329179da800733"
+  },
+  "assets": [
+    "9ad5eeaceed14a1a953e2c9bf2b2dd66",
+    "5befc54f97ce4998bb009d7f33d18a64",
+    "9fb12c22087a4f3ea8e03ca97d4b6b25",
+    "52958220a698493a8c9db27a18ab038f"
+  ],
+  "sceneComponent": "8000000000000000100",
+  "map": "2147000020",
+  "enemy": "320417159",
+  "flow": "2090047626",
+  "go": "320417157"
+}

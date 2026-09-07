@@ -18,7 +18,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
       type: 3}
-    rank: 1
+    rank: 0
     attackType: 0
     attackDamageType: 0
     maxHP: 9
@@ -42,7 +42,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 7283421184823144213, guid: 2662beb15d4e68c45bc26fd87c270920,
       type: 3}
-    rank: 1
+    rank: 0
     attackType: 0
     attackDamageType: 0
     maxHP: 8
@@ -65,7 +65,7 @@ MonoBehaviour:
     displayName: Blue Slime
     spawnRole: 0
     prefab: {fileID: 780427262304984094, guid: 65b613408636f9745b6adefa8bfe6164, type: 3}
-    rank: 1
+    rank: 0
     attackType: 0
     attackDamageType: 0
     maxHP: 11
@@ -89,7 +89,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 3812377382162701999, guid: 459e93d922c91cd4695017bc087b0fb3,
       type: 3}
-    rank: 1
+    rank: 0
     attackType: 0
     attackDamageType: 0
     maxHP: 9
@@ -113,7 +113,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 8626112183665077562, guid: 844df648dc2b3d843a54a8ba4abeb065,
       type: 3}
-    rank: 1
+    rank: 0
     attackType: 1
     attackDamageType: 1
     maxHP: 7
@@ -137,7 +137,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 6818404413805830165, guid: 2a46d2b72f04cae4fa65fe0452159f5e,
       type: 3}
-    rank: 2
+    rank: 1
     attackType: 0
     attackDamageType: 0
     maxHP: 18
@@ -161,7 +161,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 6663876601543625584, guid: bb45b7e50e02538459b33fd6d085bd9a,
       type: 3}
-    rank: 2
+    rank: 1
     attackType: 0
     attackDamageType: 0
     maxHP: 18
@@ -185,7 +185,7 @@ MonoBehaviour:
     spawnRole: 0
     prefab: {fileID: 6492908115424779681, guid: b5f7de3073646e24491ec7da78b60bd0,
       type: 3}
-    rank: 3
+    rank: 2
     attackType: 0
     attackDamageType: 0
     maxHP: 36

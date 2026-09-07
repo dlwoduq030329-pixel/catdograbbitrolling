@@ -278,8 +278,13 @@ public sealed class BattleCameraRig : MonoBehaviour
     /// </summary>
     private void RefreshMapBounds()
     {
-        MapInfo[] tiles = FindObjectsByType<MapInfo>(FindObjectsSortMode.None);
-        if (tiles.Length == 0)
+        SetMapBounds(FindObjectsByType<MapInfo>(FindObjectsSortMode.None));
+    }
+
+    /// <summary>맵 교체 시 등록된 새 타일 목록으로 카메라 이동 한계를 갱신한다.</summary>
+    public void SetMapBounds(System.Collections.Generic.IReadOnlyList<MapInfo> tiles)
+    {
+        if (tiles == null || tiles.Count == 0)
         {
             hasMapBounds = false;
             return;

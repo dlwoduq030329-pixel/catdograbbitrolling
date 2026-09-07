@@ -276,6 +276,16 @@ public sealed class BattleRangeVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>맵 교체 전에 이전 타일의 강조 연출과 참조를 비운다.</summary>
+    public void ReleaseMap()
+    {
+        if (landedHighlightRoutine != null) StopCoroutine(landedHighlightRoutine);
+        landedHighlightRoutine = null;
+        landedTile = null;
+        RestoreAllTileColors();
+        originalColors.Clear();
+    }
+
     private IEnumerator RestoreLandedTileAfterDelay(float duration)
     {
         // 이동 완료 피드백을 플레이어가 인지할 수 있는 시간만큼 유지한다.

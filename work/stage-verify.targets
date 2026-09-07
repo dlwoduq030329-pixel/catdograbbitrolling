@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <Compile Include="Assets\renew\Battle\Stage\*.cs" Exclude="@(Compile)" />
+  </ItemGroup>
+</Project>

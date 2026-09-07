@@ -34,6 +34,16 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
         threatIntentIconView.SetCamera(battleCamera);
     }
 
+    private void OnEnable()
+    {
+        // Player가 이동해서 Fog가 자연스럽게(F8 없이) 갱신될 때도 이미 그려진 예고선/아이콘을
+        // 강제로 다시 계산해야 한다. 마우스가 그대로면 RefreshThreatPreviewWhenDestinationChanges의
+        // 캐시(lastCalculatedDestination) 때문에 재계산이 안 되어, 몸체는 이번 프레임부터 바로
+        // 가려지는데 예고선만 "가려지기 전" 상태로 남는 문제("적 몸체는 안 보이는데 ray는 보임")가
+        // 있었다.
+        FogRevealVisibility.VisibilityChanged += ForceRefresh;
+    }
+
     /// <summary>
     /// BattleUnitMoveFlow가 이미 보유한 Scene 참조를 전달한다.
     /// 이 컴포넌트가 Camera·RangeController·Registry를 다시 검색하지 않게 하는 초기 연결 지점이다.
@@ -91,6 +101,17 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
         selectedMoveDestination = null;
         lastCalculatedDestination = null;
         HideAllThreatPreviewVisuals();
+    }
+
+    /// <summary>
+    /// 마우스가 안 움직여도 다음 Update()에서 위협 표시를 강제로 다시 계산하게 한다.
+    /// Fog 시스템의 F8 디버그 토글처럼, 마우스 이동 없이 Enemy 가시성이 갑자기 바뀌는 경우
+    /// (RefreshThreatPreviewWhenDestinationChanges가 "목적지가 안 바뀌었다"고 판단해 재계산을
+    /// 건너뛰기 때문에) 이미 그려진 선·아이콘이 낡은 상태로 남는 문제를 해결하기 위해 추가했다.
+    /// </summary>
+    public void ForceRefresh()
+    {
+        lastCalculatedDestination = null;
     }
 
     /// <summary>
@@ -174,6 +195,7 @@ public sealed class BattleMoveThreatPreview : MonoBehaviour
 
     private void OnDisable()
     {
+        FogRevealVisibility.VisibilityChanged -= ForceRefresh;
         selectedMoveDestination = null;
         lastCalculatedDestination = null;
         HideAllThreatPreviewVisuals();

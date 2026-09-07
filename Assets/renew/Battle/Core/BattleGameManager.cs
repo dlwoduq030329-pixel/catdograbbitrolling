@@ -396,9 +396,12 @@ public class BattleGameManager : MonoBehaviour
     {
         LockBattleInputForOverlay();
         BattleMapCameraInput.SetEnabledOnMainCamera(false);
-        yield return turnAnnouncementView.ShowStageAnnouncement(currentStage, 2f);
-        BattleMapCameraInput.SetEnabledOnMainCamera(true);
-        UnlockBattleInputAfterOverlay();
+        try { yield return turnAnnouncementView.ShowStageAnnouncement(currentStage, 2f); }
+        finally
+        {
+            BattleMapCameraInput.SetEnabledOnMainCamera(true);
+            UnlockBattleInputAfterOverlay();
+        }
     }
 
     /// <summary>플레이어 턴 동안 다음 적 턴의 MP와 위협 범위를 확인할 수 있도록 모든 생존 적 MP를 준비한다.</summary>

@@ -123,6 +123,16 @@ public partial class EnemyTurnActor : MonoBehaviour
     /// </summary>
     public SpawnRole SpawnRole => spawnRole;
 
+    public void ResetForSpawn(BattleDataPool shared)
+    {
+        StopAllCoroutines();
+        homeTile = null;
+        ActedThisTurn = false;
+        battleDataPool = shared;
+        pathDebugView?.Clear();
+        GetComponent<BattleEnemyActionExecutor>()?.StopAllCoroutines();
+    }
+
     /// <summary>
     /// Player가 후보 타일로 이동했다고 가정했을 때 이 Enemy가 다음 턴에 선택할 행동을 계산한다.
     /// 실제 TakeTurn과 동일한 행동 트리·현재 MP·이동 비용·공격 비용·점유 타일을 사용하므로,

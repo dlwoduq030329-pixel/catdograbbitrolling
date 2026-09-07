@@ -14,6 +14,7 @@ using UnityEngine;
 /// </summary>
 public class BattleUnitMoveFlow : MonoBehaviour
 {
+    public event System.Action<MapInfo> MoveCompleted;
     private BattlePlayerActionController owner;
     private GameObject boundPlayer;
 
@@ -320,6 +321,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
             targetTile,
             owner.colorPalette.LandedTileColor,
             owner.landedHighlightDuration);
+        MoveCompleted?.Invoke(targetTile);
     }
 
     /// <summary>

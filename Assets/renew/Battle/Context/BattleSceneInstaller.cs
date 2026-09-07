@@ -75,6 +75,7 @@ public sealed class BattleSceneInstaller : MonoBehaviour
 
     private void ConfigureDataPool()
     {
+        enemySpawner?.ConfigureRegistries(unitRegistry, mapRegistry, dataPool);
         dataPool?.ConfigureSceneReferences(
             playerBody,
             mapGenerator,

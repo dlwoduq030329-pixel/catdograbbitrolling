@@ -9,7 +9,7 @@ public sealed class BattleThreatIntentIconView : MonoBehaviour
     [Tooltip("다음 Enemy 턴에 Player를 확실히 공격하는 경우 표시할 검 아이콘입니다.")]
     [SerializeField] private Sprite attackIcon;
     [Tooltip("다음 Enemy 턴에 Player 방향으로 이동하는 경우 표시할 눈 아이콘입니다.")]
-    [SerializeField] private Sprite chaseIcon; 
+    [SerializeField] private Sprite chaseIcon;
     [SerializeField, Min(0.1f)] private float iconWorldSize = 0.8f;
     [SerializeField] private float fallbackIconHeight = 2.8f;
     [SerializeField, Min(0f)] private float iconGapAboveHealthBar = 0.06f;
