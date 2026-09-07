@@ -13,11 +13,17 @@ public static class BattleCharacterAnimationBridge
     private const string DefaultAttackState = "IdleAttackMelee";
 
     /// <summary>
-    /// 캐릭터 루트와 모든 자식에서 전투에 사용할 Animator를 찾는다.
+    /// 캐릭터 루트와 모든 자식에서 전투에 사용할 Animator를 찾아 활성화하고, 나머지 Animator는
+    /// 꺼서 같은 뼈대를 두 Animator가 동시에 덮어쓰지 못하게 한다.
     /// 모델 Animator가 캐릭터 루트가 아닌 자식 프리팹에 붙어 있으므로 자식까지 검색해야 한다.
     /// 여러 Animator가 있으면 Controller 이름에 "Battle"이 포함된 것을 우선하고,
     /// 전투 전용 Controller가 없을 때만 첫 번째 Animator를 대체 대상으로 사용한다.
-/// </summary>
+    ///
+    /// 캐릭터마다 Normal용/Battle용 Animator가 각각 별도 컴포넌트로 붙어있는 구조라서,
+    /// 두 Animator가 동시에 켜져 있으면 매 프레임 서로 다른 Animator가 같은 본(Bone)을 덮어쓸 수
+    /// 있다. Play 계열 함수를 호출할 때마다 이 함수가 대상 Animator만 켜고 나머지는 꺼서, 항상
+    /// 하나의 Animator만 그 캐릭터를 구동하도록 보장한다.
+    /// </summary>
     private static Animator FindBattleAnimator(GameObject character)
     {
         // Cat_Player 등 스폰되는 루트 오브젝트 자체에는 Animator가 없고, 그 안에 중첩된
@@ -28,6 +34,7 @@ public static class BattleCharacterAnimationBridge
             return null;
         }
 
+        Animator chosen = null;
         foreach (Animator candidate in animators)
         {
             if (candidate != null &&
@@ -36,11 +43,45 @@ public static class BattleCharacterAnimationBridge
                     "Battle",
                     System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return candidate;
+                chosen = candidate;
+                break;
             }
         }
 
-        return animators[0];
+        if (chosen == null)
+        {
+            chosen = animators[0];
+        }
+
+        ActivateOnly(chosen, animators);
+        return chosen;
+    }
+
+    /// <summary>
+    /// chosen Animator만 켜진 상태로 남기고 나머지는 기본 포즈로 되돌린 뒤 끈다.
+    /// 꺼지는 Animator를 Rebind 없이 바로 끄면 마지막 포즈가 그대로 남아 다음에 다시 켤 때
+    /// 잔상처럼 보일 수 있어, 끄기 직전에 Rebind + Update(0f)로 정리한다.
+    /// </summary>
+    private static void ActivateOnly(Animator chosen, Animator[] all)
+    {
+        foreach (Animator other in all)
+        {
+            if (other == null || other == chosen || !other.enabled)
+            {
+                continue;
+            }
+
+            other.Rebind();
+            other.Update(0f);
+            other.enabled = false;
+        }
+
+        if (!chosen.enabled)
+        {
+            chosen.enabled = true;
+            chosen.Rebind();
+            chosen.Update(0f);
+        }
     }
 
     /// <summary>이동 시작 시 걷기 연출을 재생한다.</summary>
@@ -92,8 +133,9 @@ public static class BattleCharacterAnimationBridge
             return;
         }
 
-        animator.Play(DefaultAttackState);
-        ScheduleReturnToIdle(character, animator);
+        int stateHash = Animator.StringToHash(DefaultAttackState);
+        animator.Play(stateHash);
+        ScheduleReturnToIdle(character, animator, stateHash);
     }
 
     /// <summary>
@@ -114,7 +156,7 @@ public static class BattleCharacterAnimationBridge
         animator.Play(stateHash);
         if (returnToIdleAfter)
         {
-            ScheduleReturnToIdle(character, animator);
+            ScheduleReturnToIdle(character, animator, stateHash);
         }
         return true;
     }
@@ -141,8 +183,16 @@ public static class BattleCharacterAnimationBridge
     /// 이 Bridge는 Animator를 직접 재생하기만 해서 Event를 받을 컴포넌트가 없어 Idle 복귀가 아예 일어나지
     /// 않았다(카드 사용 후 애니메이션이 그대로 멈춰있던 버그의 원인). 감시자가 State 종료를 코드로 대신
     /// 확인해 Idle로 되돌린다.
+    ///
+    /// stateHash는 방금 animator.Play()에 넘긴 것과 동일한 값을 그대로 전달받는다. animator.Play() 직후
+    /// GetCurrentAnimatorStateInfo()를 바로 호출하면 Animator 내부 갱신이 아직 한 프레임 반영되기 전이라
+    /// "재생을 요청한 State"가 아니라 "재생 요청 전의 이전 State" 정보가 돌아오는 경우가 있다(2026-09-07
+    /// 확인: 이 값을 그대로 감시 기준으로 썼을 때 감시자가 곧바로 "이미 다른 State로 바뀜"으로 오판해서
+    /// 스스로 사라져버려, 자동 Idle 복귀가 한 번도 발동하지 않고 플레이어가 다음 행동을 해서 강제로
+    /// animator.Play()가 다시 호출될 때만 애니메이션이 풀리는 버그가 있었다). 그래서 Animator에게 실제
+    /// 되물어보지 않고, 호출자가 이미 알고 있는(=재생을 요청한) State의 해시를 그대로 감시 기준으로 쓴다.
     /// </summary>
-    private static void ScheduleReturnToIdle(GameObject character, Animator animator)
+    private static void ScheduleReturnToIdle(GameObject character, Animator animator, int stateHash)
     {
         if (character == null || animator == null)
         {
@@ -157,25 +207,30 @@ public static class BattleCharacterAnimationBridge
         }
 
         BattleAutoIdleReturner returner = animator.gameObject.AddComponent<BattleAutoIdleReturner>();
-        returner.Begin(character, animator);
+        returner.Begin(character, animator, stateHash);
     }
 
     /// <summary>
     /// Animator의 현재 State가 끝날 때까지 매 프레임 지켜보다가 끝나는 순간 Idle을 재생하고 스스로
     /// 사라지는 감시용 컴포넌트다. Loop되는 State이거나, 감시 도중 다른 행동이 끼어들어 State가
     /// 바뀌면(예: 다음 카드를 바로 사용) 관여하지 않고 조용히 제거된다.
+    ///
+    /// 목표 State에 실제로 진입한 걸 shortNameHash로 확인하기 전까지는 "State가 바뀌었다"고 오판하지
+    /// 않도록 hasEnteredTargetState로 한 번 더 확인한다(위 ScheduleReturnToIdle 주석 참고).
     /// </summary>
     private sealed class BattleAutoIdleReturner : MonoBehaviour
     {
         private GameObject watchedCharacter;
         private Animator watchedAnimator;
-        private int watchedStateFullPathHash;
+        private int watchedStateHash;
+        private bool hasEnteredTargetState;
 
-        public void Begin(GameObject character, Animator animator)
+        public void Begin(GameObject character, Animator animator, int stateHash)
         {
             watchedCharacter = character;
             watchedAnimator = animator;
-            watchedStateFullPathHash = animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+            watchedStateHash = stateHash;
+            hasEnteredTargetState = false;
         }
 
         private void Update()
@@ -188,8 +243,21 @@ public static class BattleCharacterAnimationBridge
 
             AnimatorStateInfo stateInfo = watchedAnimator.GetCurrentAnimatorStateInfo(0);
 
-            // 감시 대상 State에서 이미 벗어났다면(다른 행동이 끼어들었거나 이미 Idle로 전환됨) 관여하지 않는다.
-            if (stateInfo.fullPathHash != watchedStateFullPathHash)
+            if (!hasEnteredTargetState)
+            {
+                if (stateInfo.shortNameHash != watchedStateHash)
+                {
+                    // animator.Play() 요청이 아직 이 프레임의 Animator 내부 갱신에 반영되기 전일 수
+                    // 있으므로, 목표 State에 실제로 들어간 걸 확인할 때까지는 판단을 미루고 계속 기다린다.
+                    return;
+                }
+
+                hasEnteredTargetState = true;
+            }
+
+            // 목표 State에 이미 진입했었는데 이후 다른 행동이 끼어들어 State가 바뀌었다면
+            // (예: 다음 카드를 바로 사용, 혹은 이미 Idle로 전환됨) 관여하지 않는다.
+            if (stateInfo.shortNameHash != watchedStateHash)
             {
                 Destroy(this);
                 return;

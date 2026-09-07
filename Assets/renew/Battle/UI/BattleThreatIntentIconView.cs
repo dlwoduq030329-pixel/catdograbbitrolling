@@ -26,7 +26,15 @@ public sealed class BattleThreatIntentIconView : MonoBehaviour
         EnsureIconCount(count);
         for (int i = 0; i < icons.Count; i++)
         {
-            bool visible = i < count && threats[i].Enemy != null;
+            // Fog 시스템: 아이콘이 Enemy의 정확한 위치(HP바 위)에 그대로 붙으므로, 안개에 가려
+            // 안 보여야 할 Enemy까지 아이콘으로 위치가 드러나지 않도록 threat line과 같은 기준으로
+            // 가려진 Enemy는 아이콘도 띄우지 않는다.
+            FogRevealVisibility enemyVisibility = i < count && threats[i].Enemy != null
+                ? threats[i].Enemy.GetComponentInParent<FogRevealVisibility>()
+                : null;
+            bool enemyHiddenByFog = enemyVisibility != null && !enemyVisibility.IsRevealed;
+
+            bool visible = i < count && threats[i].Enemy != null && !enemyHiddenByFog;
             icons[i].enabled = visible;
             enemyTargets[i] = visible ? threats[i].Enemy.transform : null;
             if (!visible) continue;

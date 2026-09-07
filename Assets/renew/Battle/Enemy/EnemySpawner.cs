@@ -230,7 +230,18 @@ public class EnemySpawner : MonoBehaviour
         enemyHealth.Initialize(selectedData != null ? selectedData.maxHP : 10f);
         deathHandler.Configure(enemyHealth);
         Sprite typeIcon = selectedData != null ? ResolveTypeIcon(selectedData) : null;
-        BattleHealthBarFactory.AttachEnemyBar(enemy, enemyHealth, enemyMP, typeIcon);
+        BattleHealthBarView enemyHealthBar =
+            BattleHealthBarFactory.AttachEnemyBar(enemy, enemyHealth, enemyMP, typeIcon);
+
+        // Fog 시스템: 이 Enemy는 FogOfWarManager 기준으로 아직 탐험되지 않은 타일 위에서는 화면에
+        // 보이면 안 된다. 모델 Renderer는 Awake에서 자동으로 모으고, 방금 만든 HP바는 Enemy의
+        // 자식이 아니라 별도 Canvas에 붙는 UI라 자동 수집 대상이 아니므로 직접 등록해서 같이 켜고 끈다.
+        FogRevealVisibility fogVisibility =
+            BattleComponentResolver.GetOrAdd<FogRevealVisibility>(enemy, null);
+        if (enemyHealthBar != null)
+        {
+            fogVisibility.SetExtraVisualRoots(new GameObject[] { enemyHealthBar.gameObject });
+        }
 
         if (selectedData != null)
         {

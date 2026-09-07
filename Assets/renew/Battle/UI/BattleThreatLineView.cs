@@ -35,7 +35,20 @@ public sealed class BattleThreatLineView : MonoBehaviour
             MapInfo lineDestination = threat.Intent == EnemyThreatIntent.Attack
                 ? threat.PlayerDestination
                 : threat.EnemyPredictedDestination;
-            if (threat.Enemy == null || lineDestination == null)
+
+            // Fog 시스템: Enemy 자신이 안개에 가려져 안 보이는 상태면(FogRevealVisibility.IsRevealed
+            // == false) 의도 미리보기 선도 그리지 않는다. 그리지 않으면 모델은 안 보이는데 공격/추격
+            // 경고선만 화면에 남아 위치가 노출되는 문제("enemy ray가 보임")가 생긴다.
+            // GetComponent가 아니라 GetComponentInParent를 쓰는 이유: EnemyTurnActor(threat.Enemy)가
+            // Enemy 루트가 아니라 자식 오브젝트에 붙어 있는 프리팹이 있고, FogRevealVisibility는
+            // EnemySpawner가 항상 루트에 붙인다. GetComponent만 쓰면 이 경우 못 찾아서
+            // enemyHiddenByFog가 항상 false로 나와 안개에 가린 Enemy의 선이 계속 보이는 문제가 있었다.
+            FogRevealVisibility enemyVisibility = threat.Enemy != null
+                ? threat.Enemy.GetComponentInParent<FogRevealVisibility>()
+                : null;
+            bool enemyHiddenByFog = enemyVisibility != null && !enemyVisibility.IsRevealed;
+
+            if (threat.Enemy == null || lineDestination == null || enemyHiddenByFog)
             {
                 lines[i].enabled = false;
                 continue;

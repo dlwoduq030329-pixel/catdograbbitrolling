@@ -1735,6 +1735,20 @@ public class NewMapGenerator : MonoBehaviour
                     worldY);
 
                 blocks[x, z] = info;
+
+
+                // Fog 시스템: 상점/상자는 플레이어가 이 타일을 한 번이라도 밝히기 전까지는 화면에
+                // 보이면 안 된다(출구는 이 조건에서 제외해 항상 보이는 상태를 유지한다).
+                // FogRevealVisibility가 매 프레임 FogOfWarManager.IsWorldPositionRevealed()로
+                // 자기 위치가 탐험됐는지 확인해서 Renderer를 켜고 끈다.
+                if (mapblueprint[x, z] == TileType.Store ||
+                    mapblueprint[x, z] == TileType.Box)
+                {
+                    if (obj.GetComponent<FogRevealVisibility>() == null)
+                    {
+                        obj.AddComponent<FogRevealVisibility>();
+                    }
+                }
             }
         }
 

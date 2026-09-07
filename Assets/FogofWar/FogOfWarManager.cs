@@ -136,6 +136,33 @@ public class FogOfWarManager : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// 전달받은 월드 좌표가 지금까지 한 번이라도 밝혀진 적 있는지(탐험 여부)를 확인한다.
+    /// Enemy/상점/상자 등 오브젝트의 표시 여부를 판정할 때 사용한다 - 실시간 시야 반경이 아니라
+    /// 영구적으로 누적되는 Fog 텍스처 값을 그대로 재사용한다(한 번 밝힌 곳은 계속 밝은 상태로 유지된다).
+    /// </summary>
+    public bool IsWorldPositionRevealed(Vector3 worldPosition, byte revealedThreshold = 8)
+    {
+        if (!isReady || fogPixels == null)
+        {
+            return false;
+        }
+
+        Vector2 uv = WorldToNormalized(worldPosition);
+
+        int x = Mathf.RoundToInt(uv.x * (textureResolution - 1));
+        int y = Mathf.RoundToInt(uv.y * (textureResolution - 1));
+
+        if (x < 0 || x >= textureResolution || y < 0 || y >= textureResolution)
+        {
+            return false;
+        }
+
+        int index = y * textureResolution + x;
+        return fogPixels[index].r >= revealedThreshold;
+    }
+
+
     // ============================================================
     // AWAKE
     // ============================================================
@@ -402,6 +429,22 @@ public class FogOfWarManager : MonoBehaviour
 
     private void Update()
     {
+        // Enemy/상점/상자 등 FogRevealVisibility가 붙은 모든 오브젝트의 가시성을 한 번에 갱신한다.
+        // 각 오브젝트가 따로 Update()를 갖는 대신 여기 한 곳에서만 순회한다(개수가 늘어나도 가볍게 유지).
+        FogRevealVisibility.RefreshAll();
+
+        // 디버그: F8을 누르면 오브젝트 Fog(FogRevealVisibility)만 강제로 전부 보이게 토글한다.
+        // 지형 Fog 텍스처(fogPixels)는 전혀 건드리지 않으므로 다시 F8을 누르면 원래 상태로 돌아온다.
+        if (Input.GetKeyDown(KeyCode.F8))
+        {
+            FogRevealVisibility.DebugForceRevealAll = !FogRevealVisibility.DebugForceRevealAll;
+
+            Debug.Log(
+                "[FogOfWar] Debug Force Reveal All = " +
+                FogRevealVisibility.DebugForceRevealAll
+            );
+        }
+
         if (!isReady)
             return;
 

@@ -24,7 +24,6 @@ MonoBehaviour:
     maxHP: 9
     attackDamage: 2
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -49,7 +48,6 @@ MonoBehaviour:
     maxHP: 8
     attackDamage: 3
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -73,7 +71,6 @@ MonoBehaviour:
     maxHP: 11
     attackDamage: 1
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -98,7 +95,6 @@ MonoBehaviour:
     maxHP: 9
     attackDamage: 2
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -123,7 +119,6 @@ MonoBehaviour:
     maxHP: 7
     attackDamage: 2
     attackRangeTiles: 4
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -148,7 +143,6 @@ MonoBehaviour:
     maxHP: 18
     attackDamage: 3
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -173,7 +167,6 @@ MonoBehaviour:
     maxHP: 18
     attackDamage: 3
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3
@@ -198,7 +191,6 @@ MonoBehaviour:
     maxHP: 36
     attackDamage: 4
     attackRangeTiles: 1
-    attackSpeed: 1
     pushWeight: 1
     skillCooldown: 0
     minTurnMP: 3

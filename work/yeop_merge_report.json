@@ -1,0 +1,33 @@
+{
+  "addedNodes": [
+    "/GameObject",
+    "/fog",
+    "/GameObject (1)",
+    "/WaterPlane (1)",
+    "/Select Cha/Canvas - Player Select/test",
+    "/Select Cha/Canvas - Player Select/test/Text (TMP)",
+    "/FOGOFWAR",
+    "/fog",
+    "/DamageSystem",
+    "/WaterPlane (1)/bottom",
+    "/DamagePrefab"
+  ],
+  "addedRoots": 8,
+  "addedBlocks": 37,
+  "newDanglingReferences": 0,
+  "sourceUnchanged": true,
+  "assets": {
+    "d8d2d81ab07976d4cbc185998085a482": "Assets\\DamageManager.cs.meta",
+    "561ee3ba3b07f99479eeedb2b63da15c": "Assets\\critical\\DamagePrefab.prefab.meta",
+    "6d3885ddb9dd16440b3da35655c310b3": "Assets\\FogofWar\\Fog.mat.meta",
+    "b500b045ca2580d488cd3430c96e56a1": "Assets\\FogofWar\\FogOfWarManager.cs.meta",
+    "3038132c11ec35d4e9feee62bebc3c32": "Assets\\Materials\\FogOfWar_Shader.shadergraph.meta",
+    "dd97de70edf8a4141bee758a2efe7ff8": "Assets\\IgniteCoders\\Simple Water Shader\\Resources\\WaterShader.shadergraph.meta",
+    "72512fba4bc9edf4da83c178efc681a7": "Assets\\renew\\Scripts_map\\Material_Remove\\Dirt_1.mat.meta",
+    "04c2a73ee29f95c46808d1568de881c9": "Assets\\renew\\Scripts_map\\Prefab\\bottom.prefab.meta",
+    "8f586378b4e144a9851e7b34d9b748ee": "Assets\\TextMesh Pro\\Resources\\Fonts & Materials\\LiberationSans SDF.asset.meta",
+    "f4688fdb7df04437aeb418b961361dc5": "Library\\PackageCache\\com.unity.textmeshpro@3.0.6\\Scripts\\Runtime\\TextMeshProUGUI.cs.meta",
+    "4e29b1a8efbd4b44bb3f3716e73f07ff": "Library\\PackageCache\\com.unity.ugui@1.0.0\\Runtime\\UI\\Core\\Button.cs.meta",
+    "fe87c0e1cc204ed48ad3b37840f39efc": "Library\\PackageCache\\com.unity.ugui@1.0.0\\Runtime\\UI\\Core\\Image.cs.meta"
+  }
+}
