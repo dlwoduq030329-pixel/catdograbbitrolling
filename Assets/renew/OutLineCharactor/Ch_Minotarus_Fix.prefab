@@ -1286,6 +1286,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7437108661567821249}
+  - component: {fileID: -7267964925381997545}
   m_Layer: 0
   m_Name: Ch_Minotarus_Fix
   m_TagString: Untagged
@@ -1317,6 +1318,28 @@ Transform:
   - {fileID: 6888535059695742384}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-7267964925381997545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6492908115424779681}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 041f46609df45994ba047f24d4714e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skin:
+  - {fileID: 9014952418296955010}
+  - {fileID: 5315839042125500752}
+  - {fileID: 8544604112921567826}
+  - {fileID: 6694440439228194527}
+  - {fileID: 712987274192729864}
+  - {fileID: 4848813254034617426}
+  - {fileID: 8039074600745120514}
+  - {fileID: 2775196735219633477}
+  renderers: []
 --- !u!1 &6493816881800430047
 GameObject:
   m_ObjectHideFlags: 0

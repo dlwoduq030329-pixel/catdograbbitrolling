@@ -23,6 +23,9 @@ public class EnemySpawner : MonoBehaviour
     [InspectorName("고정 데이터 인덱스")]
     [SerializeField, Min(0)] private int databaseIndex;
 
+    [Header("적 플레이어 초기화 용도 중복되는게 있으면 수정 요청")]
+    [SerializeField] GameObject playerbody;
+
     /// <summary>근거리·원거리 x 물리·마법 조합별로 표시할 적 유형 아이콘 한 세트.</summary>
     [System.Serializable]
     private struct EnemyTypeIcon
@@ -175,6 +178,7 @@ public class EnemySpawner : MonoBehaviour
         // NormalizeEnemyFootprint), 그 다음에 enemyTile의 자식으로 옮긴다(SetParent worldPositionStays=true라
         // 지금까지 계산한 월드 위치·스케일은 유지된다). 결과적으로 이 Enemy는 지금도 타일의 자식 오브젝트다.
         GameObject enemy = Instantiate(selectedPrefab, spawnPosition, Quaternion.identity);
+        enemy.GetComponent<DisableFarEnemy>().SetTarget(playerbody);
         NormalizeEnemyFootprint(enemy, enemyTile);
 
         // 2026-09-05: 예전에는 스폰된 Enemy가 자신이 서 있는 Road 타일의 자식으로 들어갔다. 기능적으로는
