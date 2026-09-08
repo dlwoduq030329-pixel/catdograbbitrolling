@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1.34
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 9ca22510633fbfd4399f1704cd9d5c72, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: d1fdb8e44b28da34d9e922cca0bc740e, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -4686,7 +4686,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -367331452, guid: e7f863cfdac1e024fbaa851442c1c863, type: 3}
+  m_Sprite: {fileID: 845000077, guid: 2f820d93fcb50b44a85ac4aa966e49c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -12292,6 +12292,12 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
       value: UnityEngine.Object, UnityEngine
       objectReference: {fileID: 0}
+    - target: {fileID: 8395880462252359206, guid: faec4100afbfcff4b964863af4998889,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -920689172, guid: dbf59c6dcd81e4147b77a642e52f527c,
+        type: 3}
     - target: {fileID: 8567868575348805125, guid: faec4100afbfcff4b964863af4998889,
         type: 3}
       propertyPath: m_Enabled
@@ -15285,7 +15291,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -367331452, guid: e7f863cfdac1e024fbaa851442c1c863, type: 3}
+  m_Sprite: {fileID: 845000077, guid: 2f820d93fcb50b44a85ac4aa966e49c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -23631,7 +23637,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -367331452, guid: e7f863cfdac1e024fbaa851442c1c863, type: 3}
+  m_Sprite: {fileID: 845000077, guid: 2f820d93fcb50b44a85ac4aa966e49c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -23649,6 +23655,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1445346897}
   m_CullTransparentMesh: 1
+--- !u!1 &1448588614
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1448588616}
+  - component: {fileID: 1448588615}
+  m_Layer: 0
+  m_Name: Global Volume
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1448588615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1448588614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 436fd4ac9fc749d45ba96dc840be50c2, type: 2}
+--- !u!4 &1448588616
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1448588614}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1448665059
 GameObject:
   m_ObjectHideFlags: 0
@@ -27325,7 +27380,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -367331452, guid: e7f863cfdac1e024fbaa851442c1c863, type: 3}
+  m_Sprite: {fileID: 845000077, guid: 2f820d93fcb50b44a85ac4aa966e49c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -30459,6 +30514,17 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5178569101800638456, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
+        type: 3}
+      propertyPath: m_Value
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6123127817720601795, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -1645549360, guid: c0184854f28e4e64ea99b07255b55578,
+        type: 3}
     - target: {fileID: 6123127817720601795, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
         type: 3}
       propertyPath: m_Maskable
@@ -30469,6 +30535,12 @@ PrefabInstance:
       propertyPath: m_FillMethod
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 7206223704084691496, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 1824544830, guid: bc080fe727f409847893781a3b0c3137,
+        type: 3}
     - target: {fileID: 8683036419033566190, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
         type: 3}
       propertyPath: m_Name
@@ -31104,7 +31176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -367331452, guid: e7f863cfdac1e024fbaa851442c1c863, type: 3}
+  m_Sprite: {fileID: 845000077, guid: 2f820d93fcb50b44a85ac4aa966e49c6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -31654,8 +31726,8 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 0.9317093, b: 0.88699996, a: 1}
-  m_Intensity: 1.2
+  m_Color: {r: 0.80989677, g: 0.86303884, b: 0.9811321, a: 1}
+  m_Intensity: 1.1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -31664,7 +31736,7 @@ Light:
     m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
-    m_Strength: 0.6
+    m_Strength: 1
     m_Bias: 0.05
     m_NormalBias: 0.4
     m_NearPlane: 0.2
@@ -34500,7 +34572,7 @@ PrefabInstance:
     - target: {fileID: 7888926365653810531, guid: cda1803d087391a4b93e931f7f935f9b,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -34527,3 +34599,4 @@ SceneRoots:
   - {fileID: 676211571}
   - {fileID: 817313912}
   - {fileID: 1820471376}
+  - {fileID: 1448588616}
