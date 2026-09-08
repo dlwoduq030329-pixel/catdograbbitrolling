@@ -9,7 +9,8 @@ using UnityEngine.Serialization;
 ///
 /// 주요 호출 흐름:
 /// BattleUIFlowController가 Player 등록 및 최초 StartPlayerTurn을 요청한다.
-/// BattleDiceSystem의 연출 완료 신호로 이동 범위와 카드 패널을 연 뒤, EndTurn이 Enemy 순차 행동을 시작한다.
+/// 2026-09-08 주사위 시스템 삭제 이후에는 Player 턴 시작과 동시에 이동 범위와 카드 패널을 열고,
+/// EndTurn이 카드 패널을 닫은 뒤 Enemy 순차 행동을 시작한다.
 /// BattleEnemyTurnRunner가 모든 Enemy 행동을 마치면 다시 StartPlayerTurn으로 돌아온다.
 /// 상점·보상·캐릭터 정보 UI는 LockBattleInputForOverlay/UnlockBattleInputAfterOverlay로 전투 입력을 잠근다.
 ///
@@ -31,12 +32,6 @@ public class BattleGameManager : MonoBehaviour
     [Header("턴 진행 모듈")] // 턴/오버레이/플레이어 체력만 관리 현재는 BattleGameManager가 담당하지만, 추후 별도 조정자로 분리할 수 있다.
     [InspectorName("턴 버튼 제어 모듈")]
     [SerializeField] private BattleTurnButtonController turnButtonController;
-    [InspectorName("주사위 버튼 입력·표시 모듈")]
-    [Tooltip("주사위 버튼의 누르기 연출과 버튼 표시·활성 상태를 직접 관리합니다.")]
-    [SerializeField] private BattleDiceRollButton diceRollButton;
-    [InspectorName("주사위 규칙 시스템")]
-    [Tooltip("이번 턴의 굴림 여부, 주사위 결과와 연출 완료 신호를 관리합니다.")]
-    [SerializeField] private BattleDiceSystem diceSystem;
     [InspectorName("카드 패널 표시 제어 모듈")]
     [Tooltip("주사위를 굴리면 손패를 열고 새 턴 또는 적 턴에는 숨길 카드 패널입니다. 턴 버튼 제어기를 경유하지 않고 직접 제어합니다.")]
     [SerializeField] private BattleCardPanelToggle cardPanelToggle;
@@ -121,16 +116,15 @@ public class BattleGameManager : MonoBehaviour
     public bool IsDebugQaBoostEnabled => enableDebugQaBoost;
     public int CurrentTurn => currentTurnNumber;
     public int CurrentStage => currentStage;
-    /// <summary>이번 Player 턴에 확정된 주사위 값. 아직 굴리지 않았거나 이동 후에는 0이다.</summary>
-    public BattleDiceSystem DiceSystem => diceSystem;
     /// <summary>상점·보상창처럼 뒤쪽 전투 조작을 막는 UI가 하나 이상 열려 있는지 나타낸다.</summary>
     public bool IsBattleBlockingUiOpen => overlayUi != null && overlayUi.IsOverlayOpen;
 
     /// <summary>기존 호출부 호환용 이름. 새 코드에서는 <see cref="IsBattleBlockingUiOpen"/>을 사용한다.</summary>
     public bool IsModalInteractionOpen => IsBattleBlockingUiOpen;
+    // 2026-09-08: 주사위 시스템 삭제. 카드 사용 가능 여부는 이제 주사위 굴림과 무관하게
+    // 턴 상태와 전투 조작 차단 UI만으로 결정한다.
     public bool CanUsePlayerCards =>
-        !isBattleStopped && isPlayerTurnActive && diceSystem != null &&
-        diceSystem.HasRolledThisTurn && !IsBattleBlockingUiOpen;
+        !isBattleStopped && isPlayerTurnActive && !IsBattleBlockingUiOpen;
 
 
     /// <summary>
@@ -215,11 +209,6 @@ public class BattleGameManager : MonoBehaviour
 
         // UI 모듈은 버튼 클릭을 해석하고, 실제 턴 규칙은 이 Manager의 공개 함수를 호출한다.
         turnButtonController?.BindEndTurnAction(EndTurn);
-        if (diceSystem != null)
-        {
-            diceSystem.DicePresentationCompleted -= HandleDicePresentationCompleted;
-            diceSystem.DicePresentationCompleted += HandleDicePresentationCompleted;
-        }
 
         // Scene에 저장된 최초 턴 상태를 버튼·카드 사용 가능 상태에 즉시 반영한다.
         SyncTurnUI();
@@ -239,21 +228,15 @@ public class BattleGameManager : MonoBehaviour
             return;
         }
 
-        if (!isPlayerTurnActive || diceSystem == null || !diceSystem.HasRolledThisTurn)
+        if (!isPlayerTurnActive)
         {
-            if (isPlayerTurnActive && (diceSystem == null || !diceSystem.HasRolledThisTurn))
-            {
-                Debug.Log("주사위를 굴린 뒤 턴을 종료할 수 있습니다.", this);
-            }
-
             return;
         }
 
         // 여기서부터 Player 입력 조건을 먼저 끈 뒤 Enemy 턴 코루틴으로 제어권을 넘긴다.
         isPlayerTurnActive = false;
-        diceSystem.ResetForNewTurn();
         currentTurnNumber++;
-        HideCardPanelUntilDice();
+        cardPanelToggle?.Hide();
         SyncTurnUI();
 
         StartCoroutine(RunEnemyTurnSequence());
@@ -295,7 +278,6 @@ public class BattleGameManager : MonoBehaviour
         if (playerTurnSkipped)
         {
             isPlayerTurnActive = false;
-            diceSystem?.ResetForNewTurn();
             currentTurnNumber++;
             // 실제 버그 수정(2026-08-22, 사용자 확인): 기절로 Player 턴을 건너뛰어도 바로 이어지는
             // Enemy 턴은 그대로 진행되므로, 여기서도 다음 Enemy 턴 MP를 새로 굴려둬야 한다.
@@ -310,17 +292,18 @@ public class BattleGameManager : MonoBehaviour
 
         // 보호막은 한 Player 턴만 유지되는 규칙이므로 새 Player 턴 시작 시 제거한다.
         CurrentPlayerHealth?.ClearShield();
-        // 새 턴에는 아직 주사위를 굴리지 않았으므로 주사위 값과 사용 여부를 초기화한다.
-        diceSystem?.ResetForNewTurn();
         // 이동·기본 공격·카드가 함께 쓰는 Player MP를 최대치까지 회복한다.
         CurrentPlayerMP?.RestoreFull();
         // Player가 미리 위협 정보를 확인할 수 있도록 다음 Enemy 턴의 MP를 지금 결정한다.
         PrepareEnemiesForNextTurn();
         // 이전 턴에서 남은 선택 타일, 이동 경로, 이동 완료 상태와 범위 표시를 지운다.
         ResetPlayerMoveState();
-        // 카드는 주사위를 굴린 뒤에만 보이게 새 턴 시작 시 패널을 닫는다.
-        HideCardPanelUntilDice();
-        // 주사위 버튼, 턴 종료 버튼, 카드 사용 가능 상태를 새 턴 값으로 갱신한다.
+        // 2026-09-08: 주사위 삭제. 예전에는 주사위를 굴려야 이동 범위가 열리고 카드 패널이 보였지만,
+        // 이제 턴 시작과 동시에 곧바로 열어준다.
+        // TODO(버티컬 슬라이스): 지금은 임시로 최대 이동 범위를 그대로 쓴다. 행동력/스탯(DEX) 기반
+        // 이동 범위 계산이 들어오면 이 자리를 그 값으로 교체해야 한다.
+        ActivatePlayerTurnActions();
+        // 턴 종료 버튼, 카드 사용 가능 상태를 새 턴 값으로 갱신한다.
         SyncTurnUI();
 
         // Manager의 턴 초기화가 전부 끝난 뒤 DrawSystem 등 구독자가 손패를 구성하게 한다.
@@ -523,7 +506,6 @@ public class BattleGameManager : MonoBehaviour
         playerActionController?.SetBattleInputEnabled(false);
 
         turnButtonController?.DisableTurnEndInput();
-        diceRollButton?.DisableRollInput();
 
         StopAllCoroutines();
         Time.timeScale = 0f;
@@ -532,8 +514,6 @@ public class BattleGameManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance != this) return;
-        if (diceSystem != null)
-            diceSystem.DicePresentationCompleted -= HandleDicePresentationCompleted;
         if (CurrentPlayerWallet != null)
             CurrentPlayerWallet.GoldChanged -= HandlePlayerGoldChanged;
         overlayUi?.ResetOverlayInputState();
@@ -556,45 +536,28 @@ public class BattleGameManager : MonoBehaviour
 
 
     /// <summary>
-    /// 기존 주사위 버튼 연결을 유지하는 전달 함수다. 실제 굴림과 상태 저장은 BattleDiceSystem이 담당한다.
+    /// 2026-09-08: 주사위 시스템 삭제. 이제 Player 턴이 시작되면 곧바로 이동 범위를 열고
+    /// 카드 패널을 보여준다(예전에는 주사위를 굴려야 이 두 가지가 열렸다).
+    /// TODO(버티컬 슬라이스): 지금은 임시로 최대 이동 범위를 그대로 쓴다. 행동력/스탯(DEX) 기반
+    /// 이동 범위 계산이 들어오면 이 자리를 그 값으로 교체해야 한다.
     /// </summary>
-    public void RollDice()
+    private void ActivatePlayerTurnActions()
     {
-        if (diceSystem == null)
+        if (playerActionController != null)
         {
-            Debug.LogError("주사위 규칙 시스템 참조가 없어 굴릴 수 없습니다.", this);
-            return;
+            playerActionController.SetMoveRange(playerActionController.maxMoveRange);
         }
 
-        bool canRollNow = !isBattleStopped && !IsBattleBlockingUiOpen && isPlayerTurnActive;
-        if (!diceSystem.TryRollDice(canRollNow))
-            Debug.LogWarning(
-                $"주사위 입력 무시: 플레이어 턴={isPlayerTurnActive}, " +
-                $"이미 굴림={diceSystem.HasRolledThisTurn}", this);
-        SyncTurnUI();
-    }
-
-    /// <summary>
-    /// Dice System이 연출 완료를 알리면 현재 Player 턴에서 이동 범위와 카드 패널을 연다.
-    /// </summary>
-    private void HandleDicePresentationCompleted(int presentedDiceValue)
-    {
-        if (!isPlayerTurnActive || diceSystem == null ||
-            presentedDiceValue <= 0 || diceSystem.CurrentDiceValue != presentedDiceValue)
-            return;
-
-        playerActionController?.SetMoveRange(presentedDiceValue);
         cardPanelToggle?.Show();
     }
 
     /// <summary>
-    /// 이동이 확정된 뒤 이번 주사위의 숫자 보관값만 0으로 지운다.
-    /// Dice System의 굴림 완료 상태는 유지하므로 같은 턴에 주사위를 다시 굴릴 수 있게 만드는 함수가 아니다.
-    /// BattlePlayerActionController가 이동 완료 또는 이동 취소 상태 정리 과정에서 호출한다.
+    /// 2026-09-08: 주사위 시스템 삭제로 실제로 지울 주사위 표시값이 더 이상 없다.
+    /// BattleUnitMoveFlow/BattleUnitAttackFlow가 이동 완료·취소 시 여전히 이 함수를 호출하므로
+    /// 호출부를 바로 고치지 않기 위해 빈 메서드로 남겨둔다.
     /// </summary>
     public void ResetDiceOnMove()
     {
-        diceSystem?.ClearDisplayedValueAfterMove();
     }
 
     /// <summary>
@@ -641,12 +604,6 @@ public class BattleGameManager : MonoBehaviour
             isBattleStopped,
             IsBattleBlockingUiOpen);
 
-        diceRollButton?.ApplyRollButtonState(
-            isPlayerTurnActive,
-            diceSystem != null && diceSystem.HasRolledThisTurn,
-            isBattleStopped,
-            IsBattleBlockingUiOpen);
-
         CardUseAvailabilityChanged?.Invoke(CanUsePlayerCards);
     }
 
@@ -659,12 +616,6 @@ public class BattleGameManager : MonoBehaviour
         }
     }
 
-    /// <summary>새 Player 턴과 Enemy 턴에는 카드 패널을 숨겨 주사위 이후에만 표시한다.</summary>
-    private void HideCardPanelUntilDice()
-    {
-        cardPanelToggle?.Hide();
-    }
-
     /// <summary>
     /// 필수 Inspector 참조가 빠졌는지 Scene 시작 시 한 번 검사해 Console에 구체적인 누락 항목을 표시한다.
     /// 자동 검색이나 AddComponent로 누락을 숨기지 않으므로 Moon Scene뿐 아니라 이 Manager를 재사용하는
@@ -673,8 +624,6 @@ public class BattleGameManager : MonoBehaviour
     private void ValidateRequiredReferences()
     {
         if (turnButtonController == null) Debug.LogError("턴 버튼 제어기 참조가 없습니다.", this);
-        if (diceRollButton == null) Debug.LogError("주사위 버튼 입력·표시 모듈 참조가 없습니다.", this);
-        if (diceSystem == null) Debug.LogError("주사위 규칙 시스템 참조가 없습니다.", this);
         if (cardPanelToggle == null) Debug.LogError("카드 패널 표시 제어기 참조가 없습니다.", this);
         if (playerRuntimeBinder == null) Debug.LogError("Player 런타임 연결 모듈 참조가 없습니다.", this);
         if (cardDrawSystem == null) Debug.LogError("카드 드로우 시스템 참조가 없습니다.", this);

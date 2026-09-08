@@ -14,8 +14,6 @@ public class SpawnPlayer : MonoBehaviour
     [SerializeField]
     GameObject playerBody;
     [SerializeField]
-    MapGenerator mapGenerator;
-    [SerializeField]
     NewMapGenerator newMapGenerator;
 
     [SerializeField]
@@ -31,9 +29,6 @@ public class SpawnPlayer : MonoBehaviour
     [Tooltip("Player Body 기준으로 생성된 캐릭터 루트를 위로 올릴 높이입니다. 타일 윗면과 발 위치를 맞춥니다.")]
     [SerializeField]
     float defaultSpawnHeight = 0.5f;
-
-    [SerializeField]
-    bool isNew;
 
     private GameObject player;
 
@@ -65,13 +60,7 @@ public class SpawnPlayer : MonoBehaviour
         // 동안에도 맵이 비쳐 보였기 때문에(느린 페이드=화면이 서서히 불투명해짐), 게임 시작
         // 페이드 아웃만 0.15초로 훨씬 빠르게 해서 거의 즉시 화면을 덮는다.
         loading.FadeOut(0.15f);
-        if(isNew)
-        {
-            newMapGenerator.StartGenerator();
-        }else
-        {
-            mapGenerator.StartGenerator();
-        }
+        newMapGenerator.StartGenerator();
         player = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
         // 캐릭터 Prefab마다 이미 설정된 원본 비율은 유지하고, 맵 규격에 필요한 공통 배율만 추가로 적용한다.
         // Prefab Asset 자체를 수정하지 않으므로 다른 Scene에서 사용하는 캐릭터 크기에는 영향을 주지 않는다.
@@ -105,21 +94,9 @@ public class SpawnPlayer : MonoBehaviour
     public IEnumerator waitUnitMApGen()
     {
 
-        if(isNew)
+        while (!newMapGenerator.IsGenerateEnd())
         {
-            while (!newMapGenerator.IsGenerateEnd())
-            {
-                yield return null;
-            }
-
-        }
-        else
-        {
-
-            while (!mapGenerator.IsGenerateEnd())
-            {
-                yield return null;
-            }
+            yield return null;
         }
 
         //���̵� �ƿ� �ڵ� �߰�

@@ -27,16 +27,6 @@ public class FogRevealVisibility : MonoBehaviour
     /// </summary>
     public static bool DebugForceRevealAll;
 
-    /// <summary>
-    /// 이번 RefreshAll() 순회에서 한 개 이상의 인스턴스가 실제로 보임/숨김 상태를 바꿨을 때 한 번 알린다.
-    /// BattleMoveThreatPreview처럼 "마우스가 같은 타일 위에 머무는 동안은 재계산하지 않는" 캐시를 쓰는
-    /// 화면은, Player가 이동해서 Fog가 자연스럽게 갱신될 때(F8 디버그 토글이 아니어도) 이 이벤트를
-    /// 받아 강제로 다시 계산해야 한다. 그러지 않으면 몸체는 이번 프레임부터 바로 가려지는데, 위협
-    /// 예고선/아이콘은 마우스가 움직이기 전까지 예전(보였던 시점) 상태로 남아 "몸은 안 보이는데
-    /// 예고선만 보인다"는 문제가 생긴다.
-    /// </summary>
-    public static event System.Action VisibilityChanged;
-
     [Header("가시성 대상")]
     [Tooltip("비워두면 자기 자신과 자식의 Renderer를 자동으로 모두 찾는다.")]
     [SerializeField] private Renderer[] targetRenderers;
@@ -166,28 +156,9 @@ public class FogRevealVisibility : MonoBehaviour
     /// </summary>
     public static void RefreshAll()
     {
-        bool anyVisibilityChanged = false;
         for (int i = 0; i < registered.Count; i++)
         {
-            FogRevealVisibility instance = registered[i];
-            if (instance != null && instance.RefreshAndReportChange())
-            {
-                anyVisibilityChanged = true;
-            }
+            registered[i]?.Refresh();
         }
-
-        if (anyVisibilityChanged)
-        {
-            VisibilityChanged?.Invoke();
-        }
-    }
-
-    /// <summary>이 오브젝트 하나를 다시 판정하고, 그 결과로 실제 보임/숨김 상태가 바뀌었는지를 반환한다.</summary>
-    private bool RefreshAndReportChange()
-    {
-        bool wasInitialized = isInitialized;
-        bool wasRevealed = isRevealedCache;
-        ApplyVisibility(EvaluateRevealed());
-        return !wasInitialized || wasRevealed != isRevealedCache;
     }
 }

@@ -21,10 +21,6 @@ public class BattleUIFlowController : MonoBehaviour
     private GameObject battleHudCanvas;
 
     [Header("전환 시스템 참조")]
-    [InspectorName("맵 생성기")]
-    [FormerlySerializedAs("mapGenerator")]
-    [SerializeField, Tooltip("기존 맵 생성 완료 상태를 제공하는 생성기입니다. 두 생성기가 준비될 때까지 전투 진입을 기다립니다.")]
-    private MapGenerator legacyMapGenerator;
     [InspectorName("Renew 맵 생성기")]
     [FormerlySerializedAs("newmapGenerator")]
     [SerializeField, Tooltip("Renew 전투 맵 생성 완료 상태를 제공하는 생성기입니다.")]
@@ -113,17 +109,14 @@ public class BattleUIFlowController : MonoBehaviour
         // 같은 버튼의 StatusUI.summonPlayer()가 MapGenerator 상태를 먼저 초기화하도록 한 Frame 양보한다.
         yield return null;
         Debug.Log("진입 성공");
-        // Scene마다 Legacy 또는 Renew 생성기 하나만 사용할 수 있다. 둘 다 없을 때만 설정 오류다.
-        if (legacyMapGenerator == null && renewMapGenerator == null)
+        if (renewMapGenerator == null)
         {
             Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
             battleStartupRoutine = null;
             yield break;
         }
 
-        // 연결된 생성기만 검사한다. 두 생성기가 함께 있는 전환기 Scene에서는 둘 다 완료될 때까지 기다린다.
-        while ((legacyMapGenerator != null && !legacyMapGenerator.IsGenerateEnd()) ||
-               (renewMapGenerator != null && !renewMapGenerator.IsGenerateEnd()))
+        while (!renewMapGenerator.IsGenerateEnd())
         {
             Debug.Log("한무대기");
 
