@@ -465,14 +465,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b500b045ca2580d488cd3430c96e56a1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapGenerator: {fileID: 0}
-  playerTransform: {fileID: 0}
-  autoFindPlayerByTag: 1
-  playerTag: Player
+  mapGenerator: {fileID: 1863171271}
+  playerBody: {fileID: 426231385}
+  playerChildName: Player
   fogOpacity: 0.8
   textureResolution: 1024
   defaultRevealRadius: 10
-  edgeSoftness: 0
+  edgeSoftness: 2.32
   revealAutomatically: 1
   revealUpdateDistance: 0.25
 --- !u!1 &26121707
@@ -2206,12 +2205,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!1 &194510862 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8683036419033566190, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
-    type: 3}
-  m_PrefabInstance: {fileID: 1924308635}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &194510863 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1762950767398233506, guid: 1dc1d2068c9e41f41b3cf8fbcf6939d3,
@@ -2667,6 +2660,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 580291254066798919, guid: cac838407189e4b46ace8a0768d2048d,
+        type: 3}
+      propertyPath: orthographic size
+      value: 1.86
+      objectReference: {fileID: 0}
     - target: {fileID: 2630036736521238747, guid: cac838407189e4b46ace8a0768d2048d,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -3560,6 +3558,12 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 308745489}
   m_CullTransparentMesh: 1
+--- !u!1 &308820186 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7352050876649209170, guid: 8da4560437c80c74b98fa704b11dd629,
+    type: 3}
+  m_PrefabInstance: {fileID: 1617953341}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &309281224
 GameObject:
   m_ObjectHideFlags: 0
@@ -6361,6 +6365,18 @@ MonoBehaviour:
   ownedSprite: {fileID: 21300000, guid: b73faab8b64088b458e9be8e35e0f338, type: 3}
   equippedSprite: {fileID: 21300000, guid: 6666d72824c391b44a52e1e71bd97cf4, type: 3}
   emptySprite: {fileID: 21300000, guid: 6202c5349fbe0304e8daee55b4f73940, type: 3}
+--- !u!114 &395071975 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4598736959917877197, guid: cac838407189e4b46ace8a0768d2048d,
+    type: 3}
+  m_PrefabInstance: {fileID: 233886057}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55b3960acba296d429de193248b9f5f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &396173750 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1746409862838083944, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -19135,7 +19151,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 0
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 179
   m_TargetDisplay: 0
 --- !u!224 &1165154396
 RectTransform:
@@ -24562,12 +24578,12 @@ PrefabInstance:
     - target: {fileID: 5346008266990919980, guid: 8da4560437c80c74b98fa704b11dd629,
         type: 3}
       propertyPath: m_SizeDelta.x
-      value: 535.9
+      value: 400.9
       objectReference: {fileID: 0}
     - target: {fileID: 5346008266990919980, guid: 8da4560437c80c74b98fa704b11dd629,
         type: 3}
       propertyPath: m_SizeDelta.y
-      value: 640.9
+      value: 501.7
       objectReference: {fileID: 0}
     - target: {fileID: 5346008266990919980, guid: 8da4560437c80c74b98fa704b11dd629,
         type: 3}
@@ -24633,6 +24649,21 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: rollIMG
+      objectReference: {fileID: 0}
+    - target: {fileID: 7352050876649209170, guid: 8da4560437c80c74b98fa704b11dd629,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7744692163451401352, guid: 8da4560437c80c74b98fa704b11dd629,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 400
+      objectReference: {fileID: 0}
+    - target: {fileID: 7744692163451401352, guid: 8da4560437c80c74b98fa704b11dd629,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 400
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -26575,8 +26606,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minimumDiceValue: 1
   maximumDiceValue: 6
-  rollUIImage: {fileID: 194510862}
-  anim: {fileID: 0}
+  rollUIImage: {fileID: 308820186}
+  anim: {fileID: 395071975}
 --- !u!114 &1815343151
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27456,12 +27487,14 @@ MonoBehaviour:
     type: 3}
   exitPrefab: {fileID: 6167411453670040965, guid: ee6c9ef27ffa98443ac200468d7643ee,
     type: 3}
-  waterPrefab: {fileID: 0}
-  flowWaterPrefab: {fileID: 0}
+  waterPrefab: {fileID: 7888926365653810531, guid: cda1803d087391a4b93e931f7f935f9b,
+    type: 3}
+  flowWaterPrefab: {fileID: 636407327679316685, guid: 00b49bd6d56c01d489d7380d1236b739,
+    type: 3}
   flowWaterRotationOffset: {x: 0, y: 0, z: 0}
   flowWaterEdgeOffset: 0
-  brightTileMaterial: {fileID: 2100000, guid: 75e615d4ab9c0b845b1d8b1c83cf9676, type: 2}
-  darkTileMaterial: {fileID: 2100000, guid: 7d87327a3325dcc44ae54e47dc12acba, type: 2}
+  brightTileMaterial: {fileID: 2100000, guid: 7d87327a3325dcc44ae54e47dc12acba, type: 2}
+  darkTileMaterial: {fileID: 2100000, guid: ec257f7ebf89171459619b3e269848d1, type: 2}
   disMoveableCount: 40
   storeCount: 3
   boxCount: 10
@@ -27485,7 +27518,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1863171270}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bd317de8d001d4b4bb78611a6100c6d1, type: 3}
   m_Name: 

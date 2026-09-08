@@ -32,11 +32,22 @@ public class animSet : MonoBehaviour
         this.transform.rotation = Quaternion.Euler(37.109f, 0, 0);
         yield return null;
         anim.Play(animKey + x.ToString());
+        AnimatorStateInfo stateInfo;
+
+        do
+        {
+            stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+            yield return null;
+            FogOfWarManager.Instance.Reveal(this.transform.position, 30);
+
+
+        } while (!stateInfo.IsName(animKey + x.ToString()) || stateInfo.normalizedTime < 1f);
+
     }
 
     public void Sound()
     {
-        SoundManager.Instance.RollDice();
+        //SoundManager.Instance.RollDice();
     }
 
     // Update is called once per frame
