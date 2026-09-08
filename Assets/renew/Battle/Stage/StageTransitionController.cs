@@ -11,7 +11,7 @@ public sealed class StageTransitionController : MonoBehaviour
     [SerializeField] private BattleGameManager battleGameManager;
     [SerializeField] private BattleMapRegistry mapRegistry;
     [SerializeField] private BattlePlayerActionController playerActions;
-    [SerializeField] private BattleUnitMoveFlow moveFlow;
+    private BattleUnitMoveFlow moveFlow;
     [SerializeField] private LoadingUI loadingUI;
     [SerializeField] private Camera battleCamera;
     [SerializeField] private FogOfWarManager fog;

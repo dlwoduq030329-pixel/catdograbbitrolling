@@ -77,8 +77,8 @@ public sealed class BattleDataPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Player 자식 이름이 정확히 Model이면 시각 모델을 반환하고, 없으면 Player 루트를 대신 반환한다.
-    /// 문자열 기반 Prefab 탐색은 이름 변경을 조용히 숨기므로 추후 Player의 직렬화 참조로 교체한다.
+    /// Player Body 아래에서 Animator를 가진 첫 시각 루트를 반환한다.
+    /// 찾지 못하면 아직 모델이 생성되지 않은 상태이므로 null을 반환한다.
     /// </summary>
     private static GameObject ResolvePlayerModel(GameObject player)
     {
@@ -87,7 +87,18 @@ public sealed class BattleDataPool : MonoBehaviour
             return null;
         }
 
-        Transform model = player.transform.Find("Model");
-        return model != null ? model.gameObject : player;
+        Animator animator = player.GetComponentInChildren<Animator>(true);
+        if (animator == null)
+        {
+            return null;
+        }
+
+        Transform visualRoot = animator.transform;
+        while (visualRoot.parent != null && visualRoot.parent != player.transform)
+        {
+            visualRoot = visualRoot.parent;
+        }
+
+        return visualRoot.gameObject;
     }
 }

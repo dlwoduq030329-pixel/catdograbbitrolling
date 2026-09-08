@@ -1,27 +1,13 @@
-using TMPro;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
 /// Player의 <see cref="BattleUnitMP"/> 변경 이벤트를 받아 현재 MP를 화면에 표시한다.
-/// 현재 UI는 세로 실린더형 Filled Image와 선택적 수치 Text를 사용한다.
-/// 추후 원형 MP 이미지가 제공되면 데이터 구독은 유지하고 이미지 표현 부분만 교체한다.
+/// 현재 UI는 크리스탈 이미지 목록만 사용한다.
 /// </summary>
 public class PlayerMPUI : MonoBehaviour
 {
-    [Header("플레이어 행동력 화면 참조")]
-    [InspectorName("마나 채움형 이미지")]
-    [FormerlySerializedAs("manaFillImage")]
-    [SerializeField, Tooltip("현재는 세로 실린더 형태로 MP 비율을 표시하는 Filled Image입니다. 원형 MP UI 제공 후 교체할 대상입니다.")]
-    private Image playerManaFillImage;
-
-    [InspectorName("행동력 수치 텍스트(선택 사항)")]
-    [FormerlySerializedAs("manaText")]
-    [SerializeField, Tooltip("현재 MP와 최대 MP를 '현재 / 최대' 형식으로 표시할 선택적 TMP Text입니다. 연결하지 않으면 이미지만 갱신합니다.")]
-    private TMP_Text playerManaValueText;
-
-    [Header("크리스탈형 MP 바 (하스스톤 스타일, 선택 사항)")]
+    [Header("크리스탈형 MP 바")]
     [InspectorName("마나 크리스탈 이미지 목록")]
     [SerializeField, Tooltip("MP_VerticalBar 프리팹의 Crystal_0..N Image들을 순서대로(0번=최하단) 연결합니다. 비워두면 기존 실린더 Fill 방식만 사용합니다.")]
     private Image[] manaCrystalImages;
@@ -87,18 +73,6 @@ public class PlayerMPUI : MonoBehaviour
     /// </summary>
     private void UpdatePlayerManaDisplay(int currentMana, int maximumMana)
     {
-        if (playerManaFillImage != null)
-        {
-            playerManaFillImage.fillAmount = maximumMana > 0
-                ? (float)currentMana / maximumMana
-                : 0f;
-        }
-
-        if (playerManaValueText != null)
-        {
-            playerManaValueText.text = $"{currentMana}/{maximumMana}";
-        }
-
         UpdateManaCrystals(currentMana, maximumMana);
     }
 

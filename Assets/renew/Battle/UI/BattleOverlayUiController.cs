@@ -19,8 +19,6 @@ public sealed class BattleOverlayUiController : MonoBehaviour
     [Header("상점이 열릴 때 숨길 UI")]
     [FormerlySerializedAs("turnEndButton")]
     [SerializeField] private Button turnEndButtonHiddenByShop;
-    [FormerlySerializedAs("playerMpView")]
-    [SerializeField] private PlayerMPUI playerManaViewHiddenByShop;
     [FormerlySerializedAs("cardPanel")]
     [SerializeField] private BattleCardPanelToggle cardHandHiddenByShop;
     [FormerlySerializedAs("hudHiddenWhileShopIsOpen")]
@@ -126,8 +124,6 @@ public sealed class BattleOverlayUiController : MonoBehaviour
         RememberActiveStateAndHide(
             turnEndButtonHiddenByShop != null ? turnEndButtonHiddenByShop.gameObject : null);
         RememberActiveStateAndHide(
-            playerManaViewHiddenByShop != null ? playerManaViewHiddenByShop.gameObject : null);
-        RememberActiveStateAndHide(
             cardHandHiddenByShop != null ? cardHandHiddenByShop.gameObject : null);
         RememberActiveStateAndHide(battleHudRootHiddenByShop);
 
@@ -172,9 +168,6 @@ public sealed class BattleOverlayUiController : MonoBehaviour
         int savedStateIndex = 0;
         RestoreSavedActiveState(
             turnEndButtonHiddenByShop != null ? turnEndButtonHiddenByShop.gameObject : null,
-            savedStateIndex++);
-        RestoreSavedActiveState(
-            playerManaViewHiddenByShop != null ? playerManaViewHiddenByShop.gameObject : null,
             savedStateIndex++);
         RestoreSavedActiveState(
             cardHandHiddenByShop != null ? cardHandHiddenByShop.gameObject : null,

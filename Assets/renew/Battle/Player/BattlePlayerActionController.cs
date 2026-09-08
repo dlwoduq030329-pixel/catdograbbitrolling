@@ -56,7 +56,7 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("전투 데이터 저장소")]
     [SerializeField] internal BattleDataPool battleDataPool;
     [InspectorName("이동 플로우 모듈")]
-    [SerializeField] internal BattleUnitMoveFlow moveFlow;
+    internal BattleUnitMoveFlow moveFlow;
     [InspectorName("기본 공격 플로우 모듈")]
     [SerializeField] private BattleUnitAttackFlow attackFlow;
     [InspectorName("카드 플로우 모듈")]
@@ -456,7 +456,7 @@ public class BattlePlayerActionController : MonoBehaviour
         BattleCardDrawSystem cardDrawSystem)
     {
         if (cardUse == null || cardDrawSystem == null || player == null ||
-            IsAnyActionMoving || moveFlow.IsAwaitingConfirmation || IsBasicAttackActive || IsCardActionActive)
+            IsAnyActionMoving || moveFlow.IsAwaitingConfirmation || IsBasicAttackActive)
         {
             return false;
         }
@@ -470,6 +470,15 @@ public class BattlePlayerActionController : MonoBehaviour
                 "카드 사용 불가: BattlePlayerCardFlow가 초기화되지 않았습니다.",
                 this);
             return false;
+        }
+
+        // 2026-09-08 버그 수정: 예전에는 다른 카드가 이미 대상 선택/확인 대기 중이면(IsCardActionActive)
+        // 여기서 그냥 false를 반환해서, 유저가 다른 카드를 눌러도 아무 반응이 없어 "버튼이 초기화 안
+        // 됨"처럼 보였다(같은 카드1 상태가 그대로 남음). 이제는 진행 중이던 카드 선택을 먼저 취소하고
+        // 새로 누른 카드로 바로 전환한다.
+        if (IsCardActionActive)
+        {
+            cardFlow.Cancel();
         }
 
         return cardFlow.TryStartSelectedCardUse(cardUse, cardDrawSystem);

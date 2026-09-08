@@ -5,6 +5,9 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattleThreatIntentIconView : MonoBehaviour
 {
+    private const string AttackIconResourcePath = "Battle/UI/ThreatIcons/EnemyIntent_Attack";
+    private const string ChaseIconResourcePath = "Battle/UI/ThreatIcons/EnemyIntent_Chase";
+
     [SerializeField] private Camera targetCamera;
     [Tooltip("다음 Enemy 턴에 Player를 확실히 공격하는 경우 표시할 검 아이콘입니다.")]
     [SerializeField] private Sprite attackIcon;
@@ -16,6 +19,11 @@ public sealed class BattleThreatIntentIconView : MonoBehaviour
 
     private readonly List<SpriteRenderer> icons = new List<SpriteRenderer>();
     private readonly List<Transform> enemyTargets = new List<Transform>();
+
+    private void Awake()
+    {
+        LoadDefaultIconsIfNeeded();
+    }
 
     /// <summary>카메라가 회전해도 아이콘이 화면을 향하도록 전투 카메라를 직접 전달받는다.</summary>
     public void SetCamera(Camera battleCamera) => targetCamera = battleCamera;
@@ -82,8 +90,21 @@ public sealed class BattleThreatIntentIconView : MonoBehaviour
 
     private void OnValidate()
     {
-        if (attackIcon == null || chaseIcon == null)
+        // RequireComponent에 의해 Play Mode에서 동적으로 추가될 때는 아직 Inspector 값을
+        // 받을 시점이 아니므로, 정상적인 초기화 과정을 설정 누락으로 경고하지 않는다.
+        if (!Application.isPlaying && (attackIcon == null || chaseIcon == null))
             Debug.LogWarning("Enemy 위협 검·눈 아이콘을 Inspector에 직접 연결해야 합니다.", this);
+    }
+
+    private void LoadDefaultIconsIfNeeded()
+    {
+        if (attackIcon == null)
+            attackIcon = Resources.Load<Sprite>(AttackIconResourcePath);
+        if (chaseIcon == null)
+            chaseIcon = Resources.Load<Sprite>(ChaseIconResourcePath);
+
+        if (attackIcon == null || chaseIcon == null)
+            Debug.LogError("Enemy 위협 아이콘 Resources를 찾지 못했습니다.", this);
     }
 
     private void FitIconToWorldSize(SpriteRenderer icon)

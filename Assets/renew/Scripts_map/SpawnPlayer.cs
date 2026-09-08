@@ -31,12 +31,15 @@ public class SpawnPlayer : MonoBehaviour
     float defaultSpawnHeight = 0.5f;
 
     private GameObject player;
+    private GameObject playerVisual;
 
     /// <summary>
-    /// PlayerPosInit이 실제로 생성한 전투 Player다.
-    /// 다른 시스템이 Player Body의 자식 순서를 추측하지 않고 생성 결과를 직접 받을 때 사용한다.
+    /// 전투 위치와 모든 런타임 데이터를 소유하는 Player Body다.
     /// </summary>
     public GameObject SpawnedPlayer => player;
+
+    /// <summary>Player Body 아래에 생성된 모델·Animator 전용 시각 Prefab이다.</summary>
+    public GameObject SpawnedPlayerVisual => playerVisual;
 
 
     // Start is called before the first frame update
@@ -61,15 +64,21 @@ public class SpawnPlayer : MonoBehaviour
         // 페이드 아웃만 0.15초로 훨씬 빠르게 해서 거의 즉시 화면을 덮는다.
         loading.FadeOut(0.15f);
         newMapGenerator.StartGenerator();
-        player = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
+        if (playerVisual != null)
+        {
+            Destroy(playerVisual);
+        }
+
+        player = playerBody;
+        playerVisual = Instantiate(playerPrefab[charactorIndex], playerBody.transform);
         // 캐릭터 Prefab마다 이미 설정된 원본 비율은 유지하고, 맵 규격에 필요한 공통 배율만 추가로 적용한다.
         // Prefab Asset 자체를 수정하지 않으므로 다른 Scene에서 사용하는 캐릭터 크기에는 영향을 주지 않는다.
-        player.transform.localScale *= spawnedPlayerScaleMultiplier;
-        Vector3 spawnLocalPosition = player.transform.localPosition;
+        playerVisual.transform.localScale *= spawnedPlayerScaleMultiplier;
+        Vector3 spawnLocalPosition = playerVisual.transform.localPosition;
         // 맵 타일 Mesh/Collider 높이가 바뀌어도 Scene별 Inspector 값으로 발 위치를 조정할 수 있게
         // Player Body의 고정 위치가 아니라 생성된 캐릭터 루트의 로컬 Y만 보정한다.
         spawnLocalPosition.y = defaultSpawnHeight;
-        player.transform.localPosition = spawnLocalPosition;
+        playerVisual.transform.localPosition = spawnLocalPosition;
         playerBody.GetComponent<CharactorStatus>().TribeSet(charactorIndex);
         PlayerDeck deck = playerBody.GetComponent<PlayerDeck>();
         // 신규 Player의 기본 카드 상태는 PlayerDeck 한 곳에서 구성한다.
@@ -103,7 +112,7 @@ public class SpawnPlayer : MonoBehaviour
         //PlayerInfoInit();
 
         //ī�޶� �̵� �ڵ�
-        Camera.main.GetComponent<CameraChase>().InitTarget(player);
+        Camera.main.GetComponent<CameraChase>().InitTarget(playerBody);
 
         // 페이드 아웃은 PlayerPosInit 시작 시점에 이미 걸어뒀다(맵 생성 과정을 가리기 위해).
         // 여기서는 화면이 완전히 검게 덮인 뒤 HUD를 켜고 다시 밝게 되돌리기만 하면 된다.
@@ -112,7 +121,7 @@ public class SpawnPlayer : MonoBehaviour
         
         yield return new WaitForSeconds(1f);
         FogOfWarManager.Instance.Reveal(
-            player.transform.position
+            playerBody.transform.position
         );
         //RevealManager.Instance.StartReveal();
         //FogOfWarManager.Instance.SetPlayer(playerBody.transform);

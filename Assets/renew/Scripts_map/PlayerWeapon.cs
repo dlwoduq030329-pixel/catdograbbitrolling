@@ -118,6 +118,24 @@ public sealed class PlayerWeapon : MonoBehaviour
     /// <summary>슬롯 변경 후 다시 합산한 장비 스탯을 Player 상태 계층에 직접 전달한다.</summary>
     public event Action<PlayerEquipmentStats> EquipmentStatsChanged;
 
+    private static void NormalizeEmptySerializedEquipment(PlayerEquipmentSlot slot)
+    {
+        EquipData equipment = slot?.CurrentEquipment;
+        if (equipment == null) return;
+
+        bool hasIdentity = !string.IsNullOrWhiteSpace(equipment.cardname) ||
+                           equipment.myEquipSprite != null ||
+                           equipment.weaponPrefab != null ||
+                           equipment.weaponPrefab2 != null;
+        bool hasStats = equipment.attackRange != 0f || equipment.stroffset != 0 ||
+                        equipment.dexoffset != 0 || equipment.intoffset != 0 ||
+                        equipment.wisoffset != 0 || equipment.caroffset != 0 ||
+                        equipment.vitoffset != 0 || equipment.cost != 0;
+
+        if (!hasIdentity && !hasStats)
+            slot.ReplaceEquipment(null);
+    }
+
     /// <summary>왼팔 장비를 교체하고 이전에 장착돼 있던 장비를 반환한다.</summary>
     public EquipData EquipLeftArm(EquipData equipment)
     {
@@ -282,6 +300,12 @@ public sealed class PlayerWeapon : MonoBehaviour
     private void Awake()
     {
         EnsureAllEquipmentSlotsExist();
+        // Unity가 과거 Scene의 비어 있는 인라인 EquipData를 null이 아닌 객체로 복원할 수 있다.
+        // 이름·아이콘·Prefab·스탯이 전부 비어 있는 값은 장착 장비가 아니라 빈 슬롯으로 정규화한다.
+        NormalizeEmptySerializedEquipment(leftArm);
+        NormalizeEmptySerializedEquipment(rightArm);
+        NormalizeEmptySerializedEquipment(head);
+        NormalizeEmptySerializedEquipment(body);
         RecalculateEquipmentStats();
     }
 
