@@ -870,6 +870,7 @@ GameObject:
   - component: {fileID: 687273769598951497}
   - component: {fileID: 7349963925867368707}
   - component: {fileID: 8462562278643435649}
+  - component: {fileID: -7453933672860053573}
   m_Layer: 6
   m_Name: Ch_Goblin_OutLine
   m_TagString: Untagged
@@ -1046,6 +1047,27 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-7453933672860053573
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3812377382162701999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 041f46609df45994ba047f24d4714e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skin:
+  - {fileID: 9039587479366335266}
+  - {fileID: 2569997117842472471}
+  - {fileID: 1470990195642810899}
+  - {fileID: 8423395569716516531}
+  - {fileID: 5575522258789905964}
+  - {fileID: 7784658027857620345}
+  renderers:
+  - {fileID: 7641935107776748143}
 --- !u!1 &4111613390282834199
 GameObject:
   m_ObjectHideFlags: 0

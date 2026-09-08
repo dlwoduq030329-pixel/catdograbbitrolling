@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -12,6 +13,8 @@ public sealed class BattleDiceSystem : MonoBehaviour
     [Header("주사위 범위")]
     [SerializeField, Min(1)] private int minimumDiceValue = 1;
     [SerializeField, Min(1)] private int maximumDiceValue = 6;
+    [SerializeField] GameObject rollUIImage;
+    [SerializeField] animSet anim;
 
     /// <summary>이번 Player 턴에 주사위를 이미 굴렸는지 나타낸다.</summary>
     public bool HasRolledThisTurn { get; private set; }
@@ -46,6 +49,8 @@ public sealed class BattleDiceSystem : MonoBehaviour
         {
             // 연출 컴포넌트가 없는 Scene에서도 전투 흐름은 즉시 계속된다.
             CompletePresentation(CurrentDiceValue);
+            StartCoroutine(setableIMG());
+
         }
         else
         {
@@ -53,6 +58,13 @@ public sealed class BattleDiceSystem : MonoBehaviour
         }
 
         return true;
+    }
+
+    public IEnumerator setableIMG()
+    {
+        rollUIImage.SetActive(true);
+        yield return StartCoroutine(anim.animCor(CurrentDiceValue));
+        rollUIImage.SetActive(false);
     }
 
     /// <summary>Presenter가 확정된 값의 연출을 끝냈을 때 호출한다.</summary>

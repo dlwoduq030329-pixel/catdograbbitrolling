@@ -97,6 +97,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6635058901875828286}
+  - component: {fileID: 1545265716279318775}
   m_Layer: 0
   m_Name: BlueSlime
   m_TagString: Untagged
@@ -120,6 +121,24 @@ Transform:
   - {fileID: 1186912316278189457}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1545265716279318775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 780427262304984094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 041f46609df45994ba047f24d4714e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skin:
+  - {fileID: 2513957629966533444}
+  - {fileID: 3640122027303096791}
+  - {fileID: 4699100699721070688}
+  - {fileID: 8017566751091701397}
+  - {fileID: 2276643937381485430}
 --- !u!1 &1194747213006435396
 GameObject:
   m_ObjectHideFlags: 0

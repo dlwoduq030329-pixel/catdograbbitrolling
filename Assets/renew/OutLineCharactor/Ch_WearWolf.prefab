@@ -1082,6 +1082,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 340207588037484547}
+  - component: {fileID: 6199338993082624877}
   m_Layer: 0
   m_Name: Ch_WearWolf
   m_TagString: Untagged
@@ -1112,6 +1113,27 @@ Transform:
   - {fileID: 4489269362518005342}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6199338993082624877
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6818404413805830165}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 041f46609df45994ba047f24d4714e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skin:
+  - {fileID: 1425147155444954678}
+  - {fileID: 6260157028713547539}
+  - {fileID: 3600609310285258081}
+  - {fileID: 3476468774453724601}
+  - {fileID: 748101362245042649}
+  - {fileID: 147000391078573963}
+  - {fileID: 902138952000948395}
+  renderers: []
 --- !u!1 &6821631978318296944
 GameObject:
   m_ObjectHideFlags: 0

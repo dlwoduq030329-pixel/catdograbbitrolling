@@ -520,6 +520,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8194525064752669646}
+  - component: {fileID: -1239006529902078000}
   m_Layer: 0
   m_Name: GreenSlime
   m_TagString: Untagged
@@ -543,6 +544,25 @@ Transform:
   - {fileID: 6614397921363871545}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-1239006529902078000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7965508097192660184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 041f46609df45994ba047f24d4714e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  skin:
+  - {fileID: 1508586463509953263}
+  - {fileID: 7907062034860386149}
+  - {fileID: 3780442052844033283}
+  - {fileID: 7768036268064707760}
+  - {fileID: 7974287032475073442}
+  renderers: []
 --- !u!1 &8085018664038952687
 GameObject:
   m_ObjectHideFlags: 0
