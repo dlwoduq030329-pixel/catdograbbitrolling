@@ -17,7 +17,6 @@ public sealed class BattleSceneInstaller : MonoBehaviour // 1번 건드리고 �
 
     [Header("현재 Scene 시스템")]
     [SerializeField] private BattleGameManager battleGameManager;
-    [SerializeField] private MapGenerator mapGenerator;
     [SerializeField] private NewMapGenerator renewMapGenerator;
     [SerializeField] private EnemySpawner enemySpawner;
     [SerializeField] private GameObject playerBody;
@@ -78,7 +77,6 @@ public sealed class BattleSceneInstaller : MonoBehaviour // 1번 건드리고 �
         enemySpawner?.ConfigureRegistries(unitRegistry, mapRegistry, dataPool);
         dataPool?.ConfigureSceneReferences(
             playerBody,
-            mapGenerator,
             battleCamera,
             playerSelectCanvas,
             battleCanvas,
@@ -130,15 +128,14 @@ public sealed class BattleSceneInstaller : MonoBehaviour // 1번 건드리고 �
     /// </summary>
     private IEnumerator RegisterGeneratedMap()
     {
-        if (mapGenerator == null && renewMapGenerator == null)
+        if (renewMapGenerator == null)
         {
             yield break;
         }
 
         // Scene에 실제로 연결된 생성기 하나의 완료만 기다린다. 구형과 신규 생성기를 동시에
         // 시작하지 않으므로, 연결되지 않았거나 사용하지 않는 쪽 때문에 등록이 영구 대기하지 않는다.
-        while ((mapGenerator != null && !mapGenerator.IsGenerateEnd()) ||
-               (renewMapGenerator != null && !renewMapGenerator.IsGenerateEnd()))
+        while (!renewMapGenerator.IsGenerateEnd())
         {
             yield return null;
         }

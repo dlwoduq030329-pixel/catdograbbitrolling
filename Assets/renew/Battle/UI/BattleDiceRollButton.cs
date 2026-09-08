@@ -158,10 +158,9 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
         isRollButtonHeld = false;
         SoundManager.Instance?.RollDice();
 
-        if (BattleGameManager.Instance != null)
-        {
-            BattleGameManager.Instance.RollDice();
-        }
+        // 2026-09-08: BattleGameManager의 주사위 시스템이 삭제되어 더 이상 굴림을 요청할 대상이 없다.
+        // 이 버튼은 지금 눌러도 게이지 연출만 재생되고 실제 효과는 없는 상태다.
+        // TODO: 주사위를 "카드 강화" 트리거로 재설계할 때 이 버튼을 재사용하거나 교체할지 결정 필요.
 
         ResetRollGauge();
         SetRollGaugeVisible(false);

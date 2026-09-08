@@ -10,7 +10,6 @@ public sealed class BattleDataPool : MonoBehaviour
 {
     [Header("정적 Scene 참조")]
     [SerializeField] private GameObject playerBody;
-    [SerializeField] private MapGenerator mapGenerator;
     [SerializeField] private Camera battleCamera;
     [SerializeField] private GameObject playerSelectCanvas;
     [SerializeField] private GameObject battleCanvas;
@@ -26,7 +25,6 @@ public sealed class BattleDataPool : MonoBehaviour
     [SerializeField] private PlayerCombatData currentPlayerCombatData;
 
     public GameObject PlayerBody => playerBody;
-    public MapGenerator MapGenerator => mapGenerator;
     public Camera BattleCamera => battleCamera;
     public GameObject PlayerSelectCanvas => playerSelectCanvas;
     public GameObject BattleCanvas => battleCanvas;
@@ -43,7 +41,6 @@ public sealed class BattleDataPool : MonoBehaviour
     /// </summary>
     public void ConfigureSceneReferences(
         GameObject body,
-        MapGenerator generator,
         Camera camera,
         GameObject selectCanvas,
         GameObject combatCanvas,
@@ -51,7 +48,6 @@ public sealed class BattleDataPool : MonoBehaviour
         BattleMapRegistry map)
     {
         playerBody = body;
-        mapGenerator = generator;
         battleCamera = camera;
         playerSelectCanvas = selectCanvas;
         battleCanvas = combatCanvas;
