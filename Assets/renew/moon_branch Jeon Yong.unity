@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.17655006, g: 0.22098188, b: 0.3032921, a: 1}
+  m_IndirectSpecularColor: {r: 0.17655042, g: 0.22098228, b: 0.30329266, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -26246,11 +26246,6 @@ MonoBehaviour:
   fanArcHeight: 16
   fanMaxTiltDegrees: 6
   poseFollowSpeed: 14
-  drawPileAnchor: {fileID: 302971765}
-  discardPileAnchor: {fileID: 968089091}
-  ghostFlightParent: {fileID: 0}
-  drawFlightSeconds: 0.28
-  discardFlightSeconds: 0.24
 --- !u!114 &1891618779
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27150,6 +27145,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minimumDiceValue: 1
   maximumDiceValue: 6
+  rollUIImage: {fileID: 0}
+  anim: {fileID: 0}
 --- !u!114 &1945993665 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1934626948127012957, guid: a033f65915b3b9b40a057c13c7a41897,

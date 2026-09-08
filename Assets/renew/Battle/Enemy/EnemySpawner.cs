@@ -4,9 +4,12 @@ using UnityEngine;
 public class EnemySpawner : MonoBehaviour
 {
     [SerializeField] private EnemyPool enemyPool;
+    [SerializeField] private GameObject playerBody;
     private BattleUnitRegistry unitRegistry;
     private BattleMapRegistry mapRegistry;
     private BattleDataPool dataPool;
+
+    //enemy가 유저 따라올떄 쓰는 코드 보여줘.
 
     public void ConfigureRegistries(BattleUnitRegistry units, BattleMapRegistry map, BattleDataPool shared)
     { unitRegistry = units; mapRegistry = map; dataPool = shared; }
@@ -180,6 +183,8 @@ public class EnemySpawner : MonoBehaviour
         }
         Vector3 spawnPosition = enemyTile.position + new Vector3(0f, defaultSpawnHeight, 0f);
         GameObject enemy = Instantiate(selectedPrefab, spawnPosition, Quaternion.identity);
+
+        enemy.GetComponent<DisableFarEnemy>().SetTarget(playerBody);
         if (normalizeEnemyToTile)
             EnemySpawnGeometry.Fit(enemy, enemyTile, enemyTileFillRatio, allowEnemyUpscaling, minimumScaleMultiplier);
         enemy.transform.SetParent(GetOrCreateEnemyListContainer(), true);

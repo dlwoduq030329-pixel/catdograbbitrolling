@@ -7,7 +7,7 @@ using UnityEngine;
 /// 현재 DataPool 복사, 런타임 AddComponent와 Scene 타일 검색은 전환기 호환 코드이며 직접 참조 전환 후 제거한다.
 /// </summary>
 [DisallowMultipleComponent]
-public sealed class BattleSceneInstaller : MonoBehaviour
+public sealed class BattleSceneInstaller : MonoBehaviour // 1번 건드리고 아직 버티컬 못한 코드라 이번에 수정해야함 얘는 
 {
     [Header("저장소")]
     [SerializeField] private BattleDataPool dataPool;
