@@ -44,16 +44,17 @@ public sealed class BattleDiceSystem : MonoBehaviour
         int safeMaximum = Mathf.Max(safeMinimum, maximumDiceValue);
         HasRolledThisTurn = true;
         CurrentDiceValue = UnityEngine.Random.Range(safeMinimum, safeMaximum + 1);
+        StartCoroutine(setableIMG());
 
         if (DiceRollResolved == null)
         {
             // 연출 컴포넌트가 없는 Scene에서도 전투 흐름은 즉시 계속된다.
             CompletePresentation(CurrentDiceValue);
-            StartCoroutine(setableIMG());
 
         }
         else
         {
+
             DiceRollResolved.Invoke(true, CurrentDiceValue);
         }
 

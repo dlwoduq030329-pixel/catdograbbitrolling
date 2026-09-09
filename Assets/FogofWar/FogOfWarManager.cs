@@ -9,6 +9,7 @@ public class FogOfWarManager : MonoBehaviour
     // ============================================================
 
     [Header("Map")]
+    [Tooltip("씬에 존재하는 NewMapGenerator를 드래그합니다.")]
     [SerializeField]
     private NewMapGenerator mapGenerator;
 
@@ -18,14 +19,13 @@ public class FogOfWarManager : MonoBehaviour
     // ============================================================
 
     [Header("Player")]
+    [Tooltip("씬에 항상 존재하는 PlayerBody를 드래그합니다.")]
     [SerializeField]
-    private Transform playerTransform;
+    private Transform playerBody;
 
+    [Tooltip("PlayerBody의 자식으로 런타임 생성되는 실제 캐릭터 이름")]
     [SerializeField]
-    private bool autoFindPlayerByTag = true;
-
-    [SerializeField]
-    private string playerTag = "Player";
+    private string playerChildName = "Player";
 
 
     // ============================================================
@@ -52,9 +52,11 @@ public class FogOfWarManager : MonoBehaviour
     // ============================================================
 
     [Header("Reveal")]
+    [Tooltip("첫 Reveal 이후 Player 이동에 따라 자동으로 새로운 영역을 밝힙니다.")]
     [SerializeField]
     private bool revealAutomatically = true;
 
+    [Tooltip("이 거리 이상 이동하면 새로운 Reveal을 굽습니다.")]
     [SerializeField]
     private float revealUpdateDistance = 0.25f;
 
@@ -64,7 +66,6 @@ public class FogOfWarManager : MonoBehaviour
     // ============================================================
 
     private Texture2D fogTexture;
-
     private Color32[] fogPixels;
 
     private int mapSizeX;
@@ -72,21 +73,25 @@ public class FogOfWarManager : MonoBehaviour
 
     private float blockDistance;
 
-    // PlayerMap 실제 외곽 영역
+    // PlayerMap 실제 외곽
     private Vector2 mapWorldMin;
     private Vector2 mapWorldSize;
 
-    // 현재 플레이어 위치
-    private Vector3 currentRevealPosition;
+    // 실제 캐릭터
+    private Transform playerTransform;
 
-    // 마지막으로 Texture에 굽은 위치
+    // Reveal 정보
+    private Vector3 currentRevealPosition;
     private Vector3 lastBakedRevealPosition;
 
-    // 현재 Reveal 반경
     private float currentRevealRadius;
 
     private bool hasRevealPosition;
     private bool isReady;
+
+    // ★ 핵심
+    // false = Fog 시스템 자체가 완전히 비활성
+    private bool fogActive;
 
 
     // ============================================================
@@ -105,6 +110,9 @@ public class FogOfWarManager : MonoBehaviour
     private static readonly int RevealWorldPositionAndRadiusID =
         Shader.PropertyToID("_RevealWorldPositionAndRadius");
 
+    private static readonly int FogActiveID =
+        Shader.PropertyToID("_FogActive");
+
 
     // ============================================================
     // PUBLIC
@@ -116,6 +124,15 @@ public class FogOfWarManager : MonoBehaviour
         {
             return Instance != null &&
                    Instance.isReady;
+        }
+    }
+
+    public static bool IsFogActive
+    {
+        get
+        {
+            return Instance != null &&
+                   Instance.fogActive;
         }
     }
 
@@ -133,33 +150,6 @@ public class FogOfWarManager : MonoBehaviour
         {
             return playerTransform;
         }
-    }
-
-
-    /// <summary>
-    /// 전달받은 월드 좌표가 지금까지 한 번이라도 밝혀진 적 있는지(탐험 여부)를 확인한다.
-    /// Enemy/상점/상자 등 오브젝트의 표시 여부를 판정할 때 사용한다 - 실시간 시야 반경이 아니라
-    /// 영구적으로 누적되는 Fog 텍스처 값을 그대로 재사용한다(한 번 밝힌 곳은 계속 밝은 상태로 유지된다).
-    /// </summary>
-    public bool IsWorldPositionRevealed(Vector3 worldPosition, byte revealedThreshold = 8)
-    {
-        if (!isReady || fogPixels == null)
-        {
-            return false;
-        }
-
-        Vector2 uv = WorldToNormalized(worldPosition);
-
-        int x = Mathf.RoundToInt(uv.x * (textureResolution - 1));
-        int y = Mathf.RoundToInt(uv.y * (textureResolution - 1));
-
-        if (x < 0 || x >= textureResolution || y < 0 || y >= textureResolution)
-        {
-            return false;
-        }
-
-        int index = y * textureResolution + x;
-        return fogPixels[index].r >= revealedThreshold;
     }
 
 
@@ -186,36 +176,8 @@ public class FogOfWarManager : MonoBehaviour
 
     private void Start()
     {
-        if (mapGenerator == null)
-        {
-            mapGenerator =
-                FindObjectOfType<NewMapGenerator>();
-        }
-
-
-        if (playerTransform == null &&
-            autoFindPlayerByTag)
-        {
-            try
-            {
-                GameObject player =
-                    GameObject.FindGameObjectWithTag(
-                        playerTag
-                    );
-
-                if (player != null)
-                {
-                    playerTransform =
-                        player.transform;
-                }
-            }
-            catch (UnityException)
-            {
-                // Player Tag가 없으면
-                // Inspector에서 직접 지정하면 됩니다.
-            }
-        }
-
+        // MapGenerator와 PlayerBody는
+        // 씬에 항상 존재하므로 Inspector에서 직접 지정한다.
 
         InitializeWhenMapReady();
     }
@@ -230,7 +192,7 @@ public class FogOfWarManager : MonoBehaviour
         if (mapGenerator == null)
         {
             Debug.LogError(
-                "[FogOfWar] NewMapGenerator를 찾을 수 없습니다."
+                "[FogOfWar] NewMapGenerator가 지정되지 않았습니다."
             );
 
             return;
@@ -238,7 +200,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // 맵 생성이 끝날 때까지 기다림
+        // 맵 생성 완료 대기
         // --------------------------------------------------------
 
         if (!mapGenerator.IsGenerateEnd())
@@ -253,7 +215,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // NewMapGenerator 정보
+        // Map 정보
         // --------------------------------------------------------
 
         mapSizeX =
@@ -279,7 +241,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // NewMapGenerator의 mapWorldOffset과 동일한 계산
+        // Map World Bounds
         // --------------------------------------------------------
 
         float halfX =
@@ -293,10 +255,7 @@ public class FogOfWarManager : MonoBehaviour
             0.5f;
 
 
-        // --------------------------------------------------------
         // 실제 PlayerMap 외곽
-        // --------------------------------------------------------
-
         mapWorldMin =
             new Vector2(
                 -halfX -
@@ -341,15 +300,13 @@ public class FogOfWarManager : MonoBehaviour
         fogTexture.name =
             "Runtime Fog Of War";
 
-
         fogTexture.wrapMode =
             TextureWrapMode.Clamp;
 
         fogTexture.filterMode =
             FilterMode.Bilinear;
 
-        fogTexture.anisoLevel =
-            0;
+        fogTexture.anisoLevel = 0;
 
 
         fogPixels =
@@ -360,7 +317,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // 처음에는 전체 미공개
+        // ★ 처음에는 완전히 미공개
         // --------------------------------------------------------
 
         ClearFogPixels();
@@ -368,46 +325,32 @@ public class FogOfWarManager : MonoBehaviour
         UploadFogTexture();
 
 
+        // --------------------------------------------------------
+        // Ready
+        // --------------------------------------------------------
+
         isReady = true;
 
+        // ★ 절대 자동으로 Fog를 켜지 않는다.
+        fogActive = false;
+
+        hasRevealPosition = false;
+
+        currentRevealPosition =
+            Vector3.zero;
+
+        lastBakedRevealPosition =
+            Vector3.zero;
+
+        currentRevealRadius =
+            defaultRevealRadius;
+
 
         // --------------------------------------------------------
-        // Player가 있으면 최초 위치 설정
+        // Player 연결
         // --------------------------------------------------------
 
-        if (playerTransform != null)
-        {
-            currentRevealPosition =
-                playerTransform.position;
-
-            lastBakedRevealPosition =
-                currentRevealPosition;
-
-            currentRevealRadius =
-                defaultRevealRadius;
-
-            hasRevealPosition = true;
-
-
-            // 시작 위치 영구 Reveal
-            BakeReveal(
-                currentRevealPosition,
-                currentRevealRadius
-            );
-
-            UploadFogTexture();
-        }
-        else
-        {
-            currentRevealPosition =
-                Vector3.zero;
-
-            currentRevealRadius =
-                defaultRevealRadius;
-
-            hasRevealPosition =
-                false;
-        }
+        ResolvePlayerChild();
 
 
         ApplyShaderGlobals();
@@ -418,7 +361,8 @@ public class FogOfWarManager : MonoBehaviour
             $"Map = {mapSizeX} x {mapSizeZ}\n" +
             $"BlockDistance = {blockDistance}\n" +
             $"WorldMin = {mapWorldMin}\n" +
-            $"WorldSize = {mapWorldSize}"
+            $"WorldSize = {mapWorldSize}\n" +
+            "Fog Active = false"
         );
     }
 
@@ -429,109 +373,96 @@ public class FogOfWarManager : MonoBehaviour
 
     private void Update()
     {
-        // Enemy/상점/상자 등 FogRevealVisibility가 붙은 모든 오브젝트의 가시성을 한 번에 갱신한다.
-        // 각 오브젝트가 따로 Update()를 갖는 대신 여기 한 곳에서만 순회한다(개수가 늘어나도 가볍게 유지).
+        // Enemy / Shop / Box 등의 FogRevealVisibility 처리
         FogRevealVisibility.RefreshAll();
 
-        // 디버그: F8을 누르면 오브젝트 Fog(FogRevealVisibility)만 강제로 전부 보이게 토글한다.
-        // 지형 Fog 텍스처(fogPixels)는 전혀 건드리지 않으므로 다시 F8을 누르면 원래 상태로 돌아온다.
+
+        // --------------------------------------------------------
+        // F8 Debug
+        // --------------------------------------------------------
+
         if (Input.GetKeyDown(KeyCode.F8))
         {
-            FogRevealVisibility.DebugForceRevealAll = !FogRevealVisibility.DebugForceRevealAll;
+            FogRevealVisibility.DebugForceRevealAll =
+                !FogRevealVisibility.DebugForceRevealAll;
+
 
             Debug.Log(
                 "[FogOfWar] Debug Force Reveal All = " +
                 FogRevealVisibility.DebugForceRevealAll
             );
 
-            // F8을 다시 눌러 해제했을 때도, 마우스가 안 움직이면 Enemy 턴 예고선/아이콘이 방금 전
-            // "보임" 상태 그대로 남아있는 문제가 있었다(BattleMoveThreatPreview가 목적지 타일이 그대로면
-            // 다시 계산하지 않기 때문). ForceRefresh()로 다음 Update()에서 무조건 다시 계산하게 한다.
-            // FindObjectOfType는 F8을 누른 이 프레임에만 실행되므로 매 프레임 비용은 없다.
-            BattleMoveThreatPreview moveThreatPreview = FindObjectOfType<BattleMoveThreatPreview>();
+
+            BattleMoveThreatPreview moveThreatPreview =
+                FindObjectOfType<BattleMoveThreatPreview>();
+
+
             if (moveThreatPreview != null)
             {
                 moveThreatPreview.ForceRefresh();
             }
         }
 
+
+        // --------------------------------------------------------
+        // 아직 초기화되지 않음
+        // --------------------------------------------------------
+
         if (!isReady)
             return;
 
 
+        // --------------------------------------------------------
+        // Player가 아직 생성되지 않았다면 연결 시도
+        // --------------------------------------------------------
+
         if (playerTransform == null)
         {
-            // Start() 시점에는 Player가 아직 생성되지 않아 태그로 못 찾았을 수 있다.
-            // PlayerSpawner가 나중에 Player를 만들 수 있으므로 매 프레임 다시 찾아본다.
-            if (autoFindPlayerByTag)
-            {
-                GameObject player =
-                    GameObject.FindGameObjectWithTag(
-                        playerTag
-                    );
-
-                if (player != null)
-                {
-                    playerTransform =
-                        player.transform;
-                }
-            }
-
-            if (playerTransform == null)
-                return;
-
-            currentRevealPosition =
-                playerTransform.position;
-
-            lastBakedRevealPosition =
-                currentRevealPosition;
-
-            currentRevealRadius =
-                defaultRevealRadius;
-
-            hasRevealPosition =
-                true;
-
-            BakeReveal(
-                currentRevealPosition,
-                currentRevealRadius
-            );
-
-            UploadFogTexture();
+            ResolvePlayerChild();
         }
 
 
         // --------------------------------------------------------
-        // 현재 플레이어 위치
+        // ★ 첫 Reveal 전에는 여기서 끝
+        //
+        // Player가 있어도
+        // Fog를 켜지 않는다.
+        // --------------------------------------------------------
+
+        if (!fogActive)
+            return;
+
+
+        if (playerTransform == null)
+            return;
+
+
+        // --------------------------------------------------------
+        // 현재 Player 위치
         // --------------------------------------------------------
 
         currentRevealPosition =
             playerTransform.position;
 
 
-        // --------------------------------------------------------
-        // ★ Shader에는 매 프레임 현재 위치 전달
-        //
-        // 카메라 이동과 관계없이
-        // Reveal 중심은 실제 플레이어 월드 위치를 따라감
-        // --------------------------------------------------------
-
+        // Shader에 현재 위치 전달
         ApplyShaderGlobals();
 
+
+        // --------------------------------------------------------
+        // 자동 Reveal
+        // --------------------------------------------------------
 
         if (!revealAutomatically)
             return;
 
 
-        // --------------------------------------------------------
-        // 플레이어가 일정 거리 이동했을 때
-        // 영구 Reveal Texture에 굽기
-        // --------------------------------------------------------
-
         Vector3 delta =
             currentRevealPosition -
             lastBakedRevealPosition;
 
+
+        // Reveal은 XZ만 사용
         delta.y = 0f;
 
 
@@ -555,6 +486,44 @@ public class FogOfWarManager : MonoBehaviour
 
 
     // ============================================================
+    // RESOLVE PLAYER
+    // ============================================================
+
+    private void ResolvePlayerChild()
+    {
+        if (playerTransform != null)
+            return;
+
+
+        if (playerBody == null)
+            return;
+
+
+        // PlayerBody 바로 아래의 Player만 사용한다.
+        //
+        // GameObject.FindGameObjectWithTag("Player")
+        // 를 사용하지 않는다.
+
+        for (int i = 0;
+             i < playerBody.childCount;
+             i++)
+        {
+            Transform child =
+                playerBody.GetChild(i);
+
+
+            if (child.name == playerChildName)
+            {
+                playerTransform =
+                    child;
+
+                return;
+            }
+        }
+    }
+
+
+    // ============================================================
     // SET PLAYER
     // ============================================================
 
@@ -573,15 +542,18 @@ public class FogOfWarManager : MonoBehaviour
         currentRevealPosition =
             playerTransform.position;
 
+
         lastBakedRevealPosition =
             currentRevealPosition;
+
 
         currentRevealRadius =
             defaultRevealRadius;
 
-        hasRevealPosition =
-            true;
 
+        // ★ SetPlayer는 Player 등록만 한다.
+        //
+        // Fog를 켜는 것은 Reveal()이다.
 
         ApplyShaderGlobals();
     }
@@ -624,20 +596,41 @@ public class FogOfWarManager : MonoBehaviour
             );
 
 
+        // Player 연결
+        ResolvePlayerChild();
+
+
+        // --------------------------------------------------------
+        // Reveal 위치
+        // --------------------------------------------------------
+
         currentRevealPosition =
             worldPosition;
+
 
         lastBakedRevealPosition =
             worldPosition;
 
+
         currentRevealRadius =
             radius;
+
 
         hasRevealPosition =
             true;
 
 
-        // 영구 Reveal
+        // --------------------------------------------------------
+        // ★ 여기서 처음 Fog ON
+        // --------------------------------------------------------
+
+        fogActive = true;
+
+
+        // --------------------------------------------------------
+        // 즉시 영구 Reveal
+        // --------------------------------------------------------
+
         BakeReveal(
             worldPosition,
             radius
@@ -646,7 +639,88 @@ public class FogOfWarManager : MonoBehaviour
 
         UploadFogTexture();
 
+
         ApplyShaderGlobals();
+    }
+
+
+    // ============================================================
+    // REVEAL - TRANSFORM
+    // ============================================================
+
+    public void Reveal(
+        Transform player
+    )
+    {
+        if (player == null)
+            return;
+
+
+        playerTransform =
+            player;
+
+
+        Reveal(
+            player.position,
+            defaultRevealRadius
+        );
+    }
+
+
+    // ============================================================
+    // IS REVEALED
+    // ============================================================
+
+    public bool IsWorldPositionRevealed(
+        Vector3 worldPosition,
+        byte revealedThreshold = 8
+    )
+    {
+        if (!isReady ||
+            fogPixels == null)
+        {
+            return false;
+        }
+
+
+        Vector2 uv =
+            WorldToNormalized(
+                worldPosition
+            );
+
+
+        int x =
+            Mathf.RoundToInt(
+                uv.x *
+                (textureResolution - 1)
+            );
+
+
+        int y =
+            Mathf.RoundToInt(
+                uv.y *
+                (textureResolution - 1)
+            );
+
+
+        if (x < 0 ||
+            x >= textureResolution ||
+            y < 0 ||
+            y >= textureResolution)
+        {
+            return false;
+        }
+
+
+        int index =
+            y *
+            textureResolution +
+            x;
+
+
+        return
+            fogPixels[index].r >=
+            revealedThreshold;
     }
 
 
@@ -713,6 +787,7 @@ public class FogOfWarManager : MonoBehaviour
                     );
             }
 
+
             return;
         }
 
@@ -724,6 +799,7 @@ public class FogOfWarManager : MonoBehaviour
         float pixelsPerWorldX =
             (textureResolution - 1f) /
             mapWorldSize.x;
+
 
         float pixelsPerWorldZ =
             (textureResolution - 1f) /
@@ -757,6 +833,7 @@ public class FogOfWarManager : MonoBehaviour
                 radiusX
             );
 
+
         int maxX =
             Mathf.Min(
                 textureResolution - 1,
@@ -771,6 +848,7 @@ public class FogOfWarManager : MonoBehaviour
                 centerY -
                 radiusZ
             );
+
 
         int maxY =
             Mathf.Min(
@@ -851,9 +929,10 @@ public class FogOfWarManager : MonoBehaviour
                     );
 
 
-                // ------------------------------------------------
-                // 이미 밝은 곳은 유지
-                // ------------------------------------------------
+                // ★ 영구 Reveal
+                //
+                // 한번 밝아진 곳은
+                // 절대 다시 어두워지지 않는다.
 
                 if (value >
                     fogPixels[index].r)
@@ -912,7 +991,9 @@ public class FogOfWarManager : MonoBehaviour
     {
         if (!isReady ||
             fogTexture == null)
+        {
             return;
+        }
 
 
         // --------------------------------------------------------
@@ -926,7 +1007,7 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // PlayerMap World 영역
+        // Map 영역
         // --------------------------------------------------------
 
         Shader.SetGlobalVector(
@@ -951,7 +1032,19 @@ public class FogOfWarManager : MonoBehaviour
 
 
         // --------------------------------------------------------
-        // 현재 플레이어 위치 + 반경
+        // ★ Fog Active
+        // --------------------------------------------------------
+
+        Shader.SetGlobalFloat(
+            FogActiveID,
+            fogActive
+                ? 1f
+                : 0f
+        );
+
+
+        // --------------------------------------------------------
+        // 현재 Player 위치
         // --------------------------------------------------------
 
         Vector3 position =
@@ -1005,7 +1098,9 @@ public class FogOfWarManager : MonoBehaviour
     {
         if (fogTexture == null ||
             fogPixels == null)
+        {
             return;
+        }
 
 
         fogTexture.SetPixels32(
@@ -1035,29 +1130,22 @@ public class FogOfWarManager : MonoBehaviour
         UploadFogTexture();
 
 
-        if (playerTransform != null)
-        {
-            currentRevealPosition =
-                playerTransform.position;
+        // ★ Reset하면 Fog OFF
+        //
+        // 다시 Reveal()을 호출해야 한다.
 
-            lastBakedRevealPosition =
-                currentRevealPosition;
+        fogActive = false;
 
-            currentRevealRadius =
-                defaultRevealRadius;
+        hasRevealPosition = false;
 
-            hasRevealPosition =
-                true;
+        currentRevealPosition =
+            Vector3.zero;
 
+        lastBakedRevealPosition =
+            Vector3.zero;
 
-            BakeReveal(
-                currentRevealPosition,
-                currentRevealRadius
-            );
-
-
-            UploadFogTexture();
-        }
+        currentRevealRadius =
+            defaultRevealRadius;
 
 
         ApplyShaderGlobals();

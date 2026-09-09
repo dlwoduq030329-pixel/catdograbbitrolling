@@ -513,8 +513,8 @@ Material:
     - _utsVersionY: 11
     - _utsVersionZ: 0
     m_Colors:
-    - _1st_ShadeColor: {r: 0.5471698, g: 0.49467805, b: 0.45683515, a: 1}
-    - _2nd_ShadeColor: {r: 0.084905684, g: 0.037010163, b: 0, a: 1}
+    - _1st_ShadeColor: {r: 0.38679248, g: 0.38679248, b: 0.38679248, a: 1}
+    - _2nd_ShadeColor: {r: 0, g: 0.018098481, b: 0.08627451, a: 1}
     - _AngelRingMaskColor: {r: 0, g: 1, b: 0, a: 1}
     - _AngelRing_Color: {r: 1, g: 1, b: 1, a: 1}
     - _Ap_RimLightColor: {r: 1, g: 1, b: 1, a: 1}
@@ -530,7 +530,7 @@ Material:
     - _EmissiveColorLDR: {r: 0, g: 0, b: 0, a: 1}
     - _Emissive_Color: {r: 0.066037714, g: 0.066037714, b: 0.066037714, a: 1}
     - _FirstShadeMaskColor: {r: 0, g: 1, b: 1, a: 1}
-    - _HighColor: {r: 0.741011, g: 0.8679245, b: 0.78580403, a: 1}
+    - _HighColor: {r: 0.7411765, g: 0.7555449, b: 0.8666667, a: 1}
     - _HighlightMaskColor: {r: 1, g: 1, b: 0, a: 1}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
