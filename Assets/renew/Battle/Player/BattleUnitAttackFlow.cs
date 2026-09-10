@@ -102,7 +102,6 @@ public class BattleUnitAttackFlow : MonoBehaviour
         if (result.MovementMPCost > 0)
         {
             owner.turnActionState.MarkMovementUsed();
-            BattleGameManager.Instance?.ResetDiceOnMove();
         }
 
         owner.SetMoveButtonGroupVisible(false);

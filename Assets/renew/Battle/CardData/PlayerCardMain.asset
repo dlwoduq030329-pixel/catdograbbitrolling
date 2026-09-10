@@ -639,10 +639,26 @@ MonoBehaviour:
     cardType: 0
     legacyCardIndex: 26
     presentation: {animationStateName: RAIN_OF_ARROWS, vfxPrefab: {fileID: 4165034617611478321, guid: 161e8583b80cb8e48924139d40b89d77, type: 3}, vfxSpawnPosition: 1, vfxLifetimeSeconds: 2.5, disableRuntimeBehaviours: 1}
+    effectSummary: "선택 지점 주변 2칸의 적에게 물리 피해 2를 줍니다."
+    effects:
+    - effectType: 0
+      effectTarget: 2
+      amount: 2
+      scalingStat: 0
+      statScalingCoefficient: 0
+      secondaryAmount: 0
+      distanceTiles: 0
+      pushForce: 1
+      durationTurns: 0
+      repeatCount: 1
+      effectCode: ""
+      summonPrefab: {fileID: 0}
+      description: "선택 지점 주변 2칸의 적에게 물리 피해 2를 줍니다."
+      cancelCardOnFailure: 0
     targetType: 2
-    rangeTiles: 4
-    areaType: 0
-    areaSizeTiles: 0
+    rangeTiles: 3
+    areaType: 2
+    areaSizeTiles: 2
     shield: 0
   - category: 0
     cardType: 1

@@ -58,6 +58,14 @@ public sealed class BattleCardEffectData
     [InspectorName("주요 수치 (피해·회복·보호막 등)")]
     public float amount;
 
+    [Tooltip("주요 수치에 더할 Player 능력치입니다. 피해·회복·보호막에서만 사용하며 사거리·범위·반복 횟수에는 적용하지 않습니다.")]
+    [InspectorName("효과 수치 보정 능력치")]
+    public CardEffectStat scalingStat = CardEffectStat.None;
+
+    [Tooltip("선택한 능력치 1당 주요 수치에 더할 비율입니다. 최종 계산은 (주요 수치 + 능력치 × 계수) × 굴림 배율입니다.")]
+    [InspectorName("능력치 보정 계수")]
+    [Min(0f)] public float statScalingCoefficient;
+
     [Tooltip("처형 실패 피해처럼 주 효과와 별도로 필요한 보조 수치입니다.")]
     [InspectorName("보조 수치")]
     public float secondaryAmount;
@@ -114,6 +122,8 @@ public sealed class BattleCardMasterData
     public BattleCardCategory category;
     [InspectorName("카드 유형")]
     public BattleCardType cardType;
+    [InspectorName("효과 굴림 정확도 능력치")]
+    public CardRollStat rollAccuracyStat = CardRollStat.Auto;
     [InspectorName("대상 종류")]
     public BattleCardTargetType targetType;
     [InspectorName("범위 형태")]

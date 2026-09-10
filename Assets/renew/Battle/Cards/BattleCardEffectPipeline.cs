@@ -33,6 +33,8 @@ internal static class BattleCardEffectPipeline
         public BattleRangeVisualizer PersistentAreaVisualizer;
         /// <summary>성역화 같은 지속 영역 타일에 적용할 표시 색상.</summary>
         public Color PersistentAreaTileColor;
+        /// <summary>카드 사용 한 번에서 확정되어 모든 수치형 효과와 반복 타격이 공유하는 굴림 결과.</summary>
+        public CardDiceResult RollResult = CardDiceResult.Normal;
     }
 
     /// <summary>Confirm 전에 검증과 대상 계산을 마친 실행 가능한 효과 단계 목록.</summary>
@@ -193,13 +195,15 @@ internal static class BattleCardEffectPipeline
                     break;
 
                 case BattleCardEffectType.Heal:
+                    float healAmount = ResolveScaledEffectAmount(context, effectData);
                     foreach (GameObject target in preparedEffect.ConfirmedTargets)
-                        for (int i = 0; i < repeatCount; i++) target.GetComponent<BattleHealth>()?.Heal(effectData.amount);
+                        for (int i = 0; i < repeatCount; i++) target.GetComponent<BattleHealth>()?.Heal(healAmount);
                     break;
 
                 case BattleCardEffectType.Shield:
+                    float shieldAmount = ResolveScaledEffectAmount(context, effectData);
                     foreach (GameObject target in preparedEffect.ConfirmedTargets)
-                        for (int i = 0; i < repeatCount; i++) target.GetComponent<BattleHealth>()?.AddShield(effectData.amount);
+                        for (int i = 0; i < repeatCount; i++) target.GetComponent<BattleHealth>()?.AddShield(shieldAmount);
                     break;
 
                 case BattleCardEffectType.Push:
@@ -231,7 +235,7 @@ internal static class BattleCardEffectPipeline
                         context.SelectedTile,
                         context.FindNearestTileAtPosition,
                         context.Card.areaSizeTiles,
-                        effectData.amount,
+                        ResolveScaledEffectAmount(context, effectData),
                         effectData.durationTurns,
                         context.PersistentAreaVisualizer,
                         context.PersistentAreaTileColor);
@@ -300,10 +304,12 @@ internal static class BattleCardEffectPipeline
                     ResolveDamageAmount(context, effectData), false, out failureReason);
             case BattleCardEffectType.Heal:
                 return TryFindTargetThatCanReceiveHealthEffect(
-                    preparedEffect.ConfirmedTargets, effectData.amount, true, out failureReason);
+                    preparedEffect.ConfirmedTargets,
+                    ResolveScaledEffectAmount(context, effectData), true, out failureReason);
             case BattleCardEffectType.Shield:
                 return TryFindTargetThatCanReceiveHealthEffect(
-                    preparedEffect.ConfirmedTargets, effectData.amount, false, out failureReason);
+                    preparedEffect.ConfirmedTargets,
+                    ResolveScaledEffectAmount(context, effectData), false, out failureReason);
             case BattleCardEffectType.Push:
                 if (preparedEffect.ConfirmedTargets.Count == 0)
                 { failureReason = "밀칠 대상이 없습니다."; return false; }
@@ -324,7 +330,7 @@ internal static class BattleCardEffectPipeline
             case BattleCardEffectType.CreateArea:
                 if (context.SelectedTile == null)
                 { failureReason = "지속 영역을 생성할 타일이 없습니다."; return false; }
-                if (effectData.amount <= 0f || effectData.durationTurns <= 0)
+                if (ResolveScaledEffectAmount(context, effectData) <= 0f || effectData.durationTurns <= 0)
                 { failureReason = "지속 영역의 회복량과 지속 턴이 필요합니다."; return false; }
                 return true;
             case BattleCardEffectType.Execute:
@@ -444,24 +450,44 @@ internal static class BattleCardEffectPipeline
     /// </summary>
     private static float ResolveDamageAmount(Context context, BattleCardEffectData effectData)
     {
-        // 기본 공격 연동 효과가 아니면 추가 계산 없이 카드에 기록된 피해량을 사용한다.
+        float baseDamage;
+        // 일반 피해는 카드 데이터의 주요 수치에서 시작한다.
         if (!IsCode(effectData, "BASIC_ATTACK", "기본공격"))
-            return effectData.amount;
+            baseDamage = effectData.amount;
+        else
+        {
+            // 기본 공격 연동 카드는 플레이어의 현재 평타 수치가 바뀌면 카드 피해도 함께 바뀌어야 한다.
+            PlayerCombatData playerCombatData = context.Player.GetComponent<PlayerCombatData>();
+            BattleBasicAttackBuff basicAttackBuff = context.Player.GetComponent<BattleBasicAttackBuff>();
+            BattleDamageType basicAttackDamageType =
+                context.Card.cardType == BattleCardType.MagicDamage
+                    ? BattleDamageType.Magic
+                    : BattleDamageType.Physical;
+            float basicAttackDamage = playerCombatData != null
+                ? playerCombatData.GetBasicAttackPower(basicAttackDamageType)
+                : 0f;
+            float temporaryBonusDamage = basicAttackBuff != null
+                ? basicAttackBuff.BonusDamage
+                : 0f;
+            baseDamage = basicAttackDamage + temporaryBonusDamage;
+        }
 
-        // 기본 공격 연동 카드는 플레이어의 현재 평타 수치가 바뀌면 카드 피해도 함께 바뀌어야 한다.
-        PlayerCombatData playerCombatData = context.Player.GetComponent<PlayerCombatData>();
-        BattleBasicAttackBuff basicAttackBuff = context.Player.GetComponent<BattleBasicAttackBuff>();
-        BattleDamageType basicAttackDamageType =
-            context.Card.cardType == BattleCardType.MagicDamage
-                ? BattleDamageType.Magic
-                : BattleDamageType.Physical;
-        float baseAttackDamage = playerCombatData != null
-            ? playerCombatData.GetBasicAttackPower(basicAttackDamageType)
-            : 0f;
-        float temporaryBonusDamage = basicAttackBuff != null
-            ? basicAttackBuff.BonusDamage
-            : 0f;
-        return baseAttackDamage + temporaryBonusDamage;
+        return ResolveScaledEffectAmount(context, effectData, baseDamage);
+    }
+
+    /// <summary>
+    /// 피해·회복·보호막의 공통 공식인 (기본 수치 + 최종 능력치 × 데이터 계수) × 굴림 배율을 계산한다.
+    /// 사거리, 범위, 반복 횟수, 이동 거리, 상태 지속과 처형 조건은 이 함수를 호출하지 않는다.
+    /// </summary>
+    private static float ResolveScaledEffectAmount(
+        Context context,
+        BattleCardEffectData effectData,
+        float? overriddenBaseAmount = null)
+    {
+        float baseAmount = overriddenBaseAmount ?? effectData.amount;
+        float statValue = PlayerStatCalculator.Get(context.Player, effectData.scalingStat);
+        float amountBeforeRoll = baseAmount + statValue * Mathf.Max(0f, effectData.statScalingCoefficient);
+        return Mathf.Max(0f, amountBeforeRoll * context.RollResult.Multiplier);
     }
 
     /// <summary>

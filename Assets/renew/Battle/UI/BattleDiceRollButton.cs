@@ -1,19 +1,15 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// 전투 씬의 주사위 굴리기 버튼 입력을 처리한다.
-/// 버튼을 꾹 누르고 있으면 연결된 Slider(게이지)가 0~1 사이를 왕복하고,
-/// 손을 떼는 순간 BattleGameManager.RollDice()를 통해 BattleDiceSystem에 실제 굴림을 요청한다.
-///
-/// 기존 필드맵 전용 Assets/Game/Scripts/Board/RollDice.cs(레거시, NodeBasePlayerMov·LinkSelect 등
-/// 필드맵 클래스에 의존)와는 완전히 별개이며, 전투 시스템(BattleGameManager)에만 의존한다.
-/// 게이지가 오가는 연출은 순수 시각 효과이며, 결과값 자체는 BattleDiceSystem이 정한다
-/// (게이지 위치가 주사위 값에 영향을 주지 않음).
+/// 주사위 버튼의 누르기·떼기 입력과 게이지 표시를 담당합니다.
+/// 게이지는 연출이며 실제 결과에는 영향을 주지 않습니다.
 /// </summary>
 [DisallowMultipleComponent]
+[RequireComponent(typeof(Button))]
 public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
     [Header("게이지 표시")]
@@ -21,50 +17,31 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
     [FormerlySerializedAs("rollSlider")]
     [SerializeField] private Slider rollChargeGauge;
     [InspectorName("게이지 왕복 속도(초당)")]
+    [FormerlySerializedAs("gaugeTravelSpeedPerSecond")]
     [FormerlySerializedAs("gaugeSpeed")]
-    [SerializeField, Min(0.01f)] private float gaugeTravelSpeedPerSecond = 1f;
+    [SerializeField, Min(0.01f)] private float gaugeSpeed = 1f;
 
     private Button rollButton;
-    private float gaugeMovementDirection = 1f;
-    private bool isRollButtonHeld;
+    private float gaugeDirection = 1f;
+    private bool isHeld;
+    private Action rollAction;
 
-    /// <summary>
-    /// BattleGameManager가 전달한 현재 턴 상태에 맞춰 주사위 버튼의 표시와 입력 가능 여부를 갱신한다.
-    /// 주사위 버튼 자신의 표현 상태이므로 BattleTurnButtonController를 경유하지 않는다.
-    /// </summary>
-    public void ApplyRollButtonState(
-        bool isPlayerTurn,
-        bool hasRolledThisTurn,
-        bool battleStopped,
-        bool overlayOpen)
+    /// <summary>카드 사용 확인 뒤 버튼을 활성화하고, 손을 뗄 때 전달받은 굴림 요청을 한 번 실행한다.</summary>
+    public void ShowForCardRoll(Action onRollRequested)
     {
-        if (rollButton == null)
-        {
-            rollButton = GetComponent<Button>();
-        }
-
-        if (rollButton == null)
-        {
-            return;
-        }
-
-        bool shouldShowRollButton = isPlayerTurn && !hasRolledThisTurn && !battleStopped;
-        rollButton.gameObject.SetActive(shouldShowRollButton);
-        rollButton.interactable = shouldShowRollButton && !overlayOpen;
+        rollAction = onRollRequested;
+        rollButton.interactable = true;
+        ResetRollGauge();
+        SetRollGaugeVisible(false);
     }
 
-    /// <summary>Player 사망처럼 전투가 중지된 경우 주사위 버튼 입력을 즉시 비활성화한다.</summary>
-    public void DisableRollInput()
+    /// <summary>현재 카드 굴림 요청과 버튼 입력 상태를 초기화한다.</summary>
+    public void ClearCardRollRequest()
     {
-        if (rollButton == null)
-        {
-            rollButton = GetComponent<Button>();
-        }
-
-        if (rollButton != null)
-        {
-            rollButton.interactable = false;
-        }
+        rollAction = null;
+        isHeld = false;
+        ResetRollGauge();
+        SetRollGaugeVisible(false);
     }
 
     /// <summary>
@@ -92,7 +69,8 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
     /// </summary>
     private void OnDisable()
     {
-        isRollButtonHeld = false;
+        isHeld = false;
+        rollAction = null;
         SetRollGaugeVisible(false);
     }
 
@@ -103,25 +81,25 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
     /// </summary>
     private void Update()
     {
-        if (!isRollButtonHeld || rollChargeGauge == null)
+        if (!isHeld || rollChargeGauge == null)
         {
             return;
         }
 
         float nextGaugeValue = rollChargeGauge.value +
-                               gaugeMovementDirection *
-                               gaugeTravelSpeedPerSecond *
+                               gaugeDirection *
+                               gaugeSpeed *
                                Time.unscaledDeltaTime;
         if (nextGaugeValue >= 1f)
         {
             nextGaugeValue = 1f;
-            gaugeMovementDirection = -1f;
+            gaugeDirection = -1f;
             SoundManager.Instance?.SliderDown();
         }
         else if (nextGaugeValue <= 0f)
         {
             nextGaugeValue = 0f;
-            gaugeMovementDirection = 1f;
+            gaugeDirection = 1f;
             SoundManager.Instance?.sliderUp();
         }
 
@@ -139,58 +117,58 @@ public sealed class BattleDiceRollButton : MonoBehaviour, IPointerDownHandler, I
             return;
         }
 
-        isRollButtonHeld = true;
+        isHeld = true;
         SetRollGaugeVisible(true);
         SoundManager.Instance?.sliderUp();
     }
 
     /// <summary>
     /// 유효하게 누르기 시작한 뒤 포인터를 놓으면 게이지 연출을 종료하고 주사위 효과음을 재생한다.
-    /// 이어서 Manager를 경유해 BattleDiceSystem에 실제 턴 주사위 처리를 요청한 뒤 게이지를 초기 상태로 되돌린다.
+    /// 이어서 BattleDiceSystem이 등록한 카드 효과 굴림 요청을 한 번 실행하고 게이지를 초기화한다.
     /// </summary>
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (!isRollButtonHeld)
+        if (!isHeld)
         {
             return;
         }
 
-        isRollButtonHeld = false;
+        isHeld = false;
         SoundManager.Instance?.RollDice();
 
-        // 2026-09-08: BattleGameManager의 주사위 시스템이 삭제되어 더 이상 굴림을 요청할 대상이 없다.
-        // 이 버튼은 지금 눌러도 게이지 연출만 재생되고 실제 효과는 없는 상태다.
-        // TODO: 주사위를 "카드 강화" 트리거로 재설계할 때 이 버튼을 재사용하거나 교체할지 결정 필요.
+        Action rollRequest = rollAction;
+        rollAction = null;
+        rollRequest?.Invoke();
 
         ResetRollGauge();
         SetRollGaugeVisible(false);
     }
 
     /// <summary>
-    /// BattleGameManager가 존재하고 주사위 Button이 현재 입력 가능한지 확인한다.
-    /// Button 참조가 없는 예외적인 구성에서는 Manager 존재만으로 입력을 허용한다.
+    /// 카드 굴림 요청이 등록되어 있고 주사위 Button이 현재 입력 가능한지 확인한다.
     /// </summary>
     private bool CanStartRollInput()
     {
-        if (BattleGameManager.Instance == null)
+        if (rollAction == null)
         {
+            Debug.LogWarning("[BattleDice] 실행할 주사위 함수가 연결되지 않았습니다.", this);
             return false;
         }
 
-        return rollButton == null || rollButton.IsInteractable();
+        return rollButton.IsInteractable();
     }
 
     /// <summary>다음 입력이 0에서 위쪽으로 시작하도록 게이지 값과 이동 방향을 초기화한다.</summary>
     private void ResetRollGauge()
     {
-        gaugeMovementDirection = 1f;
+        gaugeDirection = 1f;
         if (rollChargeGauge != null)
         {
             rollChargeGauge.value = 0f;
         }
     }
 
-    /// <summary>실린더(게이지) 오브젝트를 누르고 있을 때만 보이게 켜고 끈다.</summary>
+    /// <summary>게이지를 누르고 있는 동안만 표시합니다.</summary>
     private void SetRollGaugeVisible(bool shouldBeVisible)
     {
         if (rollChargeGauge == null)

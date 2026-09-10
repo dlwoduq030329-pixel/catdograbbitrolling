@@ -1,7 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
@@ -12,11 +10,12 @@ using TMPro;
 public class BattlePlayerActionController : MonoBehaviour
 {
 
-    [Header("필수 참조")]
-    [InspectorName("메인 카메라")]
-    public Camera mainCamera;
-    [InspectorName("플레이어")]
-    public GameObject player;
+    // 아래 두 참조는 씬 설정값이 아니다. 카메라는 Awake에서 갱신하고 Player Body는
+    // BattleGameManager가 생성/초기화한 뒤 SetPlayer로 전달한다.
+    internal Camera mainCamera;
+    internal GameObject player;
+
+    [Header("행동 확인 UI (선택 사항)")]
     [InspectorName("이동 확정 버튼")]
     public Button confirmMoveButton;
     [InspectorName("이동 선택 취소 버튼")]
@@ -26,41 +25,26 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("행동 확인 안내 텍스트 (선택 사항)")]
     [SerializeField] private TMP_Text actionConfirmText;
 
-    [Header("이동 범위")]
-    [InspectorName("최소 이동 범위")]
-    public int minMoveRange = 1;
-    [InspectorName("최대 이동 범위")]
-    public int maxMoveRange = 6;
-    [InspectorName("현재 이동 범위")]
-    public int currentMoveRange = 3;
-
-    [Header("레이캐스트 설정")]
+    [Header("입력 판정 설정")]
     [InspectorName("타일 레이어 마스크")]
     public LayerMask tileLayerMask = ~0;
-    [InspectorName("전투 레이캐스트 모듈")]
-    [SerializeField] internal BattleRaycaster battleRaycaster;
-    [InspectorName("전투 범위 표시 모듈")]
-    [SerializeField] internal BattleRangeVisualizer battleRangeVisualizer;
-    [InspectorName("플레이어 범위 제어 모듈")]
-    [SerializeField] internal BattlePlayerRangeController battlePlayerRangeController;
-    [InspectorName("플레이어 이동 실행 모듈")]
-    [SerializeField] internal BattlePlayerMover battlePlayerMover;
-    [InspectorName("행동 확인 화면 모듈")]
-    [SerializeField] private BattleActionConfirmView battleActionConfirmView;
-    [InspectorName("플레이어 입력 감지 모듈")]
-    [SerializeField] private BattlePlayerInputReader battlePlayerInputReader;
-    [InspectorName("캐릭터 마우스 오버 강조 모듈")]
-    [SerializeField] private BattleUnitHoverHighlighter battleUnitHoverHighlighter;
-    [InspectorName("밀치기 결과 사전 예고 화면")]
-    [SerializeField] internal BattlePushPreviewView battlePushPreviewView;
+
+    // Controller가 소유하는 런타임 모듈 캐시. 모두 Awake에서 GetOrAdd로 준비하므로
+    // Inspector에 노출하거나 Scene에 직렬화하지 않는다.
+    internal BattleRaycaster battleRaycaster;
+    internal BattleRangeVisualizer battleRangeVisualizer;
+    internal BattlePlayerRangeController battlePlayerRangeController;
+    internal BattlePlayerMover battlePlayerMover;
+    private BattleActionConfirmView battleActionConfirmView;
+    private BattlePlayerInputReader battlePlayerInputReader;
+    private BattleUnitHoverHighlighter battleUnitHoverHighlighter;
+    internal BattlePushPreviewView battlePushPreviewView;
+
     [InspectorName("전투 데이터 저장소")]
     [SerializeField] internal BattleDataPool battleDataPool;
-    [InspectorName("이동 플로우 모듈")]
     internal BattleUnitMoveFlow moveFlow;
-    [InspectorName("기본 공격 플로우 모듈")]
-    [SerializeField] private BattleUnitAttackFlow attackFlow;
-    [InspectorName("카드 플로우 모듈")]
-    [SerializeField] private BattlePlayerCardFlow cardFlow;
+    private BattleUnitAttackFlow attackFlow;
+    private BattlePlayerCardFlow cardFlow;
 
     [Header("이동 연출 시간")]
     [InspectorName("타일당 기본 이동 시간")]
@@ -179,21 +163,18 @@ public class BattlePlayerActionController : MonoBehaviour
             : "이동 시스템의 플레이어 참조를 해제했습니다.", this);
     }
 
-    /// <summary>주사위 결과를 이번 턴 이동 상한으로 저장하고 이동 입력을 허용한다.</summary>
-    public void SetMoveRange(int moveRange)
+    /// <summary>
+    /// 이번 턴 이동 입력을 허용한다.
+    /// 2026-09-10: 예전엔 주사위 결과값을 여기서 이동 상한(currentMoveRange)으로 저장했지만,
+    /// 이제 이동 가능 칸수는 BattleUnitAP(player)의 잔량을 그대로 쓴다(min 없이 AP가 곧 상한).
+    /// 그래서 이 메서드는 더 이상 값을 받지 않고, 이동 활성화 플래그만 세우고 범위를 표시한다.
+    /// </summary>
+    public void ActivateMovement()
     {
-        currentMoveRange = Mathf.Clamp(moveRange, minMoveRange, maxMoveRange);
-        turnActionState.MarkDiceRolled();
-        Debug.Log($"이동 범위 설정: {currentMoveRange}칸", this);
+        turnActionState.MarkMovementActivated();
+        Debug.Log("이동 입력 활성화(AP 기반)", this);
         EnsureMoveFlow();
         moveFlow.ShowMoveRange();
-    }
-
-    /// <summary>QA 전투에서 주사위 이동 범위 상한을 빠르게 확장한다.</summary>
-    public void ConfigureDebugMoveRange(int maximumRange)
-    {
-        maxMoveRange = Mathf.Max(minMoveRange, maximumRange);
-        currentMoveRange = Mathf.Clamp(currentMoveRange, minMoveRange, maxMoveRange);
     }
 
     /// <summary>현재 선택된 목적지가 유효하면 실제 이동 Coroutine을 시작한다.</summary>
@@ -282,11 +263,11 @@ public class BattlePlayerActionController : MonoBehaviour
                 return;
             }
 
-            Debug.Log($"플레이어 클릭: {clickedPlayer.name}, 주사위 굴림={turnActionState.DiceRolled}", clickedPlayer);
+            Debug.Log($"플레이어 클릭: {clickedPlayer.name}, 이동 활성화={turnActionState.MovementActivated}", clickedPlayer);
 
-            if (!turnActionState.DiceRolled)
+            if (!turnActionState.MovementActivated)
             {
-                Debug.Log("이동 범위를 표시하려면 먼저 주사위를 굴려야 합니다.", this);
+                Debug.Log("이동 범위를 표시하려면 먼저 이동이 활성화되어야 합니다.", this);
                 return;
             }
 
@@ -302,8 +283,8 @@ public class BattlePlayerActionController : MonoBehaviour
         }
 
         // 기본 공격 대상 지정: 예전에는 우클릭 전용이었던 분기를 그대로 좌클릭으로 옮긴 것이다.
-        // 조건(주사위 굴림, 사거리 표시 중, 다른 행동 진행 중 아님)은 기존 우클릭 분기와 동일하다.
-        if (turnActionState.DiceRolled && rangeVisible && !moveFlow.IsAwaitingConfirmation &&
+        // 조건(이동 활성화, 사거리 표시 중, 다른 행동 진행 중 아님)은 기존 우클릭 분기와 동일하다.
+        if (turnActionState.MovementActivated && rangeVisible && !moveFlow.IsAwaitingConfirmation &&
             !IsBasicAttackActive && !IsCardActionActive &&
             TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
         {
@@ -335,7 +316,7 @@ public class BattlePlayerActionController : MonoBehaviour
 
     /// <summary>
     /// Player를 직접 클릭하지 않고 단축키만으로 이동·공격 사거리를 켜고 끈다.
-    /// 클릭으로 여는 경우와 동일한 조건(주사위 굴림, 다른 행동 진행 중 여부)을 그대로 적용한다.
+    /// 클릭으로 여는 경우와 동일한 조건(이동 활성화, 다른 행동 진행 중 여부)을 그대로 적용한다.
     /// </summary>
     private void HandleRangeToggleRequested()
     {
@@ -350,9 +331,9 @@ public class BattlePlayerActionController : MonoBehaviour
             return;
         }
 
-        if (!turnActionState.DiceRolled)
+        if (!turnActionState.MovementActivated)
         {
-            Debug.Log("이동 범위를 표시하려면 먼저 주사위를 굴려야 합니다.", this);
+            Debug.Log("이동 범위를 표시하려면 먼저 이동이 활성화되어야 합니다.", this);
             return;
         }
 

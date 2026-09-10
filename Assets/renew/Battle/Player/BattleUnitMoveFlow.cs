@@ -81,7 +81,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
         }
     }
 
-    /// <summary>일반 이동 경로 검증, 이동 연출과 MP 차감을 담당하는 기능 컴포넌트를 확보한다.</summary>
+    /// <summary>일반 이동 경로 검증, 이동 연출과 AP 차감을 담당하는 기능 컴포넌트를 확보한다.</summary>
     private void EnsureBattleMoveTransaction()
     {
         owner.EnsureBattlePlayerMover();
@@ -168,7 +168,8 @@ public class BattleUnitMoveFlow : MonoBehaviour
     }
 
     /// <summary>
-    /// 주사위 범위와 현재 MP 중 작은 값으로 BFS 범위를 계산하고 타일 색상을 표시한다.
+    /// 남은 AP를 그대로 BFS 범위로 계산해 타일 색상을 표시한다.
+    /// (2026-09-10: 예전엔 주사위 캡과 MP 중 작은 값을 썼지만, 이제 이동 전용 AP 잔량이 곧 상한이다.)
     /// </summary>
     public void ShowMoveRange()
     {
@@ -190,9 +191,9 @@ public class BattleUnitMoveFlow : MonoBehaviour
             return;
         }
 
-        BattleUnitMP playerMP = owner.player != null ? owner.player.GetComponent<BattleUnitMP>() : null;
-        int mpLimitedRange = playerMP != null && !owner.turnActionState.MovementUsed
-            ? Mathf.Min(owner.currentMoveRange, playerMP.CurrentMP)
+        BattleUnitAP playerAP = owner.player != null ? owner.player.GetComponent<BattleUnitAP>() : null;
+        int apLimitedRange = playerAP != null && !owner.turnActionState.MovementUsed
+            ? playerAP.CurrentAP
             : 0;
         System.Collections.Generic.IEnumerable<GameObject> enemies =
             owner.battleDataPool != null && owner.battleDataPool.Units != null
@@ -201,7 +202,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
         bool shown = owner.battlePlayerRangeController.BuildAndShow(
             owner.battlePlayerMapContext.Tiles,
             currentTile,
-            mpLimitedRange,
+            apLimitedRange,
             owner.GetPlayerAttackRange(),
             BattleMapTraversalService.IsWalkable,
             enemies,
@@ -237,7 +238,7 @@ public class BattleUnitMoveFlow : MonoBehaviour
         EnsureBattleMoveTransaction();
         if (!battleMoveTransaction.IsAwaitingConfirmation ||
             battleMoveTransaction.PendingTarget == null ||
-            !owner.turnActionState.DiceRolled || owner.turnActionState.MovementUsed)
+            !owner.turnActionState.MovementActivated || owner.turnActionState.MovementUsed)
         {
             return;
         }
@@ -247,15 +248,15 @@ public class BattleUnitMoveFlow : MonoBehaviour
     }
 
     /// <summary>
-    /// 목적지까지 최단 경로를 따라 이동하고 완료 후 경로 칸 수만큼 MP를 차감한다.
-    /// 취소나 경로 실패에는 MP를 차감하지 않는다.
+    /// 목적지까지 최단 경로를 따라 이동하고 완료 후 경로 칸 수만큼 AP를 차감한다.
+    /// 취소나 경로 실패에는 AP를 차감하지 않는다.
     /// </summary>
     private IEnumerator MovePlayerToSelectedTile()
     {
         EnsureBattleMoveTransaction();
         MapInfo targetTile = battleMoveTransaction.PendingTarget;
         if (owner.player == null || targetTile == null ||
-            owner.turnActionState.MovementUsed || !owner.turnActionState.DiceRolled)
+            owner.turnActionState.MovementUsed || !owner.turnActionState.MovementActivated)
         {
             yield break;
         }
@@ -268,10 +269,8 @@ public class BattleUnitMoveFlow : MonoBehaviour
             owner.FindClosestMapTile);
 
         MapInfo startTile = owner.FindClosestMapTile(owner.player.transform.position);
-        BattleUnitMP playerMP = owner.player.GetComponent<BattleUnitMP>();
-        int maxMovementTiles = playerMP != null
-            ? Mathf.Min(owner.currentMoveRange, playerMP.CurrentMP)
-            : 0;
+        BattleUnitAP playerAP = owner.player.GetComponent<BattleUnitAP>();
+        int maxMovementTiles = playerAP != null ? playerAP.CurrentAP : 0;
         isMoving = true;
         EnsureBattleMoveTransaction();
         BattleMovementResult movementResult = null;
@@ -299,11 +298,6 @@ public class BattleUnitMoveFlow : MonoBehaviour
 
         ClearMoveRange();
         ClearMoveArrow();
-
-        if (BattleGameManager.Instance != null)
-        {
-            BattleGameManager.Instance.ResetDiceOnMove();
-        }
 
         owner.SetConfirmButtonsInteractable(false);
         owner.SetMoveButtonGroupVisible(false);

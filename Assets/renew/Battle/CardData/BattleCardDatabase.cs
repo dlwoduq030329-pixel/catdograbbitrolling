@@ -126,6 +126,10 @@ public class BattleCardData
     [InspectorName("카드 유형")]
     public BattleCardType cardType = BattleCardType.PhysicalDamage;
 
+    [Tooltip("카드 사용 시 Fail/Normal/Perfect 확률을 계산할 Player 능력치입니다. Auto는 물리=STR, 마법=INT이며 지원 카드는 WIS를 임시 기본값으로 사용합니다.")]
+    [InspectorName("효과 굴림 정확도 능력치")]
+    public CardRollStat rollAccuracyStat = CardRollStat.Auto;
+
     [Header("원본 카드 데이터 연결")]
     [Tooltip("원본 카드 데이터 목록에서 사용하는 번호입니다. 연결하지 않을 경우 -1을 사용합니다.")]
     [InspectorName("원본 카드 번호")]

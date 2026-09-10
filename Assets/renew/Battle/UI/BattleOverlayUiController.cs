@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
-using UnityEngine.UI;
 
 /// <summary>
 /// 전투 위에 상점·보상·상태창·턴 안내가 표시될 때 전투 입력과 HUD 표시를 제어한다.
@@ -17,22 +16,49 @@ public sealed class BattleOverlayUiController : MonoBehaviour
     [SerializeField] private CanvasGroup battleHudInputGroup;
 
     [Header("상점이 열릴 때 숨길 UI")]
-    [FormerlySerializedAs("turnEndButton")]
-    [SerializeField] private Button turnEndButtonHiddenByShop;
     [FormerlySerializedAs("cardPanel")]
     [SerializeField] private BattleCardPanelToggle cardHandHiddenByShop;
     [FormerlySerializedAs("hudHiddenWhileShopIsOpen")]
     [SerializeField] private GameObject battleHudRootHiddenByShop;
-    [FormerlySerializedAs("uiHiddenWhileShopIsOpen")]
-    [SerializeField] private GameObject[] additionalUiHiddenByShop;
 
     private readonly List<bool> activeStatesBeforeShopOpened = new List<bool>();
     private int activeInputBlockingOverlayCount;
     private bool hudWasInteractableBeforeFirstOverlay = true;
     private bool hudBlockedRaycastsBeforeFirstOverlay = true;
+    private BattleCardPanelToggle cardPanel;
+    private BattleTurnButtonController turnButton;
 
     /// <summary>전투 입력을 막는 오버레이가 하나 이상 열려 있는지 반환한다.</summary>
     public bool IsOverlayOpen => activeInputBlockingOverlayCount > 0;
+
+    /// <summary>카드 굴림 중 함께 숨기거나 잠글 전투 UI를 연결합니다.</summary>
+    public void SetupCardRollUi(
+        BattleCardPanelToggle targetCardPanel,
+        BattleTurnButtonController targetTurnButton)
+    {
+        cardPanel = targetCardPanel;
+        turnButton = targetTurnButton;
+    }
+
+    /// <summary>주사위 버튼만 사용할 수 있도록 다른 전투 입력을 잠급니다.</summary>
+    public void LockForCardRoll()
+    {
+        playerActionInput?.HideActionConfirmationUI();
+        cardPanel?.HideImmediately();
+        playerActionInput?.SetBattleInputEnabled(false);
+        BattleMapCameraInput.SetEnabledOnMainCamera(false);
+        turnButton?.DisableTurnEndInput();
+    }
+
+    /// <summary>카드 굴림이 끝나면 현재 턴에 맞춰 입력을 복구합니다.</summary>
+    public void UnlockAfterCardRoll(bool isPlayerTurn, bool battleIsStopped)
+    {
+        if (battleIsStopped || IsOverlayOpen)
+            return;
+
+        playerActionInput?.SetBattleInputEnabled(isPlayerTurn);
+        BattleMapCameraInput.SetEnabledOnMainCamera(isPlayerTurn);
+    }
 
     /// <summary>
     /// 상점·보상·상태창 등 전투 입력을 막는 오버레이 하나가 열렸음을 기록한다.
@@ -122,20 +148,8 @@ public sealed class BattleOverlayUiController : MonoBehaviour
         }
 
         RememberActiveStateAndHide(
-            turnEndButtonHiddenByShop != null ? turnEndButtonHiddenByShop.gameObject : null);
-        RememberActiveStateAndHide(
             cardHandHiddenByShop != null ? cardHandHiddenByShop.gameObject : null);
         RememberActiveStateAndHide(battleHudRootHiddenByShop);
-
-        if (additionalUiHiddenByShop == null)
-        {
-            return;
-        }
-
-        for (int uiIndex = 0; uiIndex < additionalUiHiddenByShop.Length; uiIndex++)
-        {
-            RememberActiveStateAndHide(additionalUiHiddenByShop[uiIndex]);
-        }
     }
 
     /// <summary>
@@ -167,23 +181,9 @@ public sealed class BattleOverlayUiController : MonoBehaviour
 
         int savedStateIndex = 0;
         RestoreSavedActiveState(
-            turnEndButtonHiddenByShop != null ? turnEndButtonHiddenByShop.gameObject : null,
-            savedStateIndex++);
-        RestoreSavedActiveState(
             cardHandHiddenByShop != null ? cardHandHiddenByShop.gameObject : null,
             savedStateIndex++);
         RestoreSavedActiveState(battleHudRootHiddenByShop, savedStateIndex++);
-
-        if (additionalUiHiddenByShop != null)
-        {
-            for (int uiIndex = 0; uiIndex < additionalUiHiddenByShop.Length; uiIndex++)
-            {
-                RestoreSavedActiveState(
-                    additionalUiHiddenByShop[uiIndex],
-                    savedStateIndex++);
-            }
-        }
-
         activeStatesBeforeShopOpened.Clear();
     }
 

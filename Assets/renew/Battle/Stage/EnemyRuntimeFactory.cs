@@ -33,12 +33,6 @@ public static class EnemyRuntimeFactory
         deathHandler.SpawnScale = enemy.transform.localScale;
         BattleHealthBarView enemyHealthBar =
             BattleHealthBarFactory.AttachEnemyBar(enemy, enemyHealth, enemyMP, typeIcon);
-        FogRevealVisibility fogVisibility =
-            BattleComponentResolver.GetOrAdd<FogRevealVisibility>(enemy, null);
-        if (enemyHealthBar != null)
-        {
-            fogVisibility.SetExtraVisualRoots(new GameObject[] { enemyHealthBar.gameObject });
-        }
 
         BattleEnemyRuntimeData runtimeData =
             BattleComponentResolver.GetOrAdd<BattleEnemyRuntimeData>(enemy, null);

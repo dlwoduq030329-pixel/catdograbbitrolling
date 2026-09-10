@@ -129,8 +129,7 @@ public class BattleCardPanelToggle : MonoBehaviour
         return true;
     }
 
-    /// <summary>문자 입력 중이 아닐 때 설정된 단축키로 카드 패널 상태를 전환한다.
-    /// 카드 사거리 표시·대상 선택 중에도 Tab으로 패널을 여닫을 수 있다(더 이상 차단하지 않음).</summary>
+    /// <summary>카드를 사용할 수 있고 문자 입력 중이 아닐 때 단축키로 카드 패널 상태를 전환한다.</summary>
     private void Update()
     {
         if (Input.GetKeyDown(handPanelToggleKey) &&
@@ -173,6 +172,34 @@ public class BattleCardPanelToggle : MonoBehaviour
         }
 
         StartPanelSlide(hiddenAnchoredPosition, false);
+    }
+
+    /// <summary>
+    /// 주사위 판정처럼 다른 입력 UI가 즉시 전면에 나와야 할 때 손패를 연출 없이 닫는다.
+    /// 진행 중인 슬라이드도 중단해 RollButton 뒤로 카드 패널이 다시 올라오는 것을 막는다.
+    /// </summary>
+    public void HideImmediately()
+    {
+        if (cardInfoPanelPresenter != null)
+        {
+            cardInfoPanelPresenter.Hide();
+        }
+
+        if (activeSlideCoroutine != null)
+        {
+            StopCoroutine(activeSlideCoroutine);
+            activeSlideCoroutine = null;
+        }
+
+        if (handPanelRect != null)
+        {
+            ApplyPanelStateImmediately(hiddenAnchoredPosition, false);
+        }
+        else
+        {
+            IsShown = false;
+            SetHandPanelInteraction(false);
+        }
     }
 
     /// <summary>
@@ -251,6 +278,11 @@ public class BattleCardPanelToggle : MonoBehaviour
     /// </summary>
     private bool ShouldIgnoreToggleShortcut()
     {
+        if (BattleGameManager.Instance != null && !BattleGameManager.Instance.CanUsePlayerCards)
+        {
+            return true;
+        }
+
         if (!ignoreShortcutWhileTyping || EventSystem.current == null)
         {
             return false;

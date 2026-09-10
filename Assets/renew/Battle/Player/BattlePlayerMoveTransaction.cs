@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 일반 이동 경로 검증, 이동 연출, 이동 MP 차감을 하나의 트랜잭션으로 처리한다.
+/// 일반 이동 경로 검증, 이동 연출, 이동 AP 차감을 하나의 트랜잭션으로 처리한다.
 /// 목적지 입력, 타일 표시, 확인 UI는 담당하지 않는다.
-/// 경로/MP 검증은 항상 실제 이동 연출(BattlePlayerMover.MoveAlongPath) 이전에 끝내서,
+/// 경로/AP 검증은 항상 실제 이동 연출(BattlePlayerMover.MoveAlongPath) 이전에 끝내서,
 /// 검증 실패가 곧 "아무 일도 일어나지 않았다"를 보장한다(이동 후 실패가 발생하지 않도록 함).
+/// (2026-09-10: 이동 비용을 BattleUnitMP -> BattleUnitAP로 교체. MP는 카드 사용·기본 공격 비용으로
+/// 계속 쓰이고, 일반 이동만 별도 자원(AP)을 쓰도록 분리했다.)
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class BattlePlayerMoveTransaction : MonoBehaviour
@@ -56,7 +58,7 @@ public sealed class BattlePlayerMoveTransaction : MonoBehaviour
     }
 
     /// <summary>
-    /// 보관된 목적지(PendingTarget)를 다시 검증한 뒤 이동하고, 성공한 경로의 칸 수만큼 MP를 차감한다.
+    /// 보관된 목적지(PendingTarget)를 다시 검증한 뒤 이동하고, 성공한 경로의 칸 수만큼 AP를 차감한다.
     /// 선택된 목적지 경로가 허용 이동 칸 수(maxMovementTiles)를 넘지 않을 때만 이동을 실행한다.
     /// </summary>
     public IEnumerator TryExecutePendingMove(
@@ -83,9 +85,9 @@ public sealed class BattlePlayerMoveTransaction : MonoBehaviour
     }
 
     /// <summary>
-    /// 경로, 이동 상한, MP를 전부 실제 이동 연출 전에 검증하고 확정한 뒤에만 이동을 실행한다.
-    /// MP 차감(TrySpend)이 이동 연출(MoveAlongPath)보다 먼저 일어나므로, MP 부족으로 실패하는 경우
-    /// Player가 이미 이동해버린 채로 실패 콜백만 오는 상황(위치·MP 불일치)이 생기지 않는다.
+    /// 경로, 이동 상한, AP를 전부 실제 이동 연출 전에 검증하고 확정한 뒤에만 이동을 실행한다.
+    /// AP 차감(TrySpend)이 이동 연출(MoveAlongPath)보다 먼저 일어나므로, AP 부족으로 실패하는 경우
+    /// Player가 이미 이동해버린 채로 실패 콜백만 오는 상황(위치·AP 불일치)이 생기지 않는다.
     /// </summary>
     private IEnumerator RunValidatedMove(
         MapInfo startTile,
@@ -113,7 +115,7 @@ public sealed class BattlePlayerMoveTransaction : MonoBehaviour
             yield break;
         }
 
-        BattleUnitMP playerMP = playerObject.GetComponent<BattleUnitMP>();
+        BattleUnitAP playerAP = playerObject.GetComponent<BattleUnitAP>();
         int movementCost = path.Count;
         BattleStatusEffects movementStatus = playerObject.GetComponent<BattleStatusEffects>();
         if (movementStatus != null && path.Count > 0)
@@ -127,11 +129,11 @@ public sealed class BattlePlayerMoveTransaction : MonoBehaviour
             yield break;
         }
 
-        // 이동 연출을 시작하기 전에 MP를 먼저 확정 차감한다(검증-후-실행이 아니라 확정-후-실행).
-        // 이렇게 해야 MP 부족으로 인한 실패가 항상 "이동이 전혀 일어나지 않은" 상태로 보장된다.
-        if (playerMP == null || !playerMP.TrySpend(movementCost))
+        // 이동 연출을 시작하기 전에 AP를 먼저 확정 차감한다(검증-후-실행이 아니라 확정-후-실행).
+        // 이렇게 해야 AP 부족으로 인한 실패가 항상 "이동이 전혀 일어나지 않은" 상태로 보장된다.
+        if (playerAP == null || !playerAP.TrySpend(movementCost))
         {
-            completed?.Invoke(BattleMovementResult.Failed("현재 MP가 부족하여 선택한 타일까지 이동할 수 없습니다."));
+            completed?.Invoke(BattleMovementResult.Failed("현재 AP가 부족하여 선택한 타일까지 이동할 수 없습니다."));
             yield break;
         }
 
@@ -145,33 +147,33 @@ public sealed class BattlePlayerMoveTransaction : MonoBehaviour
     }
 }
 
-/// <summary>일반 이동 트랜잭션의 성공 여부, 경로, MP 비용과 실패 원인을 전달한다.</summary>
+/// <summary>일반 이동 트랜잭션의 성공 여부, 경로, AP 비용과 실패 원인을 전달한다.</summary>
 public sealed class BattleMovementResult
 {
     public bool Success { get; }
     public IReadOnlyList<MapInfo> Path { get; }
-    public int MPCost { get; }
+    public int APCost { get; }
     public string FailureReason { get; }
 
     private BattleMovementResult(
         bool success,
         IReadOnlyList<MapInfo> path,
-        int mpCost,
+        int apCost,
         string failureReason)
     {
         Success = success;
         Path = path;
-        MPCost = mpCost;
+        APCost = apCost;
         FailureReason = failureReason;
     }
 
-    /// <summary>완료된 경로와 실제 MP 비용을 포함한 이동 성공 결과를 생성한다.</summary>
-    public static BattleMovementResult Succeeded(IReadOnlyList<MapInfo> path, int mpCost)
+    /// <summary>완료된 경로와 실제 AP 비용을 포함한 이동 성공 결과를 생성한다.</summary>
+    public static BattleMovementResult Succeeded(IReadOnlyList<MapInfo> path, int apCost)
     {
-        return new BattleMovementResult(true, path, mpCost, string.Empty);
+        return new BattleMovementResult(true, path, apCost, string.Empty);
     }
 
-    /// <summary>위치와 MP를 확정하지 못한 이동 실패 결과를 사유와 함께 생성한다.</summary>
+    /// <summary>위치와 AP를 확정하지 못한 이동 실패 결과를 사유와 함께 생성한다.</summary>
     public static BattleMovementResult Failed(string reason)
     {
         return new BattleMovementResult(false, Array.Empty<MapInfo>(), 0, reason);

@@ -1,15 +1,16 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// Player의 <see cref="BattleUnitMP"/> 변경 이벤트를 받아 현재 MP를 화면에 표시한다.
-/// 현재 UI는 크리스탈 이미지 목록만 사용한다.
+/// 크리스탈 이미지와 선택적으로 연결한 현재/최대 MP 텍스트를 갱신한다.
 /// </summary>
 public class PlayerMPUI : MonoBehaviour
 {
     [Header("크리스탈형 MP 바")]
     [InspectorName("마나 크리스탈 이미지 목록")]
-    [SerializeField, Tooltip("MP_VerticalBar 프리팹의 Crystal_0..N Image들을 순서대로(0번=최하단) 연결합니다. 비워두면 기존 실린더 Fill 방식만 사용합니다.")]
+    [SerializeField, Tooltip("크리스탈 Image를 채워지는 순서대로 연결합니다. 가로형 UI는 왼쪽부터 연결합니다.")]
     private Image[] manaCrystalImages;
 
     [InspectorName("채워진 크리스탈 스프라이트")]
@@ -19,6 +20,12 @@ public class PlayerMPUI : MonoBehaviour
     [InspectorName("빈 크리스탈 스프라이트")]
     [SerializeField]
     private Sprite manaCrystalEmptySprite;
+
+    [SerializeField, InspectorName("현재 최대 MP 텍스트")]
+    private TMP_Text manaValueText;
+
+    [SerializeField, InspectorName("빈 스프라이트가 없을 때 소모된 크리스탈 색상")]
+    private Color depletedCrystalColor = new Color(0.25f, 0.25f, 0.25f, 1f);
 
     // 현재 UI가 관찰 중인 Player MP다. 교체 시 이전 이벤트를 먼저 해제하여 중복 갱신을 막는다.
     private BattleUnitMP observedPlayerMana;
@@ -74,6 +81,10 @@ public class PlayerMPUI : MonoBehaviour
     private void UpdatePlayerManaDisplay(int currentMana, int maximumMana)
     {
         UpdateManaCrystals(currentMana, maximumMana);
+        if (manaValueText != null)
+        {
+            manaValueText.text = $"{currentMana}/{maximumMana}";
+        }
     }
 
     /// <summary>
@@ -108,6 +119,11 @@ public class PlayerMPUI : MonoBehaviour
             if (targetSprite != null)
             {
                 crystal.sprite = targetSprite;
+            }
+            // 새 가로형 UI는 빈 이미지 대신 같은 크리스탈을 어둡게 표시한다.
+            if (manaCrystalEmptySprite == null)
+            {
+                crystal.color = isFilled ? Color.white : depletedCrystalColor;
             }
         }
     }

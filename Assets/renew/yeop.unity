@@ -27485,14 +27485,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerActionInput: {fileID: 56468801}
   battleHudInputGroup: {fileID: 194510864}
-  turnEndButtonHiddenByShop: {fileID: 0}
-  playerManaViewHiddenByShop: {fileID: 178197758}
   cardHandHiddenByShop: {fileID: 1861571035}
   battleHudRootHiddenByShop: {fileID: 0}
-  additionalUiHiddenByShop:
-  - {fileID: 1085513595}
-  - {fileID: 1385783164}
-  - {fileID: 1551277547}
 --- !u!114 &1671244499
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27505,10 +27499,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a469549e6fa44a89993c318d2bce3c33, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  turnEndButton: {fileID: 0}
-  catTurnEndSprite: {fileID: 21300000, guid: 9a2c47e1b6d4401ea0c7c2a4f1e83b56, type: 3}
-  dogTurnEndSprite: {fileID: 21300000, guid: 4f7d19a3c2e64b8fae0d5c3b7a1f6082, type: 3}
-  bunnyTurnEndSprite: {fileID: 21300000, guid: 7e5b3a91c8d24f6e9a0b1c2d3e4f5a67, type: 3}
+  turnEndButton: {fileID: 1048791006}
   endTurnKey: 101
 --- !u!114 &1674918401 stripped
 MonoBehaviour:

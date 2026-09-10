@@ -373,37 +373,6 @@ public class FogOfWarManager : MonoBehaviour
 
     private void Update()
     {
-        // Enemy / Shop / Box 등의 FogRevealVisibility 처리
-        FogRevealVisibility.RefreshAll();
-
-
-        // --------------------------------------------------------
-        // F8 Debug
-        // --------------------------------------------------------
-
-        if (Input.GetKeyDown(KeyCode.F8))
-        {
-            FogRevealVisibility.DebugForceRevealAll =
-                !FogRevealVisibility.DebugForceRevealAll;
-
-
-            Debug.Log(
-                "[FogOfWar] Debug Force Reveal All = " +
-                FogRevealVisibility.DebugForceRevealAll
-            );
-
-
-            BattleMoveThreatPreview moveThreatPreview =
-                FindObjectOfType<BattleMoveThreatPreview>();
-
-
-            if (moveThreatPreview != null)
-            {
-                moveThreatPreview.ForceRefresh();
-            }
-        }
-
-
         // --------------------------------------------------------
         // 아직 초기화되지 않음
         // --------------------------------------------------------

@@ -10,7 +10,7 @@ using UnityEngine;
 /// </summary>
 public class BattlePlayerCardFlow : MonoBehaviour
 {
-    private BattlePlayerActionController owner;
+    private BattlePlayerActionController playerController;
 
     [SerializeField] private BattleCardActionController battleCardActionController;
 
@@ -22,65 +22,58 @@ public class BattlePlayerCardFlow : MonoBehaviour
     public bool IsAwaitingConfirmation =>
         battleCardActionController != null && battleCardActionController.IsAwaitingConfirmation;
 
-    /// <summary>대상 선택 또는 확인 대기 중, 즉 다른 행동을 막아야 하는 상태인지 여부.</summary>
-    public bool IsActive => IsSelectingTarget || IsAwaitingConfirmation;
+    /// <summary>대상 선택, 확인 대기, 주사위 판정 연출 중 다른 행동을 막아야 하는지 여부.</summary>
+    public bool IsActive =>
+        battleCardActionController != null && battleCardActionController.IsActionActive;
 
-    /// <summary>
-    /// Player의 전체 입력 흐름을 가진 BattlePlayerActionController를 이 카드 흐름의 소유자로 연결한다.
-    /// BattlePlayerActionController.EnsureCardFlow()는 초기 생성과 Player 등록 갱신 시 호출된다.
-    /// Player가 교체될 때도 안전하도록 이전 이벤트 연결을 먼저 해제한 뒤 같은 소유자로 다시 구성한다.
-    /// 카드 클릭 경로에서는 Attach를 다시 호출하지 않고 이미 연결된 이 흐름을 그대로 사용한다.
-    /// </summary>
+    /// <summary>Player 입력 Controller와 카드 사용 흐름을 연결합니다.</summary>
     public void Attach(BattlePlayerActionController controller)
     {
         DisconnectCardActionEvents();
-        owner = controller;
-        InitializeCardActionController();
+        playerController = controller;
+        SetupCardController();
+        ConnectCardEvents();
     }
 
-    /// <summary>
-    /// Player 또는 Scene이 파괴될 때 BattleCardActionController에 등록했던 모든 이벤트를 해제한다.
-    /// 구독을 남기면 파괴된 BattlePlayerCardFlow의 Handler가 이후 카드 이벤트에서 다시 호출될 수 있다.
-    /// 실제 카드 상태를 초기화하거나 효과를 취소하는 함수는 아니며 이벤트 연결만 정리한다.
-    /// </summary>
+    /// <summary>파괴된 객체로 카드 이벤트가 전달되지 않도록 연결을 해제합니다.</summary>
     private void OnDestroy()
     {
         DisconnectCardActionEvents();
     }
 
-    /// <summary>
-    /// 카드 행동에 필요한 표현 컴포넌트를 준비하고 BattleCardActionController에 Player 환경을 전달한다.
-    /// 이 함수가 직접 사거리·MP·효과를 계산하지는 않는다. Player, 범위 표시기, 색상, 타일 검색 함수,
-    /// 등록된 맵 타일과 Push Preview View를 한 번 모아 실제 카드 규칙 Controller에 연결한다.
-    /// 마지막 이벤트 연결은 카드 Controller의 상태 변화를 Player 입력 UI로 되돌려 보내는 통로다.
-    /// </summary>
-    private void InitializeCardActionController()
+    /// <summary>카드 사용에 필요한 Player, 맵, UI 참조를 준비합니다.</summary>
+    private void SetupCardController()
     {
         // 사거리 색상과 Push 결과를 표시할 View가 준비되도록 Player Controller에 요청한다.
-        owner.EnsureBattleRangeVisualizer();
-        owner.EnsureBattlePushPreviewView();
+        playerController.EnsureBattleRangeVisualizer();
+        playerController.EnsureBattlePushPreviewView();
         // Push View가 월드 위치를 화면 좌표로 바꾸므로 전투 Camera도 View에 직접 연결한다.
-        owner.battlePushPreviewView.ConfigurePreviewDependencies(owner.mainCamera);
+        playerController.battlePushPreviewView.ConfigurePreviewDependencies(playerController.mainCamera);
 
         // 현재는 이전 Scene 호환을 위해 없으면 같은 Player Object에 자동 추가한다.
         // Player Prefab 직접 참조가 확정되면 GetOrAdd 경로를 제거할 정적 리뷰 대상이다.
         battleCardActionController = BattleComponentResolver.GetOrAdd(gameObject, battleCardActionController);
         // 카드 Controller가 자체적으로 Scene을 다시 검색하지 않도록 Player 쪽에서 이미 알고 있는 참조를 전달한다.
         battleCardActionController.Configure(
-            owner.player,
-            owner.battleRangeVisualizer,
-            owner.colorPalette.CardRangeTileColor,
-            owner.colorPalette.CardEffectAreaTileColor,
-            owner.FindClosestMapTile,
-            owner.battlePlayerMapContext.Tiles,
-            owner.battlePushPreviewView);
+            playerController.player,
+            playerController.battleRangeVisualizer,
+            playerController.colorPalette.CardRangeTileColor,
+            playerController.colorPalette.CardEffectAreaTileColor,
+            playerController.FindClosestMapTile,
+            playerController.battlePlayerMapContext.Tiles,
+            playerController.battlePushPreviewView,
+            BattleGameManager.Instance != null ? BattleGameManager.Instance.DiceSystem : null);
 
-        // 대상 선택 안내·사용 성공·취소·사거리 표시 상태를 Player UI와 입력 흐름에 반영한다.
+    }
+
+    /// <summary>카드 상태 변경을 Player 입력과 UI에 연결합니다.</summary>
+    private void ConnectCardEvents()
+    {
         battleCardActionController.TargetSelectionRequested += HandleTargetSelectionRequested;
         battleCardActionController.ConfirmationRequested += HandleConfirmationRequested;
         battleCardActionController.Confirmed += HandleConfirmed;
         battleCardActionController.Cancelled += HandleCancelled;
-        battleCardActionController.RangeVisibilityChanged += owner.SetRangeVisible;
+        battleCardActionController.RangeVisibilityChanged += playerController.SetRangeVisible;
     }
 
     /// <summary>
@@ -122,7 +115,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
     public bool TryStartSelectedCardUse(SelectedCardUseInfo cardUse, BattleCardDrawSystem cardDrawSystem)
     {
         // 이동 범위와 카드 사거리가 같은 타일에 동시에 표시되지 않도록 카드 흐름 진입 전에 이동 Preview를 닫는다.
-        owner.moveFlow.ClearMoveRange();
+        playerController.moveFlow.ClearMoveRange();
         // 전투 Manager가 Player 턴·주사위·Overlay 상태를 종합해 현재 카드 입력 허용 여부를 제공한다.
         bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;
         // 여기서는 선택된 손패 정보와 DrawSystem을 전달할 뿐 MP 차감이나 카드 소비는 아직 발생하지 않는다.
@@ -139,7 +132,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// </summary>
     public void HandleTargetClick(Vector2 pointerPosition)
     {
-        if (owner.IsAnyActionMoving)
+        if (playerController.IsAnyActionMoving)
         {
             // 이동 Coroutine 중 새 대상을 선택하면 Player 위치와 카드 사거리 기준점이 어긋날 수 있다.
             return;
@@ -153,10 +146,10 @@ public class BattlePlayerCardFlow : MonoBehaviour
 
         BattleCardTargetType targetType = battleCardActionController.TargetType;
         if ((targetType == BattleCardTargetType.Enemy || targetType == BattleCardTargetType.Character) &&
-            owner.TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
+            playerController.TryRaycastEnemy(pointerPosition, out EnemyTurnActor enemy))
         {
             // 효과 Pipeline에는 대상 GameObject뿐 아니라 사거리와 효과 중심 계산에 사용할 타일도 함께 필요하다.
-            MapInfo enemyTile = owner.FindClosestMapTile(enemy.transform.position);
+            MapInfo enemyTile = playerController.FindClosestMapTile(enemy.transform.position);
             if (battleCardActionController.TrySelectTargetAndEnterConfirmation(enemy.gameObject, enemyTile))
             {
                 return;
@@ -164,7 +157,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
         }
 
         if (targetType == BattleCardTargetType.Tile &&
-            owner.TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
+            playerController.TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
             battleCardActionController.TrySelectTargetAndEnterConfirmation(tile.gameObject, tile))
         {
             return;
@@ -179,8 +172,8 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// </summary>
     private void HandleTargetSelectionRequested(string message)
     {
-        owner.SetMoveButtonGroupVisible(false);
-        owner.SetActionConfirmText(message);
+        playerController.SetMoveButtonGroupVisible(false);
+        playerController.SetActionConfirmText(message);
     }
 
     /// <summary>
@@ -188,7 +181,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// 기본 공격과 같은 방식으로 확인(사용) 버튼을 다시 띄운다. 이 이벤트가 연결되기 전에는
     /// 대상을 고른 뒤 확정할 방법이 UI에 전혀 없었다.
     /// </summary>
-    private void HandleConfirmationRequested(string message) => owner.ShowActionConfirmationUI(message);
+    private void HandleConfirmationRequested(string message) => playerController.ShowActionConfirmationUI(message);
 
     /// <summary>
     /// 카드 효과와 자원 소비가 모두 성공한 뒤 호출된다. 확인 안내를 비우고 카드 패널을 숨긴 다음,
@@ -197,13 +190,11 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// </summary>
     private void HandleConfirmed(BattleActionResult result)
     {
-        owner.SetMoveButtonGroupVisible(false);
-        owner.SetActionConfirmText(string.Empty);
-        // TODO(UI-CARD-01): 카드 패널 직접 참조가 준비되면 Scene 검색을 SerializeField 참조로 교체한다.
-        FindFirstObjectByType<BattleCardPanelToggle>()?.Hide();
+        playerController.SetMoveButtonGroupVisible(false);
+        playerController.SetActionConfirmText(string.Empty);
 
         // 현재 MP 조회는 성공 결과 Log 출력용이며 MP 차감 계산 자체는 카드 Controller가 담당한다.
-        BattleUnitMP playerMP = owner.player != null ? owner.player.GetComponent<BattleUnitMP>() : null;
+        BattleUnitMP playerMP = playerController.player != null ? playerController.player.GetComponent<BattleUnitMP>() : null;
         Debug.Log(
             $"카드 사용 확정: {result.Request.DisplayName}, 소모 {result.ActionMPCost}MP, " +
             $"남은 MP {(playerMP != null ? playerMP.CurrentMP : 0)}.",
@@ -216,14 +207,10 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// </summary>
     private void HandleCancelled()
     {
-        owner.HideActionConfirmationUI();
+        playerController.HideActionConfirmationUI();
     }
 
-    /// <summary>
-    /// 현재 BattleCardActionController에 연결된 이벤트를 안전하게 해제한다.
-    /// Attach가 반복 호출될 때 중복 구독을 막고 OnDestroy에서도 같은 해제 순서를 재사용한다.
-    /// owner가 아직 없으면 owner의 SetRangeVisible Handler만 건너뛴다.
-    /// </summary>
+    /// <summary>중복 호출과 파괴에 대비해 카드 이벤트 연결을 해제합니다.</summary>
     private void DisconnectCardActionEvents()
     {
         if (battleCardActionController == null)
@@ -235,9 +222,9 @@ public class BattlePlayerCardFlow : MonoBehaviour
         battleCardActionController.ConfirmationRequested -= HandleConfirmationRequested;
         battleCardActionController.Confirmed -= HandleConfirmed;
         battleCardActionController.Cancelled -= HandleCancelled;
-        if (owner != null)
+        if (playerController != null)
         {
-            battleCardActionController.RangeVisibilityChanged -= owner.SetRangeVisible;
+            battleCardActionController.RangeVisibilityChanged -= playerController.SetRangeVisible;
         }
     }
 }

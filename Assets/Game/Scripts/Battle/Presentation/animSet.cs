@@ -25,6 +25,12 @@ public class animSet : MonoBehaviour
 
     public IEnumerator animCor(int x)
     {
+        if (anim == null)
+        {
+            Debug.LogError("[Dice Animation] Animator가 연결되지 않았습니다.", this);
+            yield break;
+        }
+
         anim.Rebind();
         anim.Update(0);
         yield return null;
@@ -38,9 +44,6 @@ public class animSet : MonoBehaviour
         {
             stateInfo = anim.GetCurrentAnimatorStateInfo(0);
             yield return null;
-            FogOfWarManager.Instance.Reveal(this.transform.position, 30);
-
-
         } while (!stateInfo.IsName(animKey + x.ToString()) || stateInfo.normalizedTime < 1f);
 
     }

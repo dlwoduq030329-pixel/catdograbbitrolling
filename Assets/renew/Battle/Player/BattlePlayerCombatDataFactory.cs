@@ -6,20 +6,24 @@ using UnityEngine;
 /// (2026-08-22 개명: BattlePlayerRuntimeDataFactory -> BattlePlayerCombatDataFactory — 이름이 같은
 /// BattlePlayerRegistrationService/BattlePlayerRuntimeBinder와 헷갈린다는 리뷰 지적으로, "전투 데이터
 /// 컴포넌트(BattleUnitMP/PlayerCombatData/BattleHealth)를 만든다"는 역할이 이름에서 바로 드러나도록 바꿨다.)
+/// (2026-09-10: BattleUnitAP 추가 — 이동 전용 자원을 BattleUnitMP(카드·기본공격용)와 분리하면서,
+/// Player 프리팹을 직접 열어 컴포넌트를 붙이지 않아도 되도록 여기서 같이 보장한다.)
 /// </summary>
 public static class BattlePlayerCombatDataFactory
 {
     /// <summary>디버그 단계에서 레거시 HP 값을 찾지 못했을 때 사용하는 기본 최대 체력이다.</summary>
     private const float DefaultMaxHealth = 15f;
 
-    /// <summary>BattleUnitMP, PlayerCombatData, BattleHealth를 보장하고 현재 Player 데이터로 초기화한다.</summary>
+    /// <summary>BattleUnitMP, BattleUnitAP, PlayerCombatData, BattleHealth를 보장하고 현재 Player 데이터로 초기화한다.</summary>
     public static bool TryCreate(
         GameObject player,
         out BattleUnitMP characterMP,
+        out BattleUnitAP characterAP,
         out PlayerCombatData combatData,
         out BattleHealth battleHealth)
     {
         characterMP = null;
+        characterAP = null;
         combatData = null;
         battleHealth = null;
         if (player == null)
@@ -31,6 +35,12 @@ public static class BattlePlayerCombatDataFactory
         if (characterMP == null)
         {
             characterMP = player.AddComponent<BattleUnitMP>();
+        }
+
+        characterAP = player.GetComponent<BattleUnitAP>();
+        if (characterAP == null)
+        {
+            characterAP = player.AddComponent<BattleUnitAP>();
         }
 
         combatData = player.GetComponent<PlayerCombatData>();
