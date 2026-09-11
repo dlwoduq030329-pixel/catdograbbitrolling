@@ -30375,6 +30375,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1917245074}
+  - component: {fileID: 1917245075}
   m_Layer: 5
   m_Name: Turn End & Mp
   m_TagString: Untagged
@@ -30408,6 +30409,46 @@ RectTransform:
   m_AnchoredPosition: {x: -3.6, y: -239.7}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1917245075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1917245073}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b96c5d5ae6a0b6a43b3f3bdd7d460079, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mpImages:
+  - {fileID: 117543538}
+  - {fileID: 818844434}
+  - {fileID: 695115137}
+  - {fileID: 1872011851}
+  - {fileID: 830529304}
+  - {fileID: 1286255218}
+  - {fileID: 273338076}
+  - {fileID: 1556107600}
+  - {fileID: 810132434}
+  - {fileID: 644831859}
+  nullMp: {fileID: -718769809, guid: 8ccca43a9b2a690488e0609a51c09768, type: 3}
+  fullMP: {fileID: -1798038778, guid: c4fb3a9d466883847a9951147600fe7d, type: 3}
+  mpText: {fileID: 1655546659}
+  apImages:
+  - {fileID: 1058665670}
+  - {fileID: 1812576057}
+  - {fileID: 890511454}
+  - {fileID: 669691674}
+  - {fileID: 350811521}
+  - {fileID: 955004190}
+  - {fileID: 643204944}
+  - {fileID: 2017030421}
+  - {fileID: 252995475}
+  - {fileID: 481313420}
+  nullAp: {fileID: -718769809, guid: 8ccca43a9b2a690488e0609a51c09768, type: 3}
+  fullAP: {fileID: -96748884, guid: c4fb3a9d466883847a9951147600fe7d, type: 3}
+  apText: {fileID: 1587404481}
 --- !u!1001 &1924308635
 PrefabInstance:
   m_ObjectHideFlags: 0
