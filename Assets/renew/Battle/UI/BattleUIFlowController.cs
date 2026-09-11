@@ -108,37 +108,37 @@ public class BattleUIFlowController : MonoBehaviour
     {
         // 같은 버튼의 StatusUI.summonPlayer()가 MapGenerator 상태를 먼저 초기화하도록 한 Frame 양보한다.
         yield return null;
-        Debug.Log("진입 성공");
+        //Debug.Log("진입 성공");
         if (renewMapGenerator == null)
         {
-            Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
+            //Debug.LogError("전투 UI 전환 실패: 맵 생성기 참조가 없습니다.", this);
             battleStartupRoutine = null;
             yield break;
         }
 
         while (!renewMapGenerator.IsGenerateEnd())
         {
-            Debug.Log("한무대기");
+            //Debug.Log("한무대기");
 
             yield return null;
         }
-        Debug.Log("맵 생성 확인 완료");
+        //Debug.Log("맵 생성 확인 완료");
 
         // SpawnPlayer가 같은 프레임에 HUDCanvas를 활성화하더라도 EventSystem 입력보다 먼저
         // 최상위 차단막을 올려 연타 입력이 인벤토리/캐릭터 정보창을 열지 못하게 한다.
         SetBattleStartupClickBlockerActive(true);
-        Debug.Log("맵 생성 확인 완료");
+        //Debug.Log("맵 생성 확인 완료");
 
         if (battleGameManager == null)
         {
-            Debug.LogError("전투 UI 전환 실패: 전투 게임 관리자 참조가 없습니다.", this);
+            //Debug.LogError("전투 UI 전환 실패: 전투 게임 관리자 참조가 없습니다.", this);
             battleStartupRoutine = null;
             yield break;
         }
 
         if (spawnedPlayerProvider == null || spawnedPlayerProvider.SpawnedPlayer == null)
         {
-            Debug.LogError("전투 UI 전환 실패: SpawnPlayer의 생성 결과가 없습니다.", this);
+            //Debug.LogError("전투 UI 전환 실패: SpawnPlayer의 생성 결과가 없습니다.", this);
             battleStartupRoutine = null;
             yield break;
         }
@@ -150,7 +150,7 @@ public class BattleUIFlowController : MonoBehaviour
             if (stageSpawner == null || battleGameManager.CurrentPlayer == null ||
                 !stageSpawner.TrySpawnStageEnemies(battleGameManager.CurrentPlayer.transform))
             {
-                Debug.LogWarning("Stage 적 배치를 완료하지 못했습니다. 설정을 확인하세요. 전투 UI는 계속 열립니다.", this);
+               // Debug.LogWarning("Stage 적 배치를 완료하지 못했습니다. 설정을 확인하세요. 전투 UI는 계속 열립니다.", this);
             }
             if (stageSpawner != null && stageSpawner.CurrentStage != null)
                 battleGameManager.SetCurrentStage(stageSpawner.CurrentStage.stageNumber);

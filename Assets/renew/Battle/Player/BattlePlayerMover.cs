@@ -68,6 +68,9 @@ public sealed class BattlePlayerMover : MonoBehaviour
             float heightDifference = Mathf.Abs(targetPosition.y - playerObject.transform.position.y);
             bool crossesHeightStep = heightDifference >= minimumHeightDifferenceForJump;
 
+
+            FogOfWarManager.Instance.Reveal(playerObject.transform.position);
+
             if (crossesHeightStep)
             {
                 // 점프 이동과 회전을 동시에 시작하지 않고, 목표 타일 방향을 먼저 바라본 뒤 준비 동작에 들어간다.
