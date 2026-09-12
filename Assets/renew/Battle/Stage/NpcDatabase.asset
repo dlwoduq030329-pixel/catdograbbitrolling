@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9f3e6d509de0604d8090c9822770c14, type: 3}
+  m_Name: NpcDatabase
+  m_EditorClassIdentifier: 
+  npcs:
+  - id: 0
+    displayName: "\uC784\uC2DC"
+    prefab: {fileID: 6084588132307726026, guid: a43addc86cdce564f93713ca1d0aa43f,
+      type: 3}
+    description: abc

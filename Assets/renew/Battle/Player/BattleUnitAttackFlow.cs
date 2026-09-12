@@ -48,6 +48,10 @@ public class BattleUnitAttackFlow : MonoBehaviour
     private void EnsureBattleBasicAttackController()
     {
         owner.EnsureBattlePlayerMover();
+        if (owner.battlePlayerMover == null)
+        {
+            return;
+        }
 
         if (battleBasicAttackController == null)
         {

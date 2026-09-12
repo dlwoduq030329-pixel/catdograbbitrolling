@@ -47,6 +47,10 @@ public class BattlePlayerCardFlow : MonoBehaviour
         // 사거리 색상과 Push 결과를 표시할 View가 준비되도록 Player Controller에 요청한다.
         playerController.EnsureBattleRangeVisualizer();
         playerController.EnsureBattlePushPreviewView();
+        if (playerController.battlePushPreviewView == null)
+        {
+            return;
+        }
         // Push View가 월드 위치를 화면 좌표로 바꾸므로 전투 Camera도 View에 직접 연결한다.
         playerController.battlePushPreviewView.ConfigurePreviewDependencies(playerController.mainCamera);
 
@@ -61,6 +65,15 @@ public class BattlePlayerCardFlow : MonoBehaviour
                 return;
             }
         }
+        // BattlePlayerActionController의 초기화 순서상 EnsureBattlePlayerMapContext가 EnsureCardFlow보다
+        // 먼저 실행돼 지금은 항상 채워져 있지만, 이 클래스에서 그 private 메서드를 직접 호출할 수는
+        // 없어 순서가 바뀌면 조용히 깨질 수 있다. 방어적으로 한 번 더 확인한다.
+        if (playerController.battlePlayerMapContext == null)
+        {
+            Debug.LogError($"[{nameof(BattlePlayerCardFlow)}] {gameObject.name}: BattlePlayerMapContext가 아직 준비되지 않았습니다.", this);
+            return;
+        }
+
         // 카드 Controller가 자체적으로 Scene을 다시 검색하지 않도록 Player 쪽에서 이미 알고 있는 참조를 전달한다.
         battleCardActionController.Setup(
             playerController.player,

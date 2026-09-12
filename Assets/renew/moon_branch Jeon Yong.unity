@@ -15289,7 +15289,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1274ebade40e4766a6543017990cc01c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  battleCardActionController: {fileID: 0}
+  battleCardActionController: {fileID: 1263296897}
 --- !u!114 &1263296899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15302,8 +15302,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70cdfe9a83f145a390f0237a9b1f89de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  previewVisualConfig: {fileID: 0}
-  battleCamera: {fileID: 0}
+  previewVisualConfig: {fileID: 11400000, guid: 70b849fe99024c97b62b9ad52d9310a7,
+    type: 2}
+  battleCamera: {fileID: 8754339}
   resultMarkerDisplaySeconds: 0.8
 --- !u!114 &1263296900
 MonoBehaviour:
@@ -15329,7 +15330,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 13e66ff9a8554d528f5e5b397dc33a89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  battleBasicAttackController: {fileID: 0}
+  battleBasicAttackController: {fileID: 1263296900}
 --- !u!114 &1263296902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15342,13 +15343,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b264b34d9054827a27bc3750b945670, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  battleCamera: {fileID: 0}
-  mapPointerRaycaster: {fileID: 0}
-  playerMoveRange: {fileID: 0}
-  battleUnitRegistry: {fileID: 0}
-  threatLineView: {fileID: 0}
-  threatIntentIconView: {fileID: 0}
-  threatTileMarkerView: {fileID: 0}
+  battleCamera: {fileID: 8754339}
+  mapPointerRaycaster: {fileID: 1263296912}
+  playerMoveRange: {fileID: 1263296909}
+  battleUnitRegistry: {fileID: 1943288763}
+  threatLineView: {fileID: 1263296905}
+  threatIntentIconView: {fileID: 1263296904}
+  threatTileMarkerView: {fileID: 1263296903}
 --- !u!114 &1263296903
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15379,7 +15380,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15767c0dc3624fe2bc3a60f11f23509e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetCamera: {fileID: 0}
+  targetCamera: {fileID: 8754339}
   attackIcon: {fileID: 21300000, guid: 92d54a247d5d4c9a91bdbe7001aa1101, type: 3}
   chaseIcon: {fileID: 21300000, guid: 92d54a247d5d4c9a91bdbe7001aa1102, type: 3}
   iconWorldSize: 0.8
@@ -15428,9 +15429,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ccee076a3404e85a6cfb64e9368f97b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  battleMoveTransaction: {fileID: 0}
-  battleMovePreview: {fileID: 0}
-  battleMoveThreatPreview: {fileID: 0}
+  battleMoveTransaction: {fileID: 1263296906}
+  battleMovePreview: {fileID: 1263296891}
+  battleMoveThreatPreview: {fileID: 1263296902}
   moveDoubleClickInterval: 0.4
 --- !u!114 &1263296908
 MonoBehaviour:
@@ -15493,8 +15494,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c552ee76f47f4065ce1fe511449ec545, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  raycastCamera: {fileID: 0}
-  player: {fileID: 0}
+  raycastCamera: {fileID: 8754339}
+  player: {fileID: 1517433585}
   tileLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -34412,6 +34413,7 @@ MonoBehaviour:
   disMoveableCount: 40
   storeCount: 3
   boxCount: 10
+  npcCount: 1
   playerBody: {fileID: 1517433585}
   heightStep: 3
   maxHeightIndex: 5
@@ -35093,6 +35095,11 @@ MonoBehaviour:
   initialStageNumber: 1
   mapGenerator: {fileID: 2147000020}
   enemySpawner: {fileID: 320417159}
+  npcDatabase: {fileID: 11400000, guid: aa7f57aea2343774eb8e28559b7c5f8f, type: 2}
+  npcPlaceholderPrefab: {fileID: 6084588132307726026, guid: 5fdcda7708524cb38993fbe0d5dc6d99,
+    type: 3}
+  npcHeight: 0.8
+  npcScaleMultiplier: 1
 --- !u!114 &8000000000000000101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35127,7 +35134,7 @@ MonoBehaviour:
   playerActions: {fileID: 1263296889}
   loadingUI: {fileID: 1260140037}
   battleCamera: {fileID: 8754339}
-  fog: {fileID: 0}
+  fog: {fileID: 571099510}
   fadeSeconds: 0.35
   finalStageExited:
     m_PersistentCalls:

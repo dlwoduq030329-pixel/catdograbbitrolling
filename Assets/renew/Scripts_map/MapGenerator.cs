@@ -13,7 +13,8 @@ public enum TileType
     Box,            // 상자
     Exit,           // 다음 층 이동
     DisMoveable,     // 일반 이동 불가 타일(바위, 나무 등)
-    Start
+    Start,
+    NPC
 }
 
 public class MapGenerator : MonoBehaviour

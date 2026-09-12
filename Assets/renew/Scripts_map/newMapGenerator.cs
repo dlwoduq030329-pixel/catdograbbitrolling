@@ -62,6 +62,10 @@ public class NewMapGenerator : MonoBehaviour
     [Header("상자 설정")]
     [SerializeField] private int boxCount = 10;
 
+    [Header("NPC")]
+    [Tooltip("맵에 배치할 NPC 타일 수")]
+    [SerializeField, Min(0)] private int npcCount = 1;
+
     [SerializeField]
     GameObject playerBody;
 
@@ -181,6 +185,8 @@ public class NewMapGenerator : MonoBehaviour
 
             // 상자
             GenerateBox();
+
+            GenerateNpc();
 
             // 출구
             GenerateExit();
@@ -350,6 +356,7 @@ public class NewMapGenerator : MonoBehaviour
             case TileType.Store:
             case TileType.Box:
             case TileType.Exit:
+            case TileType.NPC:
 
                 return true;
 
@@ -482,6 +489,7 @@ public class NewMapGenerator : MonoBehaviour
                type == TileType.Store ||
                type == TileType.Box ||
                type == TileType.Exit ||
+               type == TileType.NPC ||
                type == TileType.DisMoveable;
     }
 
@@ -1011,6 +1019,23 @@ public class NewMapGenerator : MonoBehaviour
     // =========================================================
     // 상점
     // =========================================================
+
+    private void GenerateNpc()
+    {
+        int count = 0;
+
+        while (count < npcCount)
+        {
+            if (!TryGetRandomRoad(out Vector2Int pos))
+                break;
+
+            if (pos == startPos || pos == exitPos)
+                continue;
+
+            mapblueprint[pos.x, pos.y] = TileType.NPC;
+            count++;
+        }
+    }
 
     private void GenerateStore()
     {
@@ -1673,6 +1698,10 @@ public class NewMapGenerator : MonoBehaviour
 
                     case TileType.DisMoveable:
                         prefab = disMoveablePrefab;
+                        break;
+
+                    case TileType.NPC:
+                        prefab = roadPrefab;
                         break;
                 }
 

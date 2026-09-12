@@ -85,6 +85,10 @@ public class BattleUnitMoveFlow : MonoBehaviour
     private void EnsureBattleMoveTransaction()
     {
         owner.EnsureBattlePlayerMover();
+        if (owner.battlePlayerMover == null)
+        {
+            return;
+        }
 
         if (battleMoveTransaction == null)
         {
@@ -126,6 +130,11 @@ public class BattleUnitMoveFlow : MonoBehaviour
         owner.EnsureBattleRaycaster();
         owner.EnsureBattlePlayerRangeController();
         owner.ResolveBattleDataPool();
+        if (owner.battleRaycaster == null || owner.battlePlayerRangeController == null)
+        {
+            return;
+        }
+
         if (battleMoveThreatPreview == null)
         {
             battleMoveThreatPreview = GetComponent<BattleMoveThreatPreview>();
@@ -310,6 +319,9 @@ public class BattleUnitMoveFlow : MonoBehaviour
         }
 
         owner.turnActionState.MarkMovementUsed();
+
+        BattleGameManager.Instance?.ChestRewardSystem?.TryOpen(targetTile);
+        BattleGameManager.Instance?.CardShopSystem?.TryEnter(targetTile);
 
         ClearMoveRange();
         ClearMoveArrow();

@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Ÿ�� ������ ���� ��ȭ
+/// Ÿ�� ������ ���� ��ȭ
 /// </summary>
 public enum HeightTransition
 {
@@ -15,7 +15,7 @@ public enum HeightTransition
 }
 
 /// <summary>
-/// ���� �� Ÿ���� ������ ����
+/// ���� �� Ÿ���� ������ ����
 /// </summary>
 public class MapInfo : MonoBehaviour
 {
@@ -24,7 +24,7 @@ public class MapInfo : MonoBehaviour
     public Vector3 WorldPos { get; private set; }
 
     /// <summary>
-    /// River=0, ����=1~3
+    /// River=0, ����=1~3
     /// </summary>
     public int HeightIndex { get; private set; }
 
@@ -35,6 +35,11 @@ public class MapInfo : MonoBehaviour
     public MapInfo Left;
     public MapInfo Right;
 
+    /// <summary>이 타일 위에 스폰된 NPC의 상호작용 컴포넌트다. NPC가 없으면 null이다.
+    /// NPC를 이 타일의 자식 Transform으로 만들면 SetParent가 Scale을 다시 계산해 틀어지는
+    /// 문제가 있어서, 대신 이 참조 하나로 "어느 타일에 어떤 NPC가 있는지"만 기록한다.</summary>
+    public BattleNpcInteractionTrigger NpcTrigger { get; set; }
+
     public bool IsWalkable
     {
         get
@@ -42,7 +47,8 @@ public class MapInfo : MonoBehaviour
             return Type == TileType.Road
                 || Type == TileType.Store
                 || Type == TileType.Box
-                || Type == TileType.Exit;
+                || Type == TileType.Exit
+                || Type == TileType.NPC;
         }
     }
 
