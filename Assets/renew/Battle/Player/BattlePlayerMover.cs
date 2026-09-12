@@ -15,8 +15,8 @@ public sealed class BattlePlayerMover : MonoBehaviour
 
     private GameObject playerObject;
 
-    //[SerializeField]
-    //ShowMpAPToUI showAPUI;
+    [SerializeField]
+    ShowMpAPToUI showAPUI;
 
     [Header("단차 이동 연출")]
     [Tooltip("앞 타일과 다음 타일의 높이 차이가 이 값 이상일 때 점프 이동을 사용한다.")]
@@ -80,7 +80,7 @@ public sealed class BattlePlayerMover : MonoBehaviour
 
 
             FogOfWarManager.Instance.Reveal(playerObject.transform.position);
-
+            showAPUI.useAp(1);
         
 
             if (crossesHeightStep)
