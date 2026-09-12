@@ -76,6 +76,12 @@ public class BattleGameManager : MonoBehaviour
     [FormerlySerializedAs("battleStopped")]
     [SerializeField] private bool isBattleStopped;
 
+    [SerializeField]
+    GameObject playerbody;
+    [SerializeField]
+    ShowMpAPToUI mpapToUI;
+    BattleUnitAP unitAP;
+    BattleUnitMP unitMP;
     /// <summary>Player 등록이 끝난 뒤 카메라·Enemy 감지기 등에 생성된 Player 인스턴스를 전달한다.</summary>
     public event System.Action<GameObject> PlayerRegistered;
 
@@ -289,6 +295,15 @@ public class BattleGameManager : MonoBehaviour
         PrepareEnemyTurnMP();
         // 이전 턴에서 남은 선택 타일, 이동 경로, 이동 완료 상태와 범위 표시를 지운다.
         ResetPlayerMovement();
+
+        if (unitAP == null || unitMP == null)
+        {
+            unitAP = playerbody.GetComponent<BattleUnitAP>();
+            unitMP = playerbody.GetComponent<BattleUnitMP>();
+        }
+
+        mpapToUI.StartMPInit(unitMP.MaxMP);
+        mpapToUI.StartAPInit(unitAP.MaxAP);
         // Player 턴 시작과 동시에 이동과 카드 입력을 엽니다.
         OpenPlayerTurnControls();
         // 턴 종료 버튼, 카드 사용 가능 상태를 새 턴 값으로 갱신한다.

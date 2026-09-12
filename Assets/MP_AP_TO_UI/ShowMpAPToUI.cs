@@ -59,6 +59,8 @@ public class ShowMpAPToUI : MonoBehaviour
                 mpImages[i].sprite = fullMP;
             else
                 mpImages[i].sprite = nullMp;
+
+            mpImages[i].GetComponent<Animator>().Play("Idle");
         }
     }
 
@@ -86,9 +88,17 @@ public class ShowMpAPToUI : MonoBehaviour
         //방어 코드는 호출부에서
         nowMp -= cost;
 
-        for(int i = nowMp + cost - 1;i< nowMp - 1; i--) //매직넘버 일단 넘어가
+        if(nowMp >=9)
         {
-            mpImages[i].sprite = nullMp;
+            SetMpUI();
+            return;
+        }
+
+        for (int i = nowMp + cost - 1;i> nowMp - 1; i--) //매직넘버 일단 넘어가
+        {
+            //mpImages[i].sprite = nullMp;
+
+            mpImages[i].GetComponent<Animator>().Play("UseMP");
         }
        
         SetMpUI();
@@ -100,13 +110,36 @@ public class ShowMpAPToUI : MonoBehaviour
         //방어 코드는 호출부에서
         nowAp -= cost;
 
-        for (int i = nowAp + cost - 1; i < nowAp - 1; i--) //매직넘버 일단 넘어가
+        if (nowAp >= 9)
         {
-            apImages[i].sprite = nullAp;
+            SetMpUI();
+            return;
         }
 
-        SetApUI();
+        for (int i = nowAp + cost - 1; i > nowAp - 1; i--) //매직넘버 일단 넘어가
+        {
+            //mpImages[i].sprite = nullMp;
 
+            apImages[i].GetComponent<Animator>().Play("UseAP");
+        }
+
+        SetMpUI();
+
+    }
+
+    public void UseMPaniKey(int index)
+    {
+        mpImages[index].sprite = nullMp;
+
+        mpImages[index].GetComponent<Animator>().Play("Idle");
+    }
+
+
+    public void UseAPaniKey(int index)
+    {
+        apImages[index].sprite = nullMp;
+
+        apImages[index].GetComponent<Animator>().Play("Idle");
     }
 
 }

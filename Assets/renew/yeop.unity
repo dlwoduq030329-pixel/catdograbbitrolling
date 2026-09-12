@@ -1641,6 +1641,8 @@ GameObject:
   - component: {fileID: 117543537}
   - component: {fileID: 117543539}
   - component: {fileID: 117543538}
+  - component: {fileID: 117543540}
+  - component: {fileID: 117543541}
   m_Layer: 5
   m_Name: Cristal
   m_TagString: Untagged
@@ -1662,9 +1664,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 29.455, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &117543538
@@ -1705,6 +1707,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 117543536}
   m_CullTransparentMesh: 1
+--- !u!95 &117543540
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 117543536}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &117543541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 117543536}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 0
 --- !u!114 &120627270
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2822,7 +2859,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 230014885}
-  - component: {fileID: 230014886}
   m_Layer: 5
   m_Name: Mana
   m_TagString: Untagged
@@ -2859,32 +2895,6 @@ RectTransform:
   m_AnchoredPosition: {x: 60.5, y: -14.4}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0, y: 0.5}
---- !u!114 &230014886
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 230014884}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 0
-  m_Spacing: 3
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!1001 &233886057
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3205,6 +3215,8 @@ GameObject:
   - component: {fileID: 252995474}
   - component: {fileID: 252995476}
   - component: {fileID: 252995475}
+  - component: {fileID: 252995477}
+  - component: {fileID: 252995478}
   m_Layer: 5
   m_Name: Cristal (8)
   m_TagString: Untagged
@@ -3226,9 +3238,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 524.735, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &252995475
@@ -3269,6 +3281,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 252995473}
   m_CullTransparentMesh: 1
+--- !u!95 &252995477
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 252995473}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &252995478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 252995473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 8
 --- !u!114 &253879634 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 381439105043787755, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -3360,6 +3407,8 @@ GameObject:
   - component: {fileID: 273338075}
   - component: {fileID: 273338077}
   - component: {fileID: 273338076}
+  - component: {fileID: 273338078}
+  - component: {fileID: 273338079}
   m_Layer: 5
   m_Name: Cristal (6)
   m_TagString: Untagged
@@ -3381,9 +3430,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 400.91498, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &273338076
@@ -3424,6 +3473,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 273338074}
   m_CullTransparentMesh: 1
+--- !u!95 &273338078
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 273338074}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &273338079
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 273338074}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 6
 --- !u!1 &274280851
 GameObject:
   m_ObjectHideFlags: 0
@@ -4737,6 +4821,8 @@ GameObject:
   - component: {fileID: 350811520}
   - component: {fileID: 350811522}
   - component: {fileID: 350811521}
+  - component: {fileID: 350811523}
+  - component: {fileID: 350811524}
   m_Layer: 5
   m_Name: Cristal (4)
   m_TagString: Untagged
@@ -4758,9 +4844,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 277.095, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &350811521
@@ -4801,6 +4887,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 350811519}
   m_CullTransparentMesh: 1
+--- !u!95 &350811523
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 350811519}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &350811524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 350811519}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 4
 --- !u!1 &359406756
 GameObject:
   m_ObjectHideFlags: 0
@@ -7196,13 +7317,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3903ca18e17617d43a7b89d9b94bb02e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  str_st: 0
-  dex_st: 0
-  int_st: 0
-  wis_st: 0
-  car_st: 0
-  vit_st: 0
-  actionpoint_st: 0
+  strength: 0
+  dexterity: 0
+  intelligence: 0
+  wisdom: 0
+  charisma: 0
+  vitality: 0
+  tribeIndex: 0
 --- !u!4 &426231385
 Transform:
   m_ObjectHideFlags: 0
@@ -8578,6 +8699,8 @@ GameObject:
   - component: {fileID: 481313419}
   - component: {fileID: 481313421}
   - component: {fileID: 481313420}
+  - component: {fileID: 481313422}
+  - component: {fileID: 481313423}
   m_Layer: 5
   m_Name: Cristal (9)
   m_TagString: Untagged
@@ -8599,9 +8722,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 586.645, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &481313420
@@ -8642,6 +8765,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 481313418}
   m_CullTransparentMesh: 1
+--- !u!95 &481313422
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 481313418}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &481313423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 481313418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 9
 --- !u!114 &485976306 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3220284664145915935, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -10608,6 +10766,8 @@ GameObject:
   - component: {fileID: 643204943}
   - component: {fileID: 643204945}
   - component: {fileID: 643204944}
+  - component: {fileID: 643204946}
+  - component: {fileID: 643204947}
   m_Layer: 5
   m_Name: Cristal (6)
   m_TagString: Untagged
@@ -10629,9 +10789,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 400.91498, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &643204944
@@ -10672,6 +10832,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 643204942}
   m_CullTransparentMesh: 1
+--- !u!95 &643204946
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 643204942}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &643204947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 643204942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 6
 --- !u!114 &644173776 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7128055968350138465, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -10695,6 +10890,8 @@ GameObject:
   - component: {fileID: 644831858}
   - component: {fileID: 644831860}
   - component: {fileID: 644831859}
+  - component: {fileID: 644831861}
+  - component: {fileID: 644831862}
   m_Layer: 5
   m_Name: Cristal (9)
   m_TagString: Untagged
@@ -10716,9 +10913,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 586.645, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &644831859
@@ -10759,6 +10956,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 644831857}
   m_CullTransparentMesh: 1
+--- !u!95 &644831861
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 644831857}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &644831862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 644831857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 9
 --- !u!114 &646270479 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7401127528842930619, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -11141,6 +11373,8 @@ GameObject:
   - component: {fileID: 669691673}
   - component: {fileID: 669691675}
   - component: {fileID: 669691674}
+  - component: {fileID: 669691676}
+  - component: {fileID: 669691677}
   m_Layer: 5
   m_Name: Cristal (3)
   m_TagString: Untagged
@@ -11162,9 +11396,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 215.185, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &669691674
@@ -11205,6 +11439,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 669691672}
   m_CullTransparentMesh: 1
+--- !u!95 &669691676
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 669691672}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &669691677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 669691672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 3
 --- !u!1 &672310636 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1693276851653767175, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -12969,6 +13238,8 @@ GameObject:
   - component: {fileID: 695115136}
   - component: {fileID: 695115138}
   - component: {fileID: 695115137}
+  - component: {fileID: 695115139}
+  - component: {fileID: 695115140}
   m_Layer: 5
   m_Name: Cristal (2)
   m_TagString: Untagged
@@ -12990,9 +13261,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 153.275, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &695115137
@@ -13033,6 +13304,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 695115135}
   m_CullTransparentMesh: 1
+--- !u!95 &695115139
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695115135}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &695115140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 695115135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 2
 --- !u!1 &695655491
 GameObject:
   m_ObjectHideFlags: 0
@@ -14991,6 +15297,8 @@ GameObject:
   - component: {fileID: 810132433}
   - component: {fileID: 810132435}
   - component: {fileID: 810132434}
+  - component: {fileID: 810132436}
+  - component: {fileID: 810132437}
   m_Layer: 5
   m_Name: Cristal (8)
   m_TagString: Untagged
@@ -15012,9 +15320,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 524.735, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &810132434
@@ -15055,6 +15363,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 810132432}
   m_CullTransparentMesh: 1
+--- !u!95 &810132436
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 810132432}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &810132437
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 810132432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 8
 --- !u!1 &812950720
 GameObject:
   m_ObjectHideFlags: 0
@@ -15458,6 +15801,8 @@ GameObject:
   - component: {fileID: 818844433}
   - component: {fileID: 818844435}
   - component: {fileID: 818844434}
+  - component: {fileID: 818844436}
+  - component: {fileID: 818844437}
   m_Layer: 5
   m_Name: Cristal (1)
   m_TagString: Untagged
@@ -15479,9 +15824,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 91.365, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &818844434
@@ -15522,6 +15867,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 818844432}
   m_CullTransparentMesh: 1
+--- !u!95 &818844436
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818844432}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &818844437
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818844432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 1
 --- !u!114 &823789085 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5758830477363477586, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -15741,6 +16121,8 @@ GameObject:
   - component: {fileID: 830529303}
   - component: {fileID: 830529305}
   - component: {fileID: 830529304}
+  - component: {fileID: 830529306}
+  - component: {fileID: 830529307}
   m_Layer: 5
   m_Name: Cristal (4)
   m_TagString: Untagged
@@ -15762,9 +16144,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 277.095, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &830529304
@@ -15805,6 +16187,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 830529302}
   m_CullTransparentMesh: 1
+--- !u!95 &830529306
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 830529302}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &830529307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 830529302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 4
 --- !u!1 &834949049
 GameObject:
   m_ObjectHideFlags: 0
@@ -16403,6 +16820,8 @@ GameObject:
   - component: {fileID: 890511453}
   - component: {fileID: 890511455}
   - component: {fileID: 890511454}
+  - component: {fileID: 890511456}
+  - component: {fileID: 890511457}
   m_Layer: 5
   m_Name: Cristal (2)
   m_TagString: Untagged
@@ -16424,9 +16843,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 153.275, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &890511454
@@ -16467,6 +16886,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 890511452}
   m_CullTransparentMesh: 1
+--- !u!95 &890511456
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 890511452}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &890511457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 890511452}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 2
 --- !u!1001 &891281144
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17400,6 +17854,8 @@ GameObject:
   - component: {fileID: 955004189}
   - component: {fileID: 955004191}
   - component: {fileID: 955004190}
+  - component: {fileID: 955004192}
+  - component: {fileID: 955004193}
   m_Layer: 5
   m_Name: Cristal (5)
   m_TagString: Untagged
@@ -17421,9 +17877,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 339.00497, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &955004190
@@ -17464,6 +17920,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 955004188}
   m_CullTransparentMesh: 1
+--- !u!95 &955004192
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955004188}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &955004193
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 955004188}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 5
 --- !u!1 &955423335
 GameObject:
   m_ObjectHideFlags: 0
@@ -19173,6 +19664,8 @@ GameObject:
   - component: {fileID: 1058665669}
   - component: {fileID: 1058665671}
   - component: {fileID: 1058665670}
+  - component: {fileID: 1058665672}
+  - component: {fileID: 1058665673}
   m_Layer: 5
   m_Name: Cristal
   m_TagString: Untagged
@@ -19194,9 +19687,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 29.455, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1058665670
@@ -19237,6 +19730,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1058665668}
   m_CullTransparentMesh: 1
+--- !u!95 &1058665672
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1058665668}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1058665673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1058665668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 0
 --- !u!1 &1058738785
 GameObject:
   m_ObjectHideFlags: 0
@@ -21532,6 +22060,8 @@ GameObject:
   - component: {fileID: 1286255217}
   - component: {fileID: 1286255219}
   - component: {fileID: 1286255218}
+  - component: {fileID: 1286255220}
+  - component: {fileID: 1286255221}
   m_Layer: 5
   m_Name: Cristal (5)
   m_TagString: Untagged
@@ -21553,9 +22083,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 339.00497, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1286255218
@@ -21596,6 +22126,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1286255216}
   m_CullTransparentMesh: 1
+--- !u!95 &1286255220
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1286255216}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1286255221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1286255216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 5
 --- !u!114 &1286454478 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3051413164898782211, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -21698,7 +22263,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1299779153}
-  - component: {fileID: 1299779154}
   m_Layer: 5
   m_Name: Mana
   m_TagString: Untagged
@@ -21735,32 +22299,6 @@ RectTransform:
   m_AnchoredPosition: {x: 60.5, y: -14.4}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0, y: 0.5}
---- !u!114 &1299779154
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1299779152}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 0
-  m_Spacing: 3
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!1 &1305654964
 GameObject:
   m_ObjectHideFlags: 0
@@ -25577,6 +26115,8 @@ GameObject:
   - component: {fileID: 1556107599}
   - component: {fileID: 1556107601}
   - component: {fileID: 1556107600}
+  - component: {fileID: 1556107602}
+  - component: {fileID: 1556107603}
   m_Layer: 5
   m_Name: Cristal (7)
   m_TagString: Untagged
@@ -25598,9 +26138,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 462.82498, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1556107600
@@ -25641,6 +26181,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1556107598}
   m_CullTransparentMesh: 1
+--- !u!95 &1556107602
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556107598}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1556107603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1556107598}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 7
 --- !u!1 &1556934161
 GameObject:
   m_ObjectHideFlags: 0
@@ -28682,6 +29257,8 @@ GameObject:
   - component: {fileID: 1812576056}
   - component: {fileID: 1812576058}
   - component: {fileID: 1812576057}
+  - component: {fileID: 1812576059}
+  - component: {fileID: 1812576060}
   m_Layer: 5
   m_Name: Cristal (1)
   m_TagString: Untagged
@@ -28703,9 +29280,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 91.365, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1812576057
@@ -28746,6 +29323,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1812576055}
   m_CullTransparentMesh: 1
+--- !u!95 &1812576059
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812576055}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1812576060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812576055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 1
 --- !u!1 &1815343148
 GameObject:
   m_ObjectHideFlags: 0
@@ -29076,12 +29688,13 @@ MonoBehaviour:
   turnTransitionFade: {fileID: 817313915}
   turnState: {fileID: 0}
   stageState: {fileID: 0}
-  enableDebugQaBoost: 1
-  debugPlayerMaxMP: 10
-  debugPlayerMaxAP: 6
+  enableQaStats: 1
+  enableQaTeleport: 1
+  qaMaxMP: 10
+  qaMaxAP: 6
   isBattleStopped: 0
-  playerBody: {fileID: 426231381}
-  mpapToUI: {fileID: 1917245075}
+  playerbody: {fileID: 0}
+  mpapToUI: {fileID: 0}
 --- !u!4 &1815343165
 Transform:
   m_ObjectHideFlags: 0
@@ -29816,6 +30429,8 @@ GameObject:
   - component: {fileID: 1872011850}
   - component: {fileID: 1872011852}
   - component: {fileID: 1872011851}
+  - component: {fileID: 1872011853}
+  - component: {fileID: 1872011854}
   m_Layer: 5
   m_Name: Cristal (3)
   m_TagString: Untagged
@@ -29837,9 +30452,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 230014885}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 215.185, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1872011851
@@ -29880,6 +30495,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1872011849}
   m_CullTransparentMesh: 1
+--- !u!95 &1872011853
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872011849}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ee4cb7072561f2a42aa693eefec098ae, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1872011854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872011849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 3
 --- !u!114 &1877702538 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2754732663309228877, guid: a033f65915b3b9b40a057c13c7a41897,
@@ -32153,6 +32803,8 @@ GameObject:
   - component: {fileID: 2017030420}
   - component: {fileID: 2017030422}
   - component: {fileID: 2017030421}
+  - component: {fileID: 2017030423}
+  - component: {fileID: 2017030424}
   m_Layer: 5
   m_Name: Cristal (7)
   m_TagString: Untagged
@@ -32174,9 +32826,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1299779153}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 462.82498, y: -38.3}
   m_SizeDelta: {x: 58.91, y: 76.6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2017030421
@@ -32217,6 +32869,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2017030419}
   m_CullTransparentMesh: 1
+--- !u!95 &2017030423
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2017030419}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 4ff4794e2cf407b4789112fa8742108f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &2017030424
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2017030419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 259bc60891fe92a4c832dcfd408cade6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalIndex: 7
 --- !u!1 &2024043238
 GameObject:
   m_ObjectHideFlags: 0
