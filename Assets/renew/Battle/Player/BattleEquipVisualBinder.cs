@@ -57,6 +57,24 @@ public sealed class BattleEquipVisualBinder : MonoBehaviour
         ApplySlot("Right", rightSlot, playerWeapon.RightArm.CurrentEquipment, true, true, ref rightEquipmentInstance);
         ApplySlot("Body", bodySlot, playerWeapon.Body.CurrentEquipment, false, false, ref bodyEquipmentInstance);
         ApplySlot("Head", headSlot, playerWeapon.Head.CurrentEquipment, false, false, ref headEquipmentInstance);
+
+        LogEquipState();
+    }
+
+    /// <summary>
+    /// 장착 직후 한 번, 왼손·오른손 장비 이름·종류·본 탐색 여부·모델 생성 여부를 한 줄로 남긴다.
+    /// 한쪽만 안 보이는 문제가 생기면 이 로그로 본을 못 찾았는지 모델만 안 생겼는지 바로 구분한다.
+    /// </summary>
+    private void LogEquipState()
+    {
+        EquipData left = playerWeapon.LeftArm.CurrentEquipment;
+        EquipData right = playerWeapon.RightArm.CurrentEquipment;
+
+        Debug.Log(
+            $"[BattleEquipVisualBinder] 장착 상태 - " +
+            $"왼손: {left?.cardname ?? "없음"}(종류:{left?.weaponKind}) 본찾음:{leftSlot != null} 모델생성:{leftEquipmentInstance != null} / " +
+            $"오른손: {right?.cardname ?? "없음"}(종류:{right?.weaponKind}) 본찾음:{rightSlot != null} 모델생성:{rightEquipmentInstance != null}",
+            this);
     }
 
     private void HandleEquipmentChanged(PlayerWeapon changedPlayerWeapon) => Refresh();

@@ -31,31 +31,37 @@ public static class BattlePlayerCombatDataFactory
             return false;
         }
 
+        // 4개 전부 Player Body(player) 오브젝트에 미리 붙어 있어야 한다. 누락돼도 조용히 새로 만들지
+        // 않고 LogError로 알리고 등록을 중단한다(전에는 여기서 AddComponent로 숨겼었다).
         characterMP = player.GetComponent<BattleUnitMP>();
         if (characterMP == null)
         {
-            characterMP = player.AddComponent<BattleUnitMP>();
+            Debug.LogError($"[{nameof(BattlePlayerCombatDataFactory)}] {player.name}에 BattleUnitMP가 없습니다. Scene에 미리 추가해야 합니다.", player);
+            return false;
         }
 
         characterAP = player.GetComponent<BattleUnitAP>();
         if (characterAP == null)
         {
-            characterAP = player.AddComponent<BattleUnitAP>();
+            Debug.LogError($"[{nameof(BattlePlayerCombatDataFactory)}] {player.name}에 BattleUnitAP가 없습니다. Scene에 미리 추가해야 합니다.", player);
+            return false;
         }
 
         combatData = player.GetComponent<PlayerCombatData>();
         if (combatData == null)
         {
-            combatData = player.AddComponent<PlayerCombatData>();
+            Debug.LogError($"[{nameof(BattlePlayerCombatDataFactory)}] {player.name}에 PlayerCombatData가 없습니다. Scene에 미리 추가해야 합니다.", player);
+            return false;
         }
 
-        // 디버그 단계: BattleHealth를 보장하고 기본 최대 체력으로 초기화한다.
+        // 디버그 단계: 기본 최대 체력으로 초기화한다.
         // 실제 스폰 프리팹에는 레거시 BattlePlayer 컴포넌트가 없어(Ch_*_Battle류 별도 프리팹에만 존재)
         // 캐릭터별 값을 가져올 수 없으므로 항상 기본값을 사용한다.
         battleHealth = player.GetComponent<BattleHealth>();
         if (battleHealth == null)
         {
-            battleHealth = player.AddComponent<BattleHealth>();
+            Debug.LogError($"[{nameof(BattlePlayerCombatDataFactory)}] {player.name}에 BattleHealth가 없습니다. Scene에 미리 추가해야 합니다.", player);
+            return false;
         }
 
         battleHealth.Initialize(DefaultMaxHealth);

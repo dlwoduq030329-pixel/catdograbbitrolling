@@ -93,6 +93,7 @@ public partial class EnemyTurnActor : MonoBehaviour
     // 실행(Execution) / 디버그(Debug)
     private BattleEnemyActionExecutor actionExecutor; // 실제 이동·기본공격 실행기.
     private PathDebugView pathDebugView;              // 이동 경로 디버그 표시(플레이 중 R키 표시용).
+    private int healCooldownTurns;
 
 
     /// <summary>Spawner가 선택한 DB 데이터 중 행동 판단에 필요한 값을 적용한다.</summary>
@@ -130,6 +131,7 @@ public partial class EnemyTurnActor : MonoBehaviour
         ActedThisTurn = false;
         battleDataPool = shared;
         pathDebugView?.Clear();
+        healCooldownTurns = 0;
         GetComponent<BattleEnemyActionExecutor>()?.StopAllCoroutines();
     }
 
@@ -225,6 +227,16 @@ public partial class EnemyTurnActor : MonoBehaviour
         if (statusEffects != null && statusEffects.Has(BattleStatusType.Stun))
         {
             Debug.Log($"{name}: 기절 상태로 이번 턴을 행동하지 않습니다.", this);
+            yield break;
+        }
+
+        if (healCooldownTurns > 0)
+            healCooldownTurns--;
+        else if (TryHealLowestHealthEnemy())
+        {
+            yield return BeginActionFocus(cameraRig);
+            if (afterActionSeconds > 0f)
+                yield return new WaitForSecondsRealtime(afterActionSeconds);
             yield break;
         }
         int basicAttackCount = 0;
@@ -431,13 +443,23 @@ public partial class EnemyTurnActor : MonoBehaviour
             awareness = GetComponent<EnemyAwareness>();
         if (pathDebugView == null)
             pathDebugView = GetComponent<PathDebugView>();
-        characterMP = BattleComponentResolver.GetOrAdd(gameObject, characterMP);
+        if (characterMP == null)
+            characterMP = GetComponent<BattleUnitMP>();
         if (runtimeData == null)
             runtimeData = GetComponent<BattleEnemyRuntimeData>();
         if (behaviorTree == null)
             behaviorTree = EnemyBehaviorTreeFactory.CreateAggressiveTree();
-        actionExecutor = BattleComponentResolver.GetOrAdd(gameObject, actionExecutor);
-        mapContext = BattleComponentResolver.GetOrAdd(gameObject, mapContext);
+        if (actionExecutor == null)
+            actionExecutor = GetComponent<BattleEnemyActionExecutor>();
+        if (mapContext == null)
+            mapContext = GetComponent<BattleEnemyMapLookup>();
+
+        if (characterMP == null || actionExecutor == null || mapContext == null)
+        {
+            Debug.LogError($"[Enemy 설정] {name} 프리팹의 이동·행동 컴포넌트가 없습니다.", this);
+            enabled = false;
+            return;
+        }
 
         actionExecutor.Configure(characterMP, secondsPerTile, jumpTakeoffDelaySeconds, jumpArcHeight);
     }

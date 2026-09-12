@@ -1,48 +1,52 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
+/// <summary>ìºë¦­í„°ì˜ ê¸°ë³¸ ëŠ¥ë ¥ì¹˜ì™€ ê¸°ë³¸ ì „íˆ¬ ìì›ì„ ë³´ê´€í•©ë‹ˆë‹¤.</summary>
 public class CharactorStatus : MonoBehaviour
 {
-    [SerializeField] int str_st; // ±âº» °ø°İ·Â + ¹°¸® µ¥¹ÌÁö(¸íÁß·ü¿¡ ¿µÇâÀ» ÁØ´Ù, µ¥¹ÌÁö type¿¡ °¢ state·Î °è»êÇØ¾ßÇÔ)
-    [SerializeField] int dex_st; // ÀÌµ¿ ¹üÀ§
-    [SerializeField] int int_st; // ¸¶¹ı µ¥¹ÌÁö Áõ°¡ + ¸¶¹ı ±âº» ÆòÅ¸(¸íÁß·ü¿¡ ¿µÇâÀ» ÁØ´Ù)
-    [SerializeField] int wis_st; // ±âº» Ã¼·Â Áõ°¡
-    [SerializeField] int car_st; // mpÁõ°¡
-    [SerializeField] int vit_st; // »óÁ¡ ÇÒÀÎ, ÀÌº¥Æ® ¼º°ø È®·ü  
-    [SerializeField] int actionpoint_st; // ÅÏ ´ç ÇÃ·¹ÀÌ¾î°¡ ¿òÁ÷ÀÏ ¼ö ÀÖ´Â Ä­
-    // [SerializeField] int mp_st; // mpÀÓ Ä«µå »ç¿ë ¹× ÆòÅ¸ »ç¿ë ½Ã ¼Ò¸ğÇÔ. ÇÏÁö¸¸ ¾ÆÁ÷ ±¸Çö x
+    [Header("ê¸°ë³¸ ëŠ¥ë ¥ì¹˜")]
+    [Tooltip("ë¬¼ë¦¬ í”¼í•´ì™€ ë¬¼ë¦¬ ê³µê²© ëª…ì¤‘ íŒì •ì— ì‚¬ìš©í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("str_st")]
+    [SerializeField] private int strength;
+    [Tooltip("ìµœëŒ€ APì— ì‚¬ìš©í•©ë‹ˆë‹¤. DEX 10ë§ˆë‹¤ APê°€ 1 ì¦ê°€í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("dex_st")]
+    [SerializeField] private int dexterity;
+    [Tooltip("ë§ˆë²• í”¼í•´ì™€ ë§ˆë²• ê³µê²© ëª…ì¤‘ íŒì •ì— ì‚¬ìš©í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("int_st")]
+    [SerializeField] private int intelligence;
+    [Tooltip("ìµœëŒ€ MPì— ì‚¬ìš©í•©ë‹ˆë‹¤. WIS 10ë§ˆë‹¤ MPê°€ 1 ì¦ê°€í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("wis_st")]
+    [SerializeField] private int wisdom;
+    [Tooltip("ìƒì  í• ì¸ê³¼ ì´ë²¤íŠ¸ ì„±ê³µ í™•ë¥ ì— ì‚¬ìš©í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("car_st")]
+    [SerializeField] private int charisma;
+    [Tooltip("ìµœëŒ€ HPì— ì‚¬ìš©í•©ë‹ˆë‹¤. VIT 1ë§ˆë‹¤ HPê°€ 1 ì¦ê°€í•©ë‹ˆë‹¤.")]
+    [FormerlySerializedAs("vit_st")]
+    [SerializeField] private int vitality;
 
-    public int STR => str_st;
-    public int DEX => dex_st;
-    public int INT => int_st;
-    public int WIS => wis_st;
-    public int VIT => vit_st;
-    public int CAR => car_st;
-    // public int Mp => mp_st;
+    [SerializeField] private int tribeIndex;
 
-    public int ap => actionpoint_st;
-
-    float attackRange;
-
-    int playerHp;
-
-    int tribeIndex;
+    public int STR => strength;
+    public int DEX => dexterity;
+    public int INT => intelligence;
+    public int WIS => wisdom;
+    public int VIT => vitality;
+    public int CAR => charisma;
+    public int CHA => charisma;
     public int TribeIndex => tribeIndex;
 
-
-    public void InitStatus(int st1, int st2, int st3, int st4, int st5, int st6)
+    public void InitStatus(int str, int dex, int intStat, int wis, int cha, int vit)
     {
-        str_st = st1;
-        dex_st = st2;
-        int_st = st3;
-        wis_st = st4;
-        car_st = st5;
-        vit_st = st6;
+        strength = str;
+        dexterity = dex;
+        intelligence = intStat;
+        wisdom = wis;
+        charisma = cha;
+        vitality = vit;
     }
 
-    public void TribeSet(int x)
+    public void TribeSet(int value)
     {
-        tribeIndex = x;
+        tribeIndex = value;
     }
 }

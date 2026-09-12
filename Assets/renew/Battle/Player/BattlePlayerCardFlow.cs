@@ -50,11 +50,19 @@ public class BattlePlayerCardFlow : MonoBehaviour
         // Push View가 월드 위치를 화면 좌표로 바꾸므로 전투 Camera도 View에 직접 연결한다.
         playerController.battlePushPreviewView.ConfigurePreviewDependencies(playerController.mainCamera);
 
-        // 현재는 이전 Scene 호환을 위해 없으면 같은 Player Object에 자동 추가한다.
-        // Player Prefab 직접 참조가 확정되면 GetOrAdd 경로를 제거할 정적 리뷰 대상이다.
-        battleCardActionController = BattleComponentResolver.GetOrAdd(gameObject, battleCardActionController);
+        // Battle Player Action Controller 오브젝트에 미리 붙어 있어야 한다. 없으면 자동으로 붙이지 않고
+        // 바로 알 수 있게 멈춘다.
+        if (battleCardActionController == null)
+        {
+            battleCardActionController = GetComponent<BattleCardActionController>();
+            if (battleCardActionController == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerCardFlow)}] {gameObject.name}에 BattleCardActionController가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
         // 카드 Controller가 자체적으로 Scene을 다시 검색하지 않도록 Player 쪽에서 이미 알고 있는 참조를 전달한다.
-        battleCardActionController.Configure(
+        battleCardActionController.Setup(
             playerController.player,
             playerController.battleRangeVisualizer,
             playerController.colorPalette.CardRangeTileColor,
@@ -92,7 +100,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// </summary>
     public void Confirm()
     {
-        battleCardActionController?.TryConfirmCardUse();
+        battleCardActionController?.TryConfirmUse();
     }
 
     /// <summary>
@@ -109,7 +117,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
     /// 호출 경로: BattleCardHandView.SelectCard()
     /// → BattlePlayerActionController.TryStartCardUseFromHand()
     /// → 이 함수
-    /// → BattleCardActionController.TryBeginSelectedCardFlow().
+    /// → BattleCardActionController.TryStartCardUse().
     /// 이동 범위를 닫고 현재 턴의 카드 사용 가능 상태를 전달할 뿐, 카드 효과나 MP는 여기서 소비하지 않는다.
     /// </summary>
     public bool TryStartSelectedCardUse(SelectedCardUseInfo cardUse, BattleCardDrawSystem cardDrawSystem)
@@ -120,7 +128,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
         bool canUseCards = BattleGameManager.Instance != null && BattleGameManager.Instance.CanUsePlayerCards;
         // 여기서는 선택된 손패 정보와 DrawSystem을 전달할 뿐 MP 차감이나 카드 소비는 아직 발생하지 않는다.
         return battleCardActionController != null &&
-               battleCardActionController.TryBeginSelectedCardFlow(cardUse, cardDrawSystem, canUseCards);
+               battleCardActionController.TryStartCardUse(cardUse, cardDrawSystem, canUseCards);
     }
 
     /// <summary>
@@ -150,7 +158,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
         {
             // 효과 Pipeline에는 대상 GameObject뿐 아니라 사거리와 효과 중심 계산에 사용할 타일도 함께 필요하다.
             MapInfo enemyTile = playerController.FindClosestMapTile(enemy.transform.position);
-            if (battleCardActionController.TrySelectTargetAndEnterConfirmation(enemy.gameObject, enemyTile))
+            if (battleCardActionController.TrySelectTarget(enemy.gameObject, enemyTile))
             {
                 return;
             }
@@ -158,7 +166,7 @@ public class BattlePlayerCardFlow : MonoBehaviour
 
         if (targetType == BattleCardTargetType.Tile &&
             playerController.TryRaycastMapTile(pointerPosition, out MapInfo tile) &&
-            battleCardActionController.TrySelectTargetAndEnterConfirmation(tile.gameObject, tile))
+            battleCardActionController.TrySelectTarget(tile.gameObject, tile))
         {
             return;
         }

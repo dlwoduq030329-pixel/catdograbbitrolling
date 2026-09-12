@@ -20,6 +20,13 @@ public static class BattleComponentResolver
         }
 
         T component = owner.GetComponent<T>();
-        return component != null ? component : owner.AddComponent<T>();
+        if (component != null)
+        {
+            return component;
+        }
+
+        // 동적 부착 추적용 로그. Scene/Prefab에 이 컴포넌트가 없어서 런타임에 새로 붙였다는 뜻이다.
+        Debug.LogWarning($"[동적 부착] {owner.name}에 {typeof(T).Name}이 없어서 런타임에 자동으로 붙였습니다.", owner);
+        return owner.AddComponent<T>();
     }
 }

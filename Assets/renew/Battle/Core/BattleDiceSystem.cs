@@ -58,6 +58,34 @@ public readonly struct CardDiceResult
 /// <summary>Player Body의 기본 능력치와 장비 보너스를 더해 현재 능력치를 반환합니다.</summary>
 public static class PlayerStatCalculator
 {
+    public static int GetMaxAP(GameObject player, int baseAP)
+    {
+        return Mathf.Max(0, baseAP) +
+               Mathf.FloorToInt(Get(player, CardEffectStat.Dexterity) / 10f);
+    }
+
+    public static int GetMaxMP(GameObject player)
+    {
+        return 6 + Mathf.FloorToInt(Get(player, CardEffectStat.Wisdom) / 10f);
+    }
+
+    public static float GetMaxHP(GameObject player)
+    {
+        return 15f + Get(player, CardEffectStat.Vitality);
+    }
+
+    /// <summary>CHA 1당 1%, 최대 50%의 상점 할인율을 반환합니다.</summary>
+    public static float GetShopDiscount(GameObject player)
+    {
+        return Mathf.Clamp(Get(player, CardEffectStat.Charisma) * 0.01f, 0f, 0.5f);
+    }
+
+    /// <summary>CHA 1당 이벤트 성공 확률 보정 1%를 반환합니다.</summary>
+    public static float GetEventSuccessBonus(GameObject player)
+    {
+        return Mathf.Clamp01(Get(player, CardEffectStat.Charisma) * 0.01f);
+    }
+
     public static float Get(GameObject player, CardEffectStat stat)
     {
         if (player == null || stat == CardEffectStat.None)

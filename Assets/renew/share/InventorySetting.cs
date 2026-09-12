@@ -157,8 +157,7 @@ public class InventorySetting : MonoBehaviour
 
     /// <summary>
     /// "저장" 버튼에 연결하는 함수다. 지금까지 편집한 덱을 실제 전투에 쓰이는 PlayerDeck.deckCardforUI에
-    /// 반영한다. 전투 중 드로우 시스템(BattleCardDrawSystem)은 전투 시작 시점에만 deckCardforUI를 읽어
-    /// 드로우 덱을 구성하므로, 저장한 덱은 진행 중인 전투가 아니라 다음 전투부터 적용된다.
+    /// 반영한다. 진행 중인 전투에서는 다음 Player 턴이 시작될 때 변경된 장착 덱으로 손패를 다시 구성한다.
     /// </summary>
     public void SaveDeck()
     {
@@ -180,7 +179,7 @@ public class InventorySetting : MonoBehaviour
             if (cardIndex >= 0) DataConfig.cardData.Add(cardIndex);
         }
 
-        Debug.Log("덱 저장 완료: 다음 전투부터 적용됩니다.", this);
+        Debug.Log("덱 저장 완료: 다음 Player 턴부터 적용됩니다.", this);
     }
 
     public void SetInventoryVerticalScrollEnabled(bool enabled)

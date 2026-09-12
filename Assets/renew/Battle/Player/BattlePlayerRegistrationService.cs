@@ -37,9 +37,7 @@ public static class BattlePlayerRegistrationService
 
         playerMPUI?.BindPlayerMana(playerMP);
         playerMP.RestoreFull();
-        // 2026-09-10: 이동 전용 AP는 매 턴 BattleGameManager.ActivatePlayerTurnActions()에서
-        // RestoreFull()로 다시 채워지지만, 등록 시점에도 한 번 맞춰둔다(MP와 동일한 패턴).
-        // AP UI도 MP UI와 완전히 같은 형식(PlayerAPUI.BindPlayerAP)으로 즉시 연결한다.
+        // 등록 직후 UI에 최대 AP가 표시되도록 AP를 한 번 채웁니다.
         playerAPUI?.BindPlayerAP(playerAP);
         playerAP.RestoreFull();
         PlayerDeck registeredDeck = player.GetComponentInParent<PlayerDeck>(true);
