@@ -15380,8 +15380,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
-  attackIcon: {fileID: 0}
-  chaseIcon: {fileID: 0}
+  attackIcon: {fileID: 21300000, guid: 92d54a247d5d4c9a91bdbe7001aa1101, type: 3}
+  chaseIcon: {fileID: 21300000, guid: 92d54a247d5d4c9a91bdbe7001aa1102, type: 3}
   iconWorldSize: 0.8
   fallbackIconHeight: 2.8
   iconGapAboveHealthBar: 0.06
