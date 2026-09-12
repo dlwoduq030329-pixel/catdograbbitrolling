@@ -549,6 +549,10 @@ public class BattlePlayerActionController : MonoBehaviour
         }
 
         EnsureBattleRangeVisualizer();
+        if (battleRangeVisualizer == null)
+        {
+            return;
+        }
         battlePlayerRangeController.AttachVisualizer(battleRangeVisualizer);
     }
 
@@ -754,6 +758,10 @@ public class BattlePlayerActionController : MonoBehaviour
         ResolveBattleDataPool();
         EnsureBattlePlayerMapContext();
         EnsureBattleRangeVisualizer();
+        if (battlePlayerMapContext == null || battleRangeVisualizer == null)
+        {
+            return;
+        }
         battlePlayerMapContext.Refresh(battleDataPool, battleRangeVisualizer);
     }
 
@@ -783,6 +791,10 @@ public class BattlePlayerActionController : MonoBehaviour
     internal void RestoreAllTileColors()
     {
         EnsureBattleRangeVisualizer();
+        if (battleRangeVisualizer == null)
+        {
+            return;
+        }
         battleRangeVisualizer.RestoreAllTileColors();
     }
 

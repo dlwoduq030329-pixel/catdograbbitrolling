@@ -30,7 +30,7 @@ public enum CardEffectStat
     [InspectorName("DEX")] Dexterity,
     [InspectorName("INT")] Intelligence,
     [InspectorName("VIT")] Vitality,
-    [InspectorName("WIS")] Wisdom,
+    [InspectorName("WIS")] Wisdom, 
     [InspectorName("CHA")] Charisma
 }
 

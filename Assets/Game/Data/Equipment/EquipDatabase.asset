@@ -45,7 +45,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 919132149155446097, guid: 9181429acbcd0574685857e27266e21f,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 919132149155446097, guid: 9181429acbcd0574685857e27266e21f,
       type: 3}
   - myEquipSprite: {fileID: -1676151596, guid: 33a7d70c180f27f4ba73263684aa08bc, type: 3}
     cardname: Wooden_Staff
@@ -62,7 +62,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 919132149155446097, guid: c550965c2ab783d44adbadca8c26d6c8,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 919132149155446097, guid: c550965c2ab783d44adbadca8c26d6c8,
       type: 3}
   - myEquipSprite: {fileID: 1231174186, guid: 67b9aeb92c3edc549b71da83f0ca808c, type: 3}
     cardname: Wooden_Shield
@@ -113,7 +113,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 6430689079401660449, guid: 295358c4db022e14ab28a440a82eebf6,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 6430689079401660449, guid: 295358c4db022e14ab28a440a82eebf6,
       type: 3}
   - myEquipSprite: {fileID: 748816325, guid: fc7676b07e676794d91c607b66f3de9b, type: 3}
     cardname: Rusted_Sword
@@ -130,7 +130,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 919132149155446097, guid: 9859ed88b71179e498e2f694c8e3c631,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 919132149155446097, guid: 9859ed88b71179e498e2f694c8e3c631,
       type: 3}
   - myEquipSprite: {fileID: -1361728571, guid: 77b465c9ed54e414086ee210d19f2022, type: 3}
     cardname: Broken_Bluebow
@@ -147,7 +147,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 8417546453384763764, guid: 7fef1ab8462051840bbe0f32994d60c9,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 8417546453384763764, guid: 7fef1ab8462051840bbe0f32994d60c9,
       type: 3}
   - myEquipSprite: {fileID: 1655058762, guid: 663b00cf53c9ddc40821e6076b84e646, type: 3}
     cardname: Knight_Sword_Shield
@@ -181,7 +181,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 919132149155446097, guid: ad1543ca19ed7f34a9a10302b3776f38,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 919132149155446097, guid: ad1543ca19ed7f34a9a10302b3776f38,
       type: 3}
   - myEquipSprite: {fileID: 41269420, guid: a8ff18b22b8b21b42aabd49918d170bc, type: 3}
     cardname: Knight_Helmet
@@ -266,7 +266,7 @@ MonoBehaviour:
     cost: 0
     weaponPrefab: {fileID: 919132149155446097, guid: bf082473d08e62448a16cc975924f245,
       type: 3}
-    weaponPrefab2: {fileID: 6770447019092805126, guid: 14dbfafde0d0e014580a9783a5ad77a1,
+    weaponPrefab2: {fileID: 919132149155446097, guid: bf082473d08e62448a16cc975924f245,
       type: 3}
   - myEquipSprite: {fileID: -1182933132, guid: c18924764a9e54f4bbe742ce3932f1f6, type: 3}
     cardname: Cursed_Mask

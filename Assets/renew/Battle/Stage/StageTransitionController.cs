@@ -81,7 +81,7 @@ public sealed class StageTransitionController : MonoBehaviour
             yield return loadingUI.FadeToBlackRoutine(fadeSeconds);
             playerActions.CancelCurrentPlayerAction();
             playerActions.battleRangeVisualizer?.ReleaseMap();
-            stageSpawner.ReleaseStageEnemies();
+            stageSpawner.ReleaseStageEnemiesAndNpcs();
             if (!stageSpawner.TrySelectStage(next)) yield break;
             // 허수아비는 현재 맵의 타일에 귀속된 임시 소환물이다.
             var summons = new List<BattleScarecrowSummon>(BattleScarecrowSummon.Active);

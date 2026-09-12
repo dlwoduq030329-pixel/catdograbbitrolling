@@ -65,5 +65,12 @@ public sealed class BattlePlayerMoveResultHandler : MonoBehaviour
 
         manager.ChestRewardSystem?.TryOpen(arrivedTile);
         manager.CardShopSystem?.TryEnter(arrivedTile);
+
+        if (arrivedTile.Type == TileType.NPC)
+        {
+            // NPC는 더 이상 타일의 자식 Transform이 아니다(스폰 시 Scale이 틀어지는 문제가 있어서
+            // 부모 관계를 없앴다). 대신 MapInfo.NpcTrigger에 스폰할 때 넣어둔 참조를 바로 쓴다.
+            arrivedTile.NpcTrigger?.InvokeArrivalEvent();
+        }
     }
 }

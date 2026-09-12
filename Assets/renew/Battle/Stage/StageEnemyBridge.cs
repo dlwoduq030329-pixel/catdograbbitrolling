@@ -19,7 +19,7 @@ public static class StageEnemyBridge
             if (lookup.ContainsKey(data.id)) duplicates.Add(data.id);
             else lookup.Add(data.id, data);
         }
-        foreach (string id in duplicates) lookup.Remove(id);
+        foreach (string id in duplicates) lookup.Remove(id);  
         var warnings = new List<string>();
         Append(stage.normalEnemies, BattleEnemyRank.Normal, lookup, result, warnings, available);
         Append(stage.eliteEnemies, BattleEnemyRank.Elite, lookup, result, warnings, available);
