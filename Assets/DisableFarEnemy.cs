@@ -8,6 +8,8 @@ public class DisableFarEnemy : MonoBehaviour
     SkinnedMeshRenderer[] skin;
     [SerializeField]
     MeshRenderer[] renderers;
+    [SerializeField]
+    GameObject[] objects;
 
     private bool canSee = false;
 
@@ -25,14 +27,18 @@ public class DisableFarEnemy : MonoBehaviour
         {
             s.enabled = false;
         }
+        foreach (var s in objects)
+        {
+            s.SetActive(false);
+        }
     }
 
     private void Update()
     {
         if (chaseTarget == null) return;
 
-        if(Vector3.Distance(chaseTarget.transform.position,this.transform.position) >=10f && !canSee)
-        {
+        if (Vector3.Distance(chaseTarget.transform.position, this.transform.position) >= 20f) return;
+        if (canSee) return;
             canSee = true;
 
             foreach(var s in skin)
@@ -41,8 +47,13 @@ public class DisableFarEnemy : MonoBehaviour
             }
             foreach (var s in renderers)
             {
-                s.enabled = false;
+                s.enabled = true;
             }
-        }
+            foreach (var s in objects)
+            {
+                s.SetActive(true);
+            }
+
+        
     }
 }

@@ -1714,6 +1714,11 @@ public class NewMapGenerator : MonoBehaviour
                         pos,
                         Quaternion.identity,
                         transform);
+                DisableFarEnemy temp;
+                if (obj.TryGetComponent<DisableFarEnemy>(out temp))
+                {
+                    temp.SetTarget(playerBody);
+                }
 
                 // 맵의 실제 X/Z 좌표를 기준으로 밝은색/어두운색 적용
                 if (mapblueprint[x, z] != TileType.Empty &&
@@ -1738,6 +1743,8 @@ public class NewMapGenerator : MonoBehaviour
                         {
                             Renderer childRenderer =
                                 obj.GetComponentInChildren<Renderer>();
+
+                           
 
                             if (childRenderer != null)
                                 childRenderer.material =

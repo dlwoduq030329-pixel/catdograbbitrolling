@@ -114,8 +114,8 @@ public sealed class CardCostLabelView : MonoBehaviour
         if (costText == null) ConfigureMeasuredCostTextLayout();
         costText.text = manaCost.ToString();
         costText.outlineColor = GetCostOutlineColorForRarity(cardRarity);
-        Debug.Log($"[CardCostLabelView] SetCost cost={manaCost} rare={cardRarity} active={gameObject.activeInHierarchy} " +
-                  $"anchoredPos={costTextRect.anchoredPosition} sizeDelta={costTextRect.sizeDelta} worldPos={costTextRect.position}", this);
+       // Debug.Log($"[CardCostLabelView] SetCost cost={manaCost} rare={cardRarity} active={gameObject.activeInHierarchy} " +
+                //  $"anchoredPos={costTextRect.anchoredPosition} sizeDelta={costTextRect.sizeDelta} worldPos={costTextRect.position}", this);
     }
 
     /// <summary>MP 부족 카드는 코스트 숫자도 빨간색으로 표시해 어두운 카드와 함께 즉시 구분한다.</summary>

@@ -15,6 +15,9 @@ public sealed class BattlePlayerMover : MonoBehaviour
 
     private GameObject playerObject;
 
+    //[SerializeField]
+    //ShowMpAPToUI showAPUI;
+
     [Header("단차 이동 연출")]
     [Tooltip("앞 타일과 다음 타일의 높이 차이가 이 값 이상일 때 점프 이동을 사용한다.")]
     [SerializeField, Min(0f)] private float minimumHeightDifferenceForJump = 0.1f;
@@ -43,7 +46,7 @@ public sealed class BattlePlayerMover : MonoBehaviour
     }
 
     /// <summary>계산이 끝난 타일 경로를 순서대로 따라가며 Player Transform 이동만 연출한다.</summary>
-    public IEnumerator MoveAlongPath(IReadOnlyList<MapInfo> path, MapInfo startTile)
+    public IEnumerator MoveAlongPath(IReadOnlyList<MapInfo> path, MapInfo startTile) //실제 이동코드.
     {
         if (playerObject == null || path == null || startTile == null)
         {
@@ -52,6 +55,13 @@ public sealed class BattlePlayerMover : MonoBehaviour
 
         // Player가 타일 표면보다 얼마나 떠 있는지(발밑 높이 보정값)를 이동 시작 시점 기준으로 구해서,
         // 경로의 각 타일로 이동할 때도 같은 높이를 유지한 채 수평으로만 이동하게 한다.
+        BattleUnitAP unitAp = playerObject.GetComponent<BattleUnitAP>();
+        int maxAp = unitAp.MaxAP;
+        int nowAp = unitAp.CurrentAP;
+
+
+        Debug.Log("이동 시작 함수 호출 시점\nMaxAp : " + maxAp + "\nCurrentAP : " + nowAp);
+
         float heightOffset = playerObject.transform.position.y - startTile.transform.position.y;
         float durationPerTile = GetDurationPerTile();
 
@@ -67,6 +77,11 @@ public sealed class BattlePlayerMover : MonoBehaviour
             Vector3 targetPosition = pathTile.transform.position + Vector3.up * heightOffset;
             float heightDifference = Mathf.Abs(targetPosition.y - playerObject.transform.position.y);
             bool crossesHeightStep = heightDifference >= minimumHeightDifferenceForJump;
+
+
+            FogOfWarManager.Instance.Reveal(playerObject.transform.position);
+
+        
 
             if (crossesHeightStep)
             {
