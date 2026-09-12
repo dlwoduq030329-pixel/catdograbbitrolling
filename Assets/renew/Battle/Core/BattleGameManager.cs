@@ -84,6 +84,17 @@ public class BattleGameManager : MonoBehaviour
     [FormerlySerializedAs("battleStopped")]
     [SerializeField] private bool isBattleStopped;
 
+    [Header("PlayerBody")]
+    [SerializeField] private GameObject playerBody;
+
+    private BattleUnitAP unitAP;
+    private BattleUnitMP unitMP;
+
+    [Header("PlayerBody")]
+    [SerializeField] private ShowMpAPToUI mpapToUI;
+
+
+
     /// <summary>Player 등록이 끝난 뒤 카메라·Enemy 감지기 등에 생성된 Player 인스턴스를 전달한다.</summary>
     public event System.Action<GameObject> PlayerRegistered;
 
@@ -266,6 +277,8 @@ public class BattleGameManager : MonoBehaviour
     /// "PLAYER TURN" 배너/페이드를 매번 재생한다(기본값).</summary>
     public void StartPlayerTurn()
     {
+
+
         StartPlayerTurn(showAnnouncement: true);
     }
 
@@ -316,6 +329,19 @@ public class BattleGameManager : MonoBehaviour
         PrepareEnemiesForNextTurn();
         // 이전 턴에서 남은 선택 타일, 이동 경로, 이동 완료 상태와 범위 표시를 지운다.
         ResetPlayerMoveState();
+
+
+
+        Debug.Log("턴  시작 apmp 초기화 시도");
+        //APMp초기화 함수.
+        if (unitAP == null || unitMP == null)
+        {
+            unitAP = playerBody.GetComponent<BattleUnitAP>();
+            unitMP = playerBody.GetComponent<BattleUnitMP>();
+        }
+
+        mpapToUI.StartMPInit(unitMP.MaxMP);
+        mpapToUI.StartAPInit(unitAP.MaxAP);
         // 2026-09-08: 주사위 삭제. 예전에는 주사위를 굴려야 이동 범위가 열리고 카드 패널이 보였지만,
         // 이제 턴 시작과 동시에 곧바로 열어준다.
         // TODO(버티컬 슬라이스): 지금은 임시로 최대 이동 범위를 그대로 쓴다. 행동력/스탯(DEX) 기반

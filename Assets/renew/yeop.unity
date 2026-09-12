@@ -29059,7 +29059,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bc6446a72425ed42b0da01d2c29ed96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CODE_EXPLAIN: 0
+  CODE_EXPLAIN: 1
   turnButtonController: {fileID: 1671244499}
   cardPanelToggle: {fileID: 1861571035}
   overlayUi: {fileID: 1671244498}
@@ -29080,6 +29080,8 @@ MonoBehaviour:
   debugPlayerMaxMP: 10
   debugPlayerMaxAP: 6
   isBattleStopped: 0
+  playerBody: {fileID: 426231381}
+  mpapToUI: {fileID: 1917245075}
 --- !u!4 &1815343165
 Transform:
   m_ObjectHideFlags: 0
@@ -31778,8 +31780,8 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 0.80989677, g: 0.86303884, b: 0.9811321, a: 1}
-  m_Intensity: 1.1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Intensity: 3
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
