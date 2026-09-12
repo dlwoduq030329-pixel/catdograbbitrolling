@@ -29,7 +29,8 @@ public class BattlePlayerActionController : MonoBehaviour
     [InspectorName("타일 레이어 마스크")]
     public LayerMask tileLayerMask = ~0;
 
-    // Controller가 소유하는 런타임 모듈 캐시. 모두 Awake에서 GetOrAdd로 준비하므로
+    // Controller가 소유하는 런타임 모듈 캐시. 전부 이 GameObject(Battle Player Action Controller)에
+    // 미리 붙어 있어야 하며, Ensure*()가 GetComponent로만 확보한다(없으면 LogError로 중단).
     // Inspector에 노출하거나 Scene에 직렬화하지 않는다.
     internal BattleRaycaster battleRaycaster;
     internal BattleRangeVisualizer battleRangeVisualizer;
@@ -505,21 +506,48 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>Raycast 전용 컴포넌트를 확보하고 현재 참조를 전달한다.</summary>
     internal void EnsureBattleRaycaster()
     {
-        battleRaycaster = BattleComponentResolver.GetOrAdd(gameObject, battleRaycaster);
+        if (battleRaycaster == null)
+        {
+            battleRaycaster = GetComponent<BattleRaycaster>();
+            if (battleRaycaster == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleRaycaster가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleRaycaster.AttachReferences(mainCamera, player, tileLayerMask);
     }
 
     /// <summary>범위 표시 전용 컴포넌트를 확보하고 현재 색상 혼합 설정을 전달한다.</summary>
     internal void EnsureBattleRangeVisualizer()
     {
-        battleRangeVisualizer = BattleComponentResolver.GetOrAdd(gameObject, battleRangeVisualizer);
+        if (battleRangeVisualizer == null)
+        {
+            battleRangeVisualizer = GetComponent<BattleRangeVisualizer>();
+            if (battleRangeVisualizer == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleRangeVisualizer가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleRangeVisualizer.SetBlendStrengths(rangeColorBlend, selectedColorBlend, landedColorBlend);
     }
 
     /// <summary>Player 이동·공격 범위 생성과 표시를 담당하는 모듈을 확보한다.</summary>
     internal void EnsureBattlePlayerRangeController()
     {
-        battlePlayerRangeController = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerRangeController);
+        if (battlePlayerRangeController == null)
+        {
+            battlePlayerRangeController = GetComponent<BattlePlayerRangeController>();
+            if (battlePlayerRangeController == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePlayerRangeController가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         EnsureBattleRangeVisualizer();
         battlePlayerRangeController.AttachVisualizer(battleRangeVisualizer);
     }
@@ -527,7 +555,16 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>Player 이동 연출 컴포넌트를 확보하고 현재 이동 속도 설정을 전달한다.</summary>
     internal void EnsureBattlePlayerMover()
     {
-        battlePlayerMover = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerMover);
+        if (battlePlayerMover == null)
+        {
+            battlePlayerMover = GetComponent<BattlePlayerMover>();
+            if (battlePlayerMover == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePlayerMover가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battlePlayerMover.Configure(
             player,
             secondsPerTile,
@@ -539,28 +576,64 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>이동 플로우 전담 컴포넌트(BattleUnitMoveFlow)를 확보하고 소유자 참조를 연결한다.</summary>
     private void EnsureMoveFlow()
     {
-        moveFlow = BattleComponentResolver.GetOrAdd(gameObject, moveFlow);
+        if (moveFlow == null)
+        {
+            moveFlow = GetComponent<BattleUnitMoveFlow>();
+            if (moveFlow == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleUnitMoveFlow가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         moveFlow.Attach(this);
     }
 
     /// <summary>기본 공격 플로우 전담 컴포넌트(BattleUnitAttackFlow)를 확보하고 소유자 참조를 연결한다.</summary>
     private void EnsureAttackFlow()
     {
-        attackFlow = BattleComponentResolver.GetOrAdd(gameObject, attackFlow);
+        if (attackFlow == null)
+        {
+            attackFlow = GetComponent<BattleUnitAttackFlow>();
+            if (attackFlow == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleUnitAttackFlow가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         attackFlow.Attach(this);
     }
 
     /// <summary>Player 카드 입력 플로우 전담 컴포넌트(BattlePlayerCardFlow)를 확보하고 소유자 참조를 연결한다.</summary>
     private void EnsureCardFlow()
     {
-        cardFlow = BattleComponentResolver.GetOrAdd(gameObject, cardFlow);
+        if (cardFlow == null)
+        {
+            cardFlow = GetComponent<BattlePlayerCardFlow>();
+            if (cardFlow == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePlayerCardFlow가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         cardFlow.Attach(this);
     }
 
     /// <summary>공용 확인·취소 화면 컴포넌트를 확보하고 UI 참조와 행동을 연결한다.</summary>
     private void EnsureBattleActionConfirmView()
     {
-        battleActionConfirmView = BattleComponentResolver.GetOrAdd(gameObject, battleActionConfirmView);
+        if (battleActionConfirmView == null)
+        {
+            battleActionConfirmView = GetComponent<BattleActionConfirmView>();
+            if (battleActionConfirmView == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleActionConfirmView가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleActionConfirmView.Bind(
             confirmMoveButton,
             quitMoveButton,
@@ -578,7 +651,16 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>Player 원시 입력 감지 컴포넌트를 확보하고 입력 요청 이벤트를 연결한다.</summary>
     private void EnsureBattlePlayerInputReader()
     {
-        battlePlayerInputReader = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerInputReader);
+        if (battlePlayerInputReader == null)
+        {
+            battlePlayerInputReader = GetComponent<BattlePlayerInputReader>();
+            if (battlePlayerInputReader == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePlayerInputReader가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battlePlayerInputReader.LeftClickRequested -= HandleLeftClick;
         battlePlayerInputReader.CancelRequested -= HandleCancelInput;
         battlePlayerInputReader.RangeToggleRequested -= HandleRangeToggleRequested;
@@ -590,18 +672,32 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>현재 전투 카메라와 Player를 진영별 마우스 오버 강조 모듈에 연결한다.</summary>
     private void EnsureBattleUnitHoverHighlighter()
     {
-        battleUnitHoverHighlighter = BattleComponentResolver.GetOrAdd(
-            gameObject,
-            battleUnitHoverHighlighter);
+        if (battleUnitHoverHighlighter == null)
+        {
+            battleUnitHoverHighlighter = GetComponent<BattleUnitHoverHighlighter>();
+            if (battleUnitHoverHighlighter == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattleUnitHoverHighlighter가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleUnitHoverHighlighter.AttachReferences(mainCamera, player);
     }
 
     /// <summary>카드 Confirm 전에 밀치기 결과를 표시할 전용 View를 확보한다.</summary>
     internal void EnsureBattlePushPreviewView()
     {
-        battlePushPreviewView = BattleComponentResolver.GetOrAdd(
-            gameObject,
-            battlePushPreviewView);
+        if (battlePushPreviewView == null)
+        {
+            battlePushPreviewView = GetComponent<BattlePushPreviewView>();
+            if (battlePushPreviewView == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePushPreviewView가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battlePushPreviewView.ConfigurePreviewDependencies(mainCamera);
     }
 
@@ -673,7 +769,14 @@ public class BattlePlayerActionController : MonoBehaviour
     /// <summary>Player 맵 타일 수집과 최근접 타일 조회 모듈을 확보한다.</summary>
     private void EnsureBattlePlayerMapContext()
     {
-        battlePlayerMapContext = BattleComponentResolver.GetOrAdd(gameObject, battlePlayerMapContext);
+        if (battlePlayerMapContext == null)
+        {
+            battlePlayerMapContext = GetComponent<BattlePlayerMapContext>();
+            if (battlePlayerMapContext == null)
+            {
+                Debug.LogError($"[{nameof(BattlePlayerActionController)}] {gameObject.name}에 BattlePlayerMapContext가 없습니다. Scene에 미리 추가해야 합니다.", this);
+            }
+        }
     }
 
     /// <summary>플레이어 행동 제어기가 변경한 모든 타일 Renderer 색상을 원본으로 복구한다.</summary>

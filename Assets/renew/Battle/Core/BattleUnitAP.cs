@@ -13,12 +13,17 @@ using UnityEngine;
 public sealed class BattleUnitAP : MonoBehaviour
 {
     [Header("이동 행동력(AP)")]
-    [InspectorName("최대 AP")]
-    [SerializeField, Min(0)] private int maxAP = 6;
+    [InspectorName("기본 AP")]
+    [UnityEngine.Serialization.FormerlySerializedAs("maxAP")]
+    [SerializeField, Min(0)] private int baseAP = 6;
     [InspectorName("현재 AP(실행 중 확인용)")]
     [SerializeField, Min(0)] private int currentAP;
 
-    /// <summary>외부(DEX 스탯 계산 등)가 적용한 이 유닛의 최대 AP. min 값은 없다 — 항상 이 값이 상한이다.</summary>
+    private int maxAP;
+
+    public int BaseAP => baseAP;
+
+    /// <summary>기본 AP와 DEX 보너스를 적용한 최대 AP입니다.</summary>
     public int MaxAP => maxAP;
 
     /// <summary>이번 턴 이동에 쓸 수 있는 남은 AP.</summary>
@@ -30,6 +35,7 @@ public sealed class BattleUnitAP : MonoBehaviour
     /// <summary>캐릭터 생성 시 계산된 최대 AP로 현재 AP를 초기화한다.</summary>
     private void Awake()
     {
+        maxAP = baseAP;
         currentAP = MaxAP;
     }
 

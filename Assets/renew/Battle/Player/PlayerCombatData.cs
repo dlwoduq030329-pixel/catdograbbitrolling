@@ -27,6 +27,7 @@ public class PlayerCombatData : MonoBehaviour
 
 
     private PlayerWeapon playerWeapon;
+    private CharactorStatus characterStatus;
     private PlayerEquipmentStats equipmentStats;
 
     /// <summary>Inspector 기본 사거리와 현재 장비 사거리 보너스를 합친 최종 공격 사거리다.</summary>
@@ -35,15 +36,19 @@ public class PlayerCombatData : MonoBehaviour
         basicAttackRangeTiles + Mathf.RoundToInt(equipmentStats.AttackRangeBonus));
     public int BasicAttackMPCost => basicAttackMPCost;
 
-    /// <summary>물리 기본 위력에 장비 STR 보너스만 환산해 더한 최종 물리 평타 위력이다.</summary>
+    /// <summary>기본 위력에 Player와 장비의 STR 보정을 더한 물리 평타 위력입니다.</summary>
     public float PhysicalBasicAttackPower => Mathf.Max(
         0f,
-        basicAttackPower + equipmentStats.StrengthBonus * strengthPowerCoefficient);
+        basicAttackPower +
+        ((characterStatus != null ? characterStatus.STR : 0) + equipmentStats.StrengthBonus) *
+        strengthPowerCoefficient);
 
-    /// <summary>마법 기본 위력에 장비 INT 보너스만 환산해 더한 최종 마법 평타 위력이다.</summary>
+    /// <summary>기본 위력에 Player와 장비의 INT 보정을 더한 마법 평타 위력입니다.</summary>
     public float MagicBasicAttackPower => Mathf.Max(
         0f,
-        basicMagicAttackPower + equipmentStats.IntelligenceBonus * intelligencePowerCoefficient);
+        basicMagicAttackPower +
+        ((characterStatus != null ? characterStatus.INT : 0) + equipmentStats.IntelligenceBonus) *
+        intelligencePowerCoefficient);
 
     /// <summary>피해 타입에 맞는 최종 평타 위력을 반환한다.</summary>
     public float GetBasicAttackPower(BattleDamageType damageType)
@@ -62,6 +67,7 @@ public class PlayerCombatData : MonoBehaviour
             playerWeapon.EquipmentStatsChanged -= ApplyEquipmentStats;
 
         playerWeapon = sourcePlayerWeapon;
+        characterStatus = GetComponent<CharactorStatus>();
         equipmentStats = playerWeapon != null
             ? playerWeapon.TotalEquipmentStats
             : default;

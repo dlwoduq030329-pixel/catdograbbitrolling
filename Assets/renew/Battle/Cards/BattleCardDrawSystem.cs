@@ -67,6 +67,9 @@ public class BattleCardDrawSystem : MonoBehaviour
     private readonly HashSet<int> temporaryCardSlotsInHand = new HashSet<int>();
     // PlayerDeck의 장착 카드가 전투 드로우 더미로 복사됐는지 나타낸다.
     private bool isBattleDeckInitialized;
+    // 현재 전투가 사용하는 장착 덱 원본. 인벤토리 저장 이벤트를 받아 다음 턴에 다시 복사한다.
+    private PlayerDeck sourcePlayerDeck;
+    private bool equippedDeckChanged;
 
     /// <summary>앞으로 뽑을 카드가 들어 있는 드로우 더미.</summary>
     public IReadOnlyList<int> DrawPileCards => cardsInDrawPile;
@@ -92,6 +95,11 @@ public class BattleCardDrawSystem : MonoBehaviour
     private void OnEnable()
     {
         TrySubscribeTurnManager();
+        if (sourcePlayerDeck != null)
+        {
+            sourcePlayerDeck.EquippedDeckChanged -= MarkEquippedDeckChanged;
+            sourcePlayerDeck.EquippedDeckChanged += MarkEquippedDeckChanged;
+        }
     }
 
     /// <summary>게임 관리자 초기화 순서가 늦은 경우를 대비해 시작 시 구독을 다시 확인한다.</summary>
@@ -108,6 +116,11 @@ public class BattleCardDrawSystem : MonoBehaviour
         {
             BattleGameManager.Instance.PlayerTurnStarted -= RefreshHandForNewPlayerTurn;
         }
+
+        if (sourcePlayerDeck != null)
+        {
+            sourcePlayerDeck.EquippedDeckChanged -= MarkEquippedDeckChanged;
+        }
     }
 
     /// <summary>
@@ -123,6 +136,16 @@ public class BattleCardDrawSystem : MonoBehaviour
                 this);
             return;
         }
+
+        if (sourcePlayerDeck != null)
+        {
+            sourcePlayerDeck.EquippedDeckChanged -= MarkEquippedDeckChanged;
+        }
+
+        sourcePlayerDeck = registeredPlayerDeck;
+        sourcePlayerDeck.EquippedDeckChanged -= MarkEquippedDeckChanged;
+        sourcePlayerDeck.EquippedDeckChanged += MarkEquippedDeckChanged;
+        equippedDeckChanged = false;
 
         // 이전 전투나 재초기화 시점의 카드 위치 정보가 섞이지 않도록 모든 런타임 상태를 비운다.
         cardsInDrawPile.Clear();
@@ -605,10 +628,43 @@ public class BattleCardDrawSystem : MonoBehaviour
             return;
         }
 
+        if (equippedDeckChanged)
+        {
+            RebuildDeckFromCurrentEquipment();
+            return;
+        }
+
         // 이전 턴에 사용하지 않고 남긴 장착 카드만 버림 더미로 이동한다. 임시 생성 카드는 소멸한다.
         MoveRemainingHandToDiscardPile();
         // 빈 손패를 최대 손패 수까지 채운 뒤 최종 목록을 UI에 전달한다.
         DrawCardsUntilHandIsFull();
+    }
+
+    /// <summary>인벤토리에서 장착 덱을 저장하면 다음 Player 턴에 전투 덱을 다시 만들도록 표시한다.</summary>
+    private void MarkEquippedDeckChanged()
+    {
+        equippedDeckChanged = true;
+        Debug.Log("장착 덱 변경 확인: 다음 Player 턴에 손패를 갱신합니다.", this);
+    }
+
+    /// <summary>현재 PlayerDeck의 장착 카드로 드로우·손패·버림 더미를 다시 구성한다.</summary>
+    private void RebuildDeckFromCurrentEquipment()
+    {
+        equippedDeckChanged = false;
+        cardsInDrawPile.Clear();
+        cardsInHand.Clear();
+        mpDiscountForEachHandSlot.Clear();
+        cardsInDiscardPile.Clear();
+        temporaryCardSlotsInHand.Clear();
+
+        CopyEquippedCardsIntoDrawPile(sourcePlayerDeck);
+        if (shuffleAtBattleStart)
+        {
+            Shuffle(cardsInDrawPile);
+        }
+
+        DrawCardsUntilHandIsFull();
+        Debug.Log("변경된 장착 덱을 다음 Player 턴 손패에 적용했습니다.", this);
     }
 
     /// <summary>새 턴 직전 남아 있던 장착 카드는 버림 더미로 옮기고 임시 생성 카드는 제거한다.</summary>

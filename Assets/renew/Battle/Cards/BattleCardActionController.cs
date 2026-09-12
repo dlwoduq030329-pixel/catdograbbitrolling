@@ -20,7 +20,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     private SelectedCardUseInfo selectedCardInfo;
     private GameObject selectedTarget;
     private MapInfo selectedTargetTile;
-
+    
     public bool IsSelectingTarget { get; private set; }
     public bool IsAwaitingConfirmation { get; private set; }
     /// <summary>카드 대상 선택 또는 사용 확인이 진행 중인지 반환한다.</summary>
@@ -62,7 +62,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// [5] 밀치기 결과 Preview를 받아 이후 카드 선택·확정 과정에서 재사용한다.
     /// 이 함수는 카드 사용을 시작하거나 UI를 표시하지 않고 참조 연결만 수행한다.
     /// </summary>
-    public void Configure(
+    public void Setup(
         GameObject targetPlayer,
         BattleRangeVisualizer visualizer,
         Color cardRangeColor,
@@ -75,11 +75,27 @@ public sealed class BattleCardActionController : MonoBehaviour
         // [2] 카드 사용 주체를 보관한다. 이후 Self 대상 지정과 효과 실행 Context의 Player로 사용한다.
         player = targetPlayer;
 
-        useExecutor = BattleComponentResolver.GetOrAdd(gameObject, useExecutor);
+        if (useExecutor == null)
+        {
+            useExecutor = GetComponent<BattleCardUseExecutor>();
+            if (useExecutor == null)
+            {
+                Debug.LogError($"[{nameof(BattleCardActionController)}] {gameObject.name}에 BattleCardUseExecutor가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
         useExecutor.Setup(targetPlayer, effectDiceSystem);
 
         // [3] 계산된 카드 사거리와 효과 범위를 실제 타일 색상으로 표시하는 전용 컴포넌트다.
-        targetController = BattleComponentResolver.GetOrAdd(gameObject, targetController);
+        if (targetController == null)
+        {
+            targetController = GetComponent<BattleCardTargetController>();
+            if (targetController == null)
+            {
+                Debug.LogError($"[{nameof(BattleCardActionController)}] {gameObject.name}에 BattleCardTargetController가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
         targetController.Setup(
             targetPlayer,
             visualizer,
@@ -98,7 +114,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// [6] 확정 후 정확한 손패 카드를 소비할 DrawSystem을 함께 저장한다.
     /// 이 단계에서는 MP·손패를 소비하거나 카드 효과를 실행하지 않는다.
     /// </summary>
-    public bool TryBeginSelectedCardFlow(
+    public bool TryStartCardUse(
         SelectedCardUseInfo selectedHandCard,
         BattleCardDrawSystem sourceCardDrawSystem,
         bool cardsCanBeUsedThisTurn)
@@ -175,7 +191,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// 확인 버튼 UI는 제거했으므로 별도 UI 이벤트를 보내지 않는다. 이후 Player 클릭이
     /// BattlePlayerActionController → BattlePlayerCardFlow를 거쳐 실제 카드 사용을 확정한다.
     /// </summary>
-    public bool TrySelectTargetAndEnterConfirmation(GameObject chosenTarget, MapInfo chosenTargetTile)
+    public bool TrySelectTarget(GameObject chosenTarget, MapInfo chosenTargetTile)
     {
         // [1][3] 대상 선택 중이 아니거나 선택한 대상이 계산된 카드 사거리 밖이면 상태를 변경하지 않는다.
         if (!IsSelectingTarget || chosenTarget == null || chosenTargetTile == null ||
@@ -218,7 +234,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// 4. 카드 선택 상태와 사거리 표시를 닫고 완료 이벤트를 호출한다.
     /// 어느 검증에서든 실패하면 효과는 실행하지 않으며, 손패 소비가 실패하면 먼저 차감한 MP도 복구한다.
     /// </summary>
-    public bool TryConfirmCardUse()
+    public bool TryConfirmUse()
     {
         // 연출 중 UI 이벤트가 중복 호출돼도 같은 카드와 MP가 두 번 소비되지 않게 한다.
         if (isResolvingDiceRoll)
@@ -468,7 +484,7 @@ public sealed class BattleCardActionController : MonoBehaviour
     /// 밀치기·돌진 카드라면 확정 전에 예상 이동 결과를 갱신한다.
     /// ConfirmationRequested로 기본 공격과 같은 확인(사용) 버튼을 다시 띄우며, 실제 확정 입력은
     /// BattlePlayerActionController.ConfirmCurrentPlayerAction() → BattlePlayerCardFlow.Confirm()
-    /// → TryConfirmCardUse() 순서로 처리된다.
+    /// → TryConfirmUse() 순서로 처리된다.
     /// </summary>
     private void EnterCardUseConfirmationState()
     {
@@ -488,7 +504,7 @@ public sealed class BattleCardActionController : MonoBehaviour
             /// <summary>
     /// [1][3] 현재 카드가 Player 자신이나 전체 대상이 아니라 Scene의 Enemy·Character·Tile 하나를
     /// 선택 대상으로 요구하는지 반환한다. true인 카드는 선택 대상과 대상 타일을 저장하고 사거리 검사를 거친다.
-    /// 현재 Ally는 TryBeginSelectedCardFlow()에서 Player 자신으로 처리되므로 포함하지 않는다.
+    /// 현재 Ally는 TryStartCardUse()에서 Player 자신으로 처리되므로 포함하지 않는다.
     /// 용병 등 실제 아군 선택 기능을 추가할 때 Ally 입력 탐색을 구현한 뒤 이 조건에도 포함해야 한다.
     /// </summary>
     private bool CurrentCardNeedsWorldTargetSelection()

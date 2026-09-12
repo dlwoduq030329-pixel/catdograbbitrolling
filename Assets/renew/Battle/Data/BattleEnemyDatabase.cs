@@ -118,9 +118,19 @@ public class BattleEnemyData
     [Tooltip("밀기 힘이 이 값 이상일 때만 Enemy가 밀립니다. 일반 Enemy의 기본 무게는 1입니다.")]
     [InspectorName("밀기 무게")]
     [Min(1)] public int pushWeight = 1;
-    [InspectorName("스킬 재사용 대기시간 (현재 미사용)")]
-    [Tooltip("현재 미연결인 예약 필드입니다. 초·턴 단위 및 스킬 실행 처리가 정의되지 않았으므로 지금은 값을 바꿔도 효과가 없습니다.")]
+    [InspectorName("스킬 재사용 대기 턴")]
+    [Tooltip("스킬 사용 후 다시 사용할 때까지 기다리는 Enemy 턴 수입니다.")]
     [Min(0f)] public float skillCooldown;
+    [InspectorName("아군 회복량")]
+    [Tooltip("0보다 크면 자신의 턴 시작에 사거리 안에서 체력 비율이 가장 낮은 아군을 회복합니다.")]
+    [Min(0f)] public float allyHealAmount;
+    [InspectorName("회복 사거리 (칸)")]
+    [Min(0)] public int allyHealRangeTiles;
+    [InspectorName("회복 사용 HP 비율")]
+    [Tooltip("대상의 현재 HP 비율이 이 값 이하일 때만 회복합니다.")]
+    [Range(0f, 1f)] public float allyHealBelowRatio = 0.5f;
+    [InspectorName("회복 MP 비용")]
+    [Min(0)] public int allyHealMPCost = 1;
 
     [Header("턴 MP 추첨 범위 및 행동 비용")]
     [InspectorName("턴 MP 최솟값")]

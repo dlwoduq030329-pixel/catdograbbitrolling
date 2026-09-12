@@ -86,7 +86,16 @@ public class BattleUnitMoveFlow : MonoBehaviour
     {
         owner.EnsureBattlePlayerMover();
 
-        battleMoveTransaction = BattleComponentResolver.GetOrAdd(gameObject, battleMoveTransaction);
+        if (battleMoveTransaction == null)
+        {
+            battleMoveTransaction = GetComponent<BattlePlayerMoveTransaction>();
+            if (battleMoveTransaction == null)
+            {
+                Debug.LogError($"[{nameof(BattleUnitMoveFlow)}] {gameObject.name}에 BattlePlayerMoveTransaction이 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleMoveTransaction.AttachPlayer(owner.player, owner.battlePlayerMover);
     }
 
@@ -117,7 +126,16 @@ public class BattleUnitMoveFlow : MonoBehaviour
         owner.EnsureBattleRaycaster();
         owner.EnsureBattlePlayerRangeController();
         owner.ResolveBattleDataPool();
-        battleMoveThreatPreview = BattleComponentResolver.GetOrAdd(gameObject, battleMoveThreatPreview);
+        if (battleMoveThreatPreview == null)
+        {
+            battleMoveThreatPreview = GetComponent<BattleMoveThreatPreview>();
+            if (battleMoveThreatPreview == null)
+            {
+                Debug.LogError($"[{nameof(BattleUnitMoveFlow)}] {gameObject.name}에 BattleMoveThreatPreview가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleMoveThreatPreview.ConfigureDependencies(
             owner.mainCamera,
             owner.battleRaycaster,
@@ -292,9 +310,6 @@ public class BattleUnitMoveFlow : MonoBehaviour
         }
 
         owner.turnActionState.MarkMovementUsed();
-
-        BattleGameManager.Instance?.ChestRewardSystem?.TryOpen(targetTile);
-        BattleGameManager.Instance?.CardShopSystem?.TryEnter(targetTile);
 
         ClearMoveRange();
         ClearMoveArrow();

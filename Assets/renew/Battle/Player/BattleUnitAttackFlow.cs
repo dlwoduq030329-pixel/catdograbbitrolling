@@ -49,7 +49,16 @@ public class BattleUnitAttackFlow : MonoBehaviour
     {
         owner.EnsureBattlePlayerMover();
 
-        battleBasicAttackController = BattleComponentResolver.GetOrAdd(gameObject, battleBasicAttackController);
+        if (battleBasicAttackController == null)
+        {
+            battleBasicAttackController = GetComponent<BattleBasicAttackController>();
+            if (battleBasicAttackController == null)
+            {
+                Debug.LogError($"[{nameof(BattleUnitAttackFlow)}] {gameObject.name}에 BattleBasicAttackController가 없습니다. Scene에 미리 추가해야 합니다.", this);
+                return;
+            }
+        }
+
         battleBasicAttackController.Configure(
             owner.player,
             owner.playerCombatData,

@@ -42,7 +42,7 @@ public sealed class BattleTurnButtonController : MonoBehaviour
     }
 
     /// <summary>턴 종료 버튼에 실행 콜백을 연결한다.</summary>
-    public void BindEndTurnAction(UnityAction onEndTurnRequested)
+    public void SetEndTurnAction(UnityAction onEndTurnRequested)
     {
         RemoveTurnEndButtonListener();
 

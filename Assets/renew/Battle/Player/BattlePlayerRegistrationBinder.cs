@@ -11,9 +11,10 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class BattlePlayerRegistrationBinder : MonoBehaviour
 {
-    [Header("Player 등록 대상")]
+    [Header("Player UI 참조")]
+    [InspectorName("MP UI")]
     [SerializeField] private PlayerMPUI playerMpView;
-    [InspectorName("AP UI (MP와 같은 형식)")]
+    [InspectorName("AP UI")]
     [SerializeField] private PlayerAPUI playerApView;
 
     public GameObject Player { get; private set; }
@@ -28,14 +29,11 @@ public sealed class BattlePlayerRegistrationBinder : MonoBehaviour
         GameObject player,
         BattleCardDrawSystem cardDrawSystem,
         BattlePlayerActionController actionController,
-        bool useDebugStats,
-        int debugMaxMP,
-        int debugMaxAP,
         Object logContext)
     {
         Clear();
 
-        if (!TryBind(
+        if (!TrySetupPlayer(
                 player,
                 cardDrawSystem,
                 actionController,
@@ -48,31 +46,49 @@ public sealed class BattlePlayerRegistrationBinder : MonoBehaviour
             return false;
         }
 
+        // 아래 3개는 전부 Player Body(player) 오브젝트에 미리 붙어 있어야 하는 데이터/뷰 컴포넌트다.
+        // 누락돼도 조용히 새로 만들지 않고 LogError로 알리고 등록을 중단한다.
+        Weapon = player.GetComponent<PlayerWeapon>();
+        if (Weapon == null)
+        {
+            Debug.LogError($"[{nameof(BattlePlayerRegistrationBinder)}] {player.name}에 PlayerWeapon이 없습니다. Scene에 미리 추가해야 합니다.", logContext);
+            return false;
+        }
+
+        Wallet = player.GetComponent<PlayerWallet>();
+        if (Wallet == null)
+        {
+            Debug.LogError($"[{nameof(BattlePlayerRegistrationBinder)}] {player.name}에 PlayerWallet이 없습니다. Scene에 미리 추가해야 합니다.", logContext);
+            return false;
+        }
+
+        BattleEquipVisualBinder equipmentView = player.GetComponent<BattleEquipVisualBinder>();
+        if (equipmentView == null)
+        {
+            Debug.LogError($"[{nameof(BattlePlayerRegistrationBinder)}] {player.name}에 BattleEquipVisualBinder가 없습니다. Scene에 미리 추가해야 합니다.", logContext);
+            return false;
+        }
+
         Player = player;
         MP = playerMP;
         AP = playerAP;
         CombatData = combatData;
         Health = playerHealth;
-        Weapon = BattleComponentResolver.GetOrAdd(player, player.GetComponent<PlayerWeapon>());
-        Wallet = BattleComponentResolver.GetOrAdd(player, player.GetComponent<PlayerWallet>());
 
-        Wallet?.InitializeGold(DataConfig.playerMoney);
-        if (Wallet != null)
-            Wallet.GoldChanged += SaveGold;
+        Wallet.InitializeGold(DataConfig.playerMoney);
+        Wallet.GoldChanged += SaveGold;
 
-        BattleEquipVisualBinder equipmentView = BattleComponentResolver.GetOrAdd(
-            player,
-            player.GetComponent<BattleEquipVisualBinder>());
         CombatData.Bind(Weapon);
-        equipmentView?.Bind(Weapon);
-
-        if (useDebugStats)
-        {
-            MP.ConfigureMaxMP(debugMaxMP);
-            AP?.ConfigureMaxAP(debugMaxAP);
-        }
+        equipmentView.Bind(Weapon);
 
         return true;
+    }
+
+    /// <summary>QA 확인용으로 현재 Player의 최대 MP와 AP를 변경합니다.</summary>
+    public void SetDebugResources(int maxMP, int maxAP)
+    {
+        MP?.ConfigureMaxMP(maxMP);
+        AP?.ConfigureMaxAP(maxAP);
     }
 
     public void Clear()
@@ -94,7 +110,7 @@ public sealed class BattlePlayerRegistrationBinder : MonoBehaviour
         DataConfig.playerMoney = Mathf.Max(0, gold);
     }
 
-    public bool TryBind(
+    private bool TrySetupPlayer(
         GameObject player,
         BattleCardDrawSystem cardDrawSystem,
         BattlePlayerActionController actionController,

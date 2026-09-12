@@ -16,7 +16,7 @@ MonoBehaviour:
   - id: green_slime
     displayName: Green Slime
     spawnRole: 0
-    prefab: {fileID: 7965508097192660184, guid: 9961af27a22c50e448ed8c7c9d3b4bdb,
+    prefab: {fileID: 7965508097192660184, guid: 90a9046a5687c204a95aa91feb112b66,
       type: 3}
     rank: 0
     attackType: 0
@@ -26,6 +26,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -40,7 +44,7 @@ MonoBehaviour:
   - id: red_slime
     displayName: Red Slime
     spawnRole: 0
-    prefab: {fileID: 7283421184823144213, guid: 2662beb15d4e68c45bc26fd87c270920,
+    prefab: {fileID: 7283421184823144213, guid: d74dfc9ab7df38b478e307083b9b0c46,
       type: 3}
     rank: 0
     attackType: 0
@@ -50,6 +54,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -64,7 +72,7 @@ MonoBehaviour:
   - id: blue_slime
     displayName: Blue Slime
     spawnRole: 0
-    prefab: {fileID: 780427262304984094, guid: 65b613408636f9745b6adefa8bfe6164, type: 3}
+    prefab: {fileID: 780427262304984094, guid: 31b30bc8e4082c745b9abef6d33eb195, type: 3}
     rank: 0
     attackType: 0
     attackDamageType: 0
@@ -73,6 +81,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -87,7 +99,7 @@ MonoBehaviour:
   - id: goblin
     displayName: Goblin
     spawnRole: 0
-    prefab: {fileID: 3812377382162701999, guid: 459e93d922c91cd4695017bc087b0fb3,
+    prefab: {fileID: 3812377382162701999, guid: 89a8cae914f2a5f4d91b7d98ae105888,
       type: 3}
     rank: 0
     attackType: 0
@@ -97,6 +109,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -111,7 +127,7 @@ MonoBehaviour:
   - id: goblin_mage
     displayName: Goblin Mage
     spawnRole: 0
-    prefab: {fileID: 8626112183665077562, guid: 844df648dc2b3d843a54a8ba4abeb065,
+    prefab: {fileID: 8626112183665077562, guid: 04b07aa9070e5e24a9b35e6b3f619933,
       type: 3}
     rank: 0
     attackType: 1
@@ -120,7 +136,11 @@ MonoBehaviour:
     attackDamage: 2
     attackRangeTiles: 4
     pushWeight: 1
-    skillCooldown: 0
+    skillCooldown: 2
+    allyHealAmount: 3
+    allyHealRangeTiles: 4
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -135,7 +155,7 @@ MonoBehaviour:
   - id: werewolf
     displayName: Werewolf
     spawnRole: 0
-    prefab: {fileID: 6818404413805830165, guid: 2a46d2b72f04cae4fa65fe0452159f5e,
+    prefab: {fileID: 6818404413805830165, guid: fbf054ecdceb6c64194ba447275e6f66,
       type: 3}
     rank: 1
     attackType: 0
@@ -145,6 +165,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -159,7 +183,7 @@ MonoBehaviour:
   - id: orc
     displayName: Orc
     spawnRole: 0
-    prefab: {fileID: 6663876601543625584, guid: bb45b7e50e02538459b33fd6d085bd9a,
+    prefab: {fileID: 6663876601543625584, guid: c9d5e4974a2d7f8498e962c7854e2d07,
       type: 3}
     rank: 1
     attackType: 0
@@ -169,6 +193,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
@@ -183,7 +211,7 @@ MonoBehaviour:
   - id: minotaur
     displayName: Minotaur
     spawnRole: 0
-    prefab: {fileID: 6492908115424779681, guid: b5f7de3073646e24491ec7da78b60bd0,
+    prefab: {fileID: 6492908115424779681, guid: 34fd7ecd9916b6e458c265502c758c1d,
       type: 3}
     rank: 2
     attackType: 0
@@ -193,6 +221,10 @@ MonoBehaviour:
     attackRangeTiles: 1
     pushWeight: 1
     skillCooldown: 0
+    allyHealAmount: 0
+    allyHealRangeTiles: 0
+    allyHealBelowRatio: 0.5
+    allyHealMPCost: 1
     minTurnMP: 3
     maxTurnMP: 5
     moveMPCostPerTile: 1
